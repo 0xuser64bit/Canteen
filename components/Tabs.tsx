@@ -16,14 +16,14 @@ export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
     <>
       <div
         className={cn(
-          "flex flex-row items-center overflow-auto sm:overflow-visible no-visible-scrollbar max-w-full w-full",
+          "flex justify-center items-center overflow-auto sm:overflow-visible no-visible-scrollbar max-w-full w-full",
         )}
       >
         {tabs.map((tab, _) => (
           <div
             key={tab.title}
             className={cn(
-              "flex flex-col justify-center items-center px-16 py-2 rounded-full",
+              "flex flex-col justify-center items-center px-8 py-2 rounded-full",
               active.value === tab.value &&
                 "bg-gray-200 rounded-lg ease-in-out",
             )}
@@ -32,7 +32,7 @@ export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
               setActive(tab);
             }}
           >
-            {tab.icon ? tab.icon : <Info />}
+            {tab.icon ? tab.icon : <Info className="w-4 h-4" />}
             <span className="block text-black dark:text-white">
               {tab.title}
             </span>

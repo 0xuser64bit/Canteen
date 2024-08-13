@@ -9,27 +9,27 @@ export const Navbar = () => {
     {
       title: "Community",
       value: "community",
-      icon: <Home />,
+      icon: <Home className="w-4 h-4" />,
     },
     {
       title: "Opportunities",
       value: "opportunities",
-      icon: <BriefcaseBusiness />,
+      icon: <BriefcaseBusiness className="w-4 h-4" />,
     },
     {
       title: "Reviews",
       value: "reviews",
-      icon: <Star />,
+      icon: <Star className="w-4 h-4" />,
     },
     {
       title: "Clubs",
       value: "clubs",
-      icon: <Users />,
+      icon: <Users className="w-4 h-4" />,
     },
   ];
   return (
-    <div className="flex justify-between py-2 border-2">
-      <div className="flex items-center">
+    <div className="flex py-2">
+      <div className="flex items-center w-1/4">
         <div>
           <img src="/canteen.png" className="w-16 h-16" />
         </div>
@@ -42,10 +42,10 @@ export const Navbar = () => {
           />
         </div>
       </div>
-      <div className="">
+      <div className="w-1/2">
         <Tabs tabs={tabs} />
       </div>
-      <div className="flex gap-x-4">
+      <div className="flex gap-x-4 w-1/4">
         <Button variant={"secondary"} size={"lg"}>
           Login
         </Button>
