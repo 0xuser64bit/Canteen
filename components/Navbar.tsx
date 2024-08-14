@@ -28,7 +28,7 @@ export const Navbar = () => {
     },
   ];
   return (
-    <div className="flex py-2">
+    <div className="flex justify-center py-2">
       <div className="flex items-center w-1/4">
         <div>
           <img src="/canteen.png" className="w-16 h-16" />

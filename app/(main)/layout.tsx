@@ -6,9 +6,11 @@ export default function MarketingPage({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="h-full">
-      <Navbar />
-      <main className="h-full">{children}</main>
+    <div className="min-h-screen">
+      <div className={`flex flex-col justify-center px-[10%]`}>
+        <Navbar />
+        <div className="">{children}</div>
+      </div>
     </div>
   );
 }

@@ -23,7 +23,7 @@ export const NavigationTabs = ({
           <div
             key={navigationTab.title}
             className={cn(
-              "flex items-center px-16 py-2 gap-x-4 text-gray-500",
+              "flex items-center px-4 sm:px-8 md:px-16 py-2 gap-x-4 text-gray-500",
               active.value === navigationTab.value &&
                 "bg-gray-200 rounded-lg ease-in-out text-black font-bold",
             )}
