@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import { LoginForm, SignUpForm } from "@/client/form";
 import {
   Card,
@@ -7,13 +6,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { redirect } from "next/navigation";
 
-export default async function JoinPage() {
-  const session = await auth();
-  if (session?.user) {
-    redirect("/community");
-  }
+export default function JoinPage() {
   return (
     <>
       <div className="flex justify-center items-center h-screen dark:bg-black">

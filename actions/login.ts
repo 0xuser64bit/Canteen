@@ -14,6 +14,9 @@ const credentialsLogin = async ({
     where: {
       email,
     },
+    select: {
+      password: true,
+    },
   });
   if (!user) {
     return {
@@ -21,10 +24,17 @@ const credentialsLogin = async ({
       status: 404,
     };
   }
-  await signIn("credentials", {
-    email,
-    password,
-  });
+  try {
+    await signIn("credentials", {
+      email,
+      password,
+    });
+  } catch (e) {
+    return {
+      message: "Could not sign in " + e,
+      status: 404,
+    };
+  }
 };
 
 export { credentialsLogin };

@@ -11,7 +11,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
     Credentials({
-      name: "Credentials",
+      name: "credentials",
       credentials: {
         name: {
           label: "Name",
@@ -23,31 +23,28 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         },
         password: { label: "Password", type: "password" },
       },
-      // @ts-ignore
-      authorize: async (
-        credentials: Partial<Record<"email" | "password", unknown>>,
-      ) => {
+      authorize: async (credentials: any) => {
         const email = credentials.email as string;
         const password = credentials.password as string;
 
-        const hashedPassword = await bcrypt.hash(password, 10);
         const user = await db.user.findFirst({
           where: {
             email,
           },
           select: {
             password: true,
+            id: true,
+            name: true,
           },
         });
-        if (!user) {
-          throw new Error("User not found");
+        const isMatch = await bcrypt.compare(
+          password,
+          user?.password as string,
+        );
+        if (user && isMatch) {
+          return user;
         }
-
-        const isMatch = bcrypt.compare(password, user?.password as string);
-        if (!isMatch) {
-          throw new Error("Wrong Credentials");
-        }
-        return user;
+        return null;
       },
     }),
     // ...add more providers here

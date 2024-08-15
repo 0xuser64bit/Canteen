@@ -11,18 +11,21 @@ import { toast } from "sonner";
 
 const LoginForm = () => {
   const router = useRouter();
+
   const handleLogin = async (formData: FormData) => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     if (!email || !password) {
       toast.info("All fields are required");
+      return;
     }
     const error = await credentialsLogin({ email, password });
     if (!error) {
       toast.success("Login successfully");
       router.push("/community");
+      return;
     }
-    if (error?.status) toast.success(error.message);
+    if (error?.status) toast.error(error.message);
   };
   return (
     <>

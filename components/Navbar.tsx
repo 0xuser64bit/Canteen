@@ -3,29 +3,31 @@
 import { BriefcaseBusiness, Home, Search, Star, Users } from "lucide-react";
 import { Tabs } from "./Tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const tabs = [
+  {
+    title: "Community",
+    value: "community",
+    icon: <Home className="w-4 h-4" />,
+  },
+  {
+    title: "Opportunities",
+    value: "opportunities",
+    icon: <BriefcaseBusiness className="w-4 h-4" />,
+  },
+  {
+    title: "Reviews",
+    value: "reviews",
+    icon: <Star className="w-4 h-4" />,
+  },
+  {
+    title: "Clubs",
+    value: "clubs",
+    icon: <Users className="w-4 h-4" />,
+  },
+];
+
 export const Navbar = () => {
-  const tabs = [
-    {
-      title: "Community",
-      value: "community",
-      icon: <Home className="w-4 h-4" />,
-    },
-    {
-      title: "Opportunities",
-      value: "opportunities",
-      icon: <BriefcaseBusiness className="w-4 h-4" />,
-    },
-    {
-      title: "Reviews",
-      value: "reviews",
-      icon: <Star className="w-4 h-4" />,
-    },
-    {
-      title: "Clubs",
-      value: "clubs",
-      icon: <Users className="w-4 h-4" />,
-    },
-  ];
   return (
     <div className="flex justify-center py-2">
       <div className="flex items-center w-1/4">
