@@ -2,8 +2,7 @@
 
 import { BriefcaseBusiness, Home, Search, Star, Users } from "lucide-react";
 import { Tabs } from "./Tabs";
-import { Button } from "./ui/button";
-
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export const Navbar = () => {
   const tabs = [
     {
@@ -46,12 +45,10 @@ export const Navbar = () => {
         <Tabs tabs={tabs} />
       </div>
       <div className="flex gap-x-4 w-1/4">
-        <Button variant={"secondary"} size={"lg"}>
-          Login
-        </Button>
-        <Button variant={"secondary"} size={"lg"}>
-          Sign Up
-        </Button>
+        <Avatar>
+          <AvatarImage src="https://github.com/us3r64bit.png" alt="@shadcn" />
+          <AvatarFallback>CN</AvatarFallback>
+        </Avatar>
       </div>
     </div>
   );

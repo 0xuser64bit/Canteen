@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 
-export default function MarketingPage({
+export default async function MarketingPage({
   children,
 }: Readonly<{
   children: React.ReactNode;

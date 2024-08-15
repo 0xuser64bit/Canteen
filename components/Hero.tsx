@@ -1,8 +1,11 @@
 import Image from "next/image";
 import { Button } from "./ui/button";
 import { BackgroundBeams } from "./ui/background-beams";
+import { Handshake } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export const Hero = () => {
+  const router = useRouter();
   return (
     <div className="flex justify-center items-center h-screen gap-x-6 dark:bg-black">
       <div className="">
@@ -28,11 +31,13 @@ export const Hero = () => {
           <span className="text-4xl font-bold">Just Like You</span>
         </div>
         <div className="flex flex-col gap-y-2 pt-10">
-          <Button className="z-[99999]" variant={"secondary"} size={"lg"}>
-            Login
-          </Button>
-          <Button className="z-[99999]" variant={"secondary"} size={"lg"}>
-            Sign Up
+          <Button
+            onClick={() => router.push("/join")}
+            className="z-[99999]"
+            size={"lg"}
+          >
+            <span className="mr-1">Join Us</span>{" "}
+            <Handshake className="w-5 h-5 mt-1" />
           </Button>
         </div>
       </div>
