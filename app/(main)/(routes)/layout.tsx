@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 import { Navbar } from "@/components/Navbar";
 
 export default async function MarketingPage({

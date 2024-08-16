@@ -2,12 +2,13 @@
 
 import { credentialsLogin } from "@/actions/login";
 import { credentialsSignUp } from "@/actions/signUp";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 const LoginForm = () => {
   const router = useRouter();
@@ -23,9 +24,7 @@ const LoginForm = () => {
     if (!error) {
       toast.success("Login successfully");
       router.push("/community");
-      return;
-    }
-    if (error?.status) toast.error(error.message);
+    } else toast.error(error.message);
   };
   return (
     <>

@@ -1,8 +1,8 @@
+import db from "@/db";
+import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import db from "@/db";
-import bcrypt from "bcryptjs";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
@@ -32,6 +32,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             email,
           },
           select: {
+            email: true,
             password: true,
             id: true,
             name: true,

@@ -1,7 +1,8 @@
 "use server";
 
 import db from "@/db";
-import { signIn } from "@/auth";
+import { signIn } from "@/lib/auth";
+import { AuthError } from "next-auth";
 
 const credentialsLogin = async ({
   email,
@@ -21,7 +22,6 @@ const credentialsLogin = async ({
   if (!user) {
     return {
       message: "User doesn't Exists",
-      status: 404,
     };
   }
   try {
@@ -29,11 +29,17 @@ const credentialsLogin = async ({
       email,
       password,
     });
-  } catch (e) {
-    return {
-      message: "Could not sign in " + e,
-      status: 404,
-    };
+  } catch (error: any) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return { message: "Invalid credentials!" };
+        default:
+          return { message: "Something went wrong!" };
+      }
+    }
+
+    throw error;
   }
 };
 
