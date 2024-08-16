@@ -1,6 +1,6 @@
 "use client";
 
-import { credentialsLogin } from "@/actions/login";
+import { credentialsLogin, login } from "@/actions/login";
 import { credentialsSignUp } from "@/actions/signUp";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { signIn } from "@/lib/auth";
 
 const LoginForm = () => {
   const router = useRouter();
@@ -28,6 +29,22 @@ const LoginForm = () => {
   };
   return (
     <>
+      <div className="flex justify-center items-centerdark:bg-black">
+        <Button
+          onClick={() => {
+            login("google")
+              .then(() => {
+                console.log("Logged in with Google");
+              })
+              .catch(() => {
+                toast.error("Failed to login with Google");
+              });
+          }}
+          type="submit"
+        >
+          Login with Google
+        </Button>
+      </div>
       <form action={handleLogin}>
         <CardContent className="space-y-2">
           <div className="space-y-1">
@@ -70,40 +87,58 @@ const SignUpForm = () => {
     if (error?.status) toast.success(error.message);
   };
   return (
-    <form action={handleSignup}>
-      <CardContent className="space-y-2">
-        <div className="space-y-1">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            type="text"
-            placeholder="Alice Peterson"
-            name="name"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="alice.12@gmail.com"
-            name="email"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="******"
-            name="password"
-          />
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button type="submit">Sign Up</Button>
-      </CardFooter>
-    </form>
+    <>
+      <div className="flex justify-center items-centerdark:bg-black">
+        <Button
+          onClick={() => {
+            login("google")
+              .then(() => {
+                console.log("Logged in with Google");
+              })
+              .catch(() => {
+                toast.error("Failed to login with Google");
+              });
+          }}
+          type="submit"
+        >
+          Login with Google
+        </Button>
+      </div>
+      <form action={handleSignup}>
+        <CardContent className="space-y-2">
+          <div className="space-y-1">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Alice Peterson"
+              name="name"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="alice.12@gmail.com"
+              name="email"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="******"
+              name="password"
+            />
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button type="submit">Sign Up</Button>
+        </CardFooter>
+      </form>
+    </>
   );
 };
 export { LoginForm, SignUpForm };

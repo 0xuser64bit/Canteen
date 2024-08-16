@@ -3,6 +3,7 @@
 import db from "@/db";
 import { signIn } from "@/lib/auth";
 import { AuthError } from "next-auth";
+import { revalidatePath } from "next/cache";
 
 const credentialsLogin = async ({
   email,
@@ -43,4 +44,8 @@ const credentialsLogin = async ({
   }
 };
 
-export { credentialsLogin };
+const login = async (provider: string) => {
+  await signIn(provider, { redirectTo: "/community" });
+  revalidatePath("/community");
+};
+export { credentialsLogin, login };
