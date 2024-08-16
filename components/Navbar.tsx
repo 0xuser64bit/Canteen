@@ -2,7 +2,8 @@
 
 import { BriefcaseBusiness, Home, Search, Star, Users } from "lucide-react";
 import { Tabs } from "./Tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSession } from "next-auth/react";
+import { UserAvatar } from "./userAvatar";
 
 const tabs = [
   {
@@ -28,6 +29,7 @@ const tabs = [
 ];
 
 export const Navbar = () => {
+  const session = useSession();
   return (
     <div className="flex justify-center py-2">
       <div className="flex items-center w-1/4">
@@ -47,10 +49,7 @@ export const Navbar = () => {
         <Tabs tabs={tabs} />
       </div>
       <div className="flex gap-x-4 w-1/4">
-        <Avatar>
-          <AvatarImage src="https://github.com/us3r64bit.png" alt="@shadcn" />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar>
+        <UserAvatar session={session} />
       </div>
     </div>
   );
