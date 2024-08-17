@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
+import { getUserWithEmail } from "./utils";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
@@ -27,27 +28,41 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const email = credentials.email as string;
         const password = credentials.password as string;
 
-        const user = await db.user.findFirst({
-          where: {
-            email,
-          },
-          select: {
-            email: true,
-            password: true,
-            id: true,
-            name: true,
-          },
-        });
+        const existingUser = await getUserWithEmail({ email });
         const isMatch = await bcrypt.compare(
           password,
-          user?.password as string,
+          existingUser?.password as string,
         );
-        if (user && isMatch) {
-          return user;
+        if (existingUser && isMatch) {
+          return existingUser;
         }
         return null;
       },
     }),
-    // ...add more providers here
   ],
+  callbacks: {
+    // @ts-ignore
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "credentials") {
+        return true;
+      }
+      if (account?.provider !== "google") {
+        return null;
+      }
+      const existingUser = await getUserWithEmail({
+        email: user?.email as string,
+      });
+      if (existingUser) {
+        return true;
+      }
+      await db.user.create({
+        data: {
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        },
+      });
+      return true;
+    },
+  },
 });

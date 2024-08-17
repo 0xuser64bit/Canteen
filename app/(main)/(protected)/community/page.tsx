@@ -1,6 +1,6 @@
-import { Discover } from "@/components/Discover";
-import { Navigation } from "@/components/Navigation";
-import { Timeline } from "@/components/Timeline";
+import { Discover } from "@/app/(main)/(protected)/_components/Discover";
+import { Navigation } from "../_components/Navigation";
+import { Timeline } from "../_components/Timeline";
 
 export default function CommunityPage() {
   return (

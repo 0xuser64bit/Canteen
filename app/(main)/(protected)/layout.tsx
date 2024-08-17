@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/Navbar";
+import { Navbar } from "./_components/Navbar";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
