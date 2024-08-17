@@ -6,14 +6,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { LogOut, User } from "lucide-react";
 
 export const UserAvatar = ({ session }: { session: any }) => {
-  const router = useRouter();
   const user = session?.data?.user;
   return (
     <DropdownMenu>
@@ -35,7 +32,22 @@ export const UserAvatar = ({ session }: { session: any }) => {
           >
             <div
               role="button"
-              className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25 border"
+              className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25"
+              onClick={() => {}}
+            >
+              <User className="h-4 w-4 mr-2" />
+              <span className="line-clamp-1 text-start font-medium">
+                Profile
+              </span>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            asChild
+            className="w-full cursor-pointer text-muted-foreground"
+          >
+            <div
+              role="button"
+              className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25"
               onClick={async () => await logout()}
             >
               <LogOut className="h-4 w-4 mr-2" />
@@ -44,7 +56,6 @@ export const UserAvatar = ({ session }: { session: any }) => {
               </span>
             </div>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

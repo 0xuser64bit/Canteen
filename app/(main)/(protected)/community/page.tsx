@@ -8,7 +8,7 @@ export default function CommunityPage() {
       <div className="w-1/4">
         <Navigation />
       </div>
-      <div className="w-1/2 border-2">
+      <div className="w-1/2 mx-3">
         <Timeline />
       </div>
       <div className="w-1/4">

@@ -1,3 +1,9 @@
+import { Post } from "./Post";
+
 export const Timeline = () => {
-  return <div>This is Timeline Page</div>;
+  return (
+    <div>
+      <Post />
+    </div>
+  );
 };
