@@ -25,7 +25,7 @@ export const NavigationTabs = ({
             className={cn(
               "flex items-center px-4 sm:px-8 md:px-16 py-2 gap-x-4 text-gray-500",
               active.value === navigationTab.value &&
-                "bg-gray-200 rounded-lg ease-in-out text-black font-bold",
+                "bg-gray-200 dark:bg-gray-200/10 rounded-lg ease-in-out text-black dark:text-white font-bold",
             )}
             role="button"
             onClick={() => {
@@ -33,7 +33,7 @@ export const NavigationTabs = ({
             }}
           >
             {navigationTab.icon ? navigationTab.icon : <Info />}
-            <span className="block dark:text-white">{navigationTab.title}</span>
+            <span className="block">{navigationTab.title}</span>
           </div>
         ))}
       </div>

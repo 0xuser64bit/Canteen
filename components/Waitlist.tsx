@@ -34,7 +34,7 @@ export const WaitList = () => {
   };
   return (
     <form onSubmit={handleWaitlistSubmit} method="POST">
-      <div className="flex justify-center items-center h-screen gap-x-6 bg-black">
+      <div className="flex justify-center items-center h-screen gap-x-6 bg-black dark:bg-white">
         <div className="">
           <Image
             src={"/canteen-dark.png"}

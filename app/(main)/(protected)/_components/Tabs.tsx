@@ -25,7 +25,7 @@ export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
             className={cn(
               "flex flex-col justify-center items-center px-8 py-2 rounded-full",
               active.value === tab.value &&
-                "bg-gray-200 rounded-lg ease-in-out",
+                "bg-gray-200 dark:bg-gray-200/10 rounded-lg ease-in-out",
             )}
             role="button"
             onClick={() => {

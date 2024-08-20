@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 export const Hero = () => {
   const router = useRouter();
   return (
-    <div className="flex justify-center items-center h-screen gap-x-6 dark:bg-black">
+    <div className="flex justify-center items-center h-screen gap-x-6 dark:bg-black bg-white">
       <div className="">
         <Image
           src={"/canteen-dark.png"}

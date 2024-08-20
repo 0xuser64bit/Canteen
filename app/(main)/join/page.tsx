@@ -15,7 +15,7 @@ export default async function JoinPage() {
   if (session?.user) redirect("/community");
   return (
     <>
-      <div className="flex justify-center items-center h-screen dark:bg-black">
+      <div className="flex justify-center items-center h-screen dark:bg-black dark:bg-white">
         <Tabs defaultValue="login" className="w-[400px]">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>

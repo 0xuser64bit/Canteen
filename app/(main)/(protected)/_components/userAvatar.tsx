@@ -8,9 +8,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { LogOut, User } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export const UserAvatar = ({ session }: { session: any }) => {
+  const { theme, setTheme } = useTheme();
   const user = session?.data?.user;
   return (
     <DropdownMenu>
@@ -41,6 +45,24 @@ export const UserAvatar = ({ session }: { session: any }) => {
               </span>
             </div>
           </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onSelect={(e) => e.preventDefault()}
+            asChild
+            className="w-full cursor-pointer text-muted-foreground"
+          >
+            <div className="flex items-center justify-between">
+              <Label htmlFor="dark-mode">Dark Mode</Label>
+              <Switch
+                id="dark-mode"
+                checked={theme === "dark" ? true : false}
+                onCheckedChange={() => {
+                  theme === "dark" ? setTheme("light") : setTheme("dark");
+                }}
+              />
+            </div>
+          </DropdownMenuItem>
+
           <DropdownMenuItem
             asChild
             className="w-full cursor-pointer text-muted-foreground"
