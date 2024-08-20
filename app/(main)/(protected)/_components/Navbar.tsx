@@ -5,6 +5,7 @@ import { Tabs } from "./Tabs";
 import { useSession } from "next-auth/react";
 import { UserAvatar } from "./userAvatar";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 const tabs = [
   {
@@ -32,14 +33,17 @@ const tabs = [
 export const Navbar = () => {
   const session = useSession();
   const { theme } = useTheme();
+  const [imageSrc, setImageSrc] = useState("/canteen.png");
+
+  useEffect(() => {
+    setImageSrc(theme === "dark" ? "/canteen-dark.png" : "/canteen.png");
+  }, [theme]);
+
   return (
     <div className="flex justify-center py-2">
       <div className="flex items-center w-1/4">
         <div>
-          <img
-            src={theme === "dark" ? "/canteen-dark.png" : "canteen.png"}
-            className="w-16 h-16"
-          />
+          <img src={imageSrc} className="w-16 h-16" />
         </div>
         <div className="flex items-center bg-slate-200 dark:bg-transparent rounded-xl px-2 dark:border dark:border-slate-200/30">
           <Search className="w-5 h-5 mr-1 text-black dark:text-white" />
