@@ -5,13 +5,16 @@ import { getPostsByUser } from "@/actions/getPostsByUser";
 export const Timeline = async () => {
   const session = await auth();
   const user = session?.user;
-  const posts = await getPostsByUser({ userId: user?.id! });
+
+  const posts = await getPostsByUser({ email: user?.email as string });
   return (
     <div>
       {posts?.map((post) => (
         <Post
           key={post.id}
           title={post.title}
+          media={post.mediaUrl as string}
+          mediaType={post.mediaType as string}
           content={post.content}
           likes={0}
           shares={0}

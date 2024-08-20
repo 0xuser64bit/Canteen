@@ -1,15 +1,16 @@
 "use server";
 import db from "@/db";
 
-export const getPostsByUser = async ({ userId }: { userId: string }) => {
+export const getPostsByUser = async ({ email }: { email: string }) => {
   const posts = await db.post.findMany({
     where: {
-      authorId: userId,
+      authorId: email,
     },
     select: {
       id: true,
       title: true,
       mediaUrl: true,
+      mediaType: true,
       content: true,
       author: true,
       likes: true,
