@@ -6,6 +6,9 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
     where: {
       authorId: email,
     },
+    orderBy: {
+      createdAt: "desc",
+    },
     select: {
       id: true,
       title: true,
