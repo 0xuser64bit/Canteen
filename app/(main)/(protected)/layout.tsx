@@ -12,7 +12,7 @@ export default async function MarketingPage({
 
   return (
     <div className="min-h-screen">
-      <div className={`flex flex-col justify-center px-[10%]`}>
+      <div className={`flex flex-col justify-center px-[10%] bg-[#f9f9fb]`}>
         <Navbar />
         <div className="">{children}</div>
       </div>

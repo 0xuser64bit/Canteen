@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { Post } from "./Post";
 import { getPostsByUser } from "@/actions/getPostsByUser";
+import { WritePost } from "./WritePost";
 
 export const Timeline = async () => {
   const session = await auth();
@@ -9,6 +10,7 @@ export const Timeline = async () => {
   const posts = await getPostsByUser({ email: user?.email as string });
   return (
     <div>
+      <WritePost />
       {posts?.map((post) => (
         <Post
           key={post.id}
