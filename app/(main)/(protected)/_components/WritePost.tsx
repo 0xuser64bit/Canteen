@@ -2,6 +2,9 @@
 
 import { createPost } from "@/actions/createPost";
 import { Button } from "@/components/ui/button";
+import { useRef } from "react";
+import { useSession } from "next-auth/react";
+
 import {
   Dialog,
   DialogContent,
@@ -12,15 +15,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircleIcon } from "lucide-react";
-import { useSession } from "next-auth/react";
+
+import { Image, PlusCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export const WritePost = () => {
   const session = useSession();
+  const inputFile = useRef<HTMLInputElement | null>(null);
+
   const handleCreatePost = async (formData: FormData) => {
     const title = formData.get("title") as string;
     const content = formData.get("content") as string;
+    const file = formData.get("file");
     if (!title || !content) {
       toast.info("All fields are required");
       return;
@@ -37,6 +43,12 @@ export const WritePost = () => {
     }
     toast.success("post created successfully");
   };
+
+  // upload image
+  const handleOnClickFileChange = () => {
+    inputFile.current?.click();
+  };
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -65,6 +77,24 @@ export const WritePost = () => {
               id="content"
               placeholder="Start a conversation. Keep it classy. No personal information or trade secrets"
             />
+          </div>
+          {/* TODO: make this robust before deploying */}
+          <div className="invisible">
+            <input
+              type="file"
+              name="file"
+              id="file"
+              ref={inputFile}
+              accept="image/png, image/jpeg"
+              style={{ display: "none" }}
+            />
+            <Button
+              type="button"
+              variant={"secondary"}
+              onClick={() => handleOnClickFileChange()}
+            >
+              <Image className="w-4 h-4 mr-1" /> <span>Image</span>
+            </Button>
           </div>
           <DialogFooter>
             <DialogTrigger>

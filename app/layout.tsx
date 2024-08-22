@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} new-amsterdam-regular`}>
+      <body className={`${inter.className} new-amsterdam-regular bg-[#f9f9fb]`}>
         <Providers>
           <Toaster position="bottom-center" richColors />
           {children}
