@@ -1,3 +1,5 @@
+"use client";
+
 import { Separator } from "@/components/ui/separator";
 import { Eye } from "lucide-react";
 
@@ -9,8 +11,12 @@ export const Discover = () => {
           Popular post
         </span>
         <ul>
-          <div className="py-2">
-            <li className="flex gap-x-2 items-center justify-between pb-1">
+          <div
+            className="py-2 hover:underline"
+            role="button"
+            onClick={() => {}}
+          >
+            <li className="flex gap-x-2 items-center justify-between pb-2">
               <p className="font-semibold text-sm">
                 Join Meta IC6 or stay PMT at Amazon
               </p>

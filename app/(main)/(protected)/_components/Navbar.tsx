@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { UserAvatar } from "./userAvatar";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { Notification } from "./Notification";
 
 const tabs = [
   {
@@ -57,7 +58,8 @@ export const Navbar = () => {
       <div className="w-1/2">
         <Tabs tabs={tabs} />
       </div>
-      <div className="flex gap-x-4 w-1/4">
+      <div className="flex items-center gap-x-4 w-1/4 justify-end">
+        <Notification />
         <UserAvatar session={session} />
       </div>
     </div>
