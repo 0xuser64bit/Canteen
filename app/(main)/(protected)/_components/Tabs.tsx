@@ -3,14 +3,17 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type Tab = {
   title: string;
   value: string;
   icon?: React.ReactNode;
+  redirect?: string;
 };
 
 export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
+  const router = useRouter();
   const [active, setActive] = useState<Tab>(tabs?.[0]);
   return (
     <>
@@ -30,6 +33,7 @@ export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
             role="button"
             onClick={() => {
               setActive(tab);
+              router.push(tab?.redirect as string);
             }}
           >
             {tab.icon ? tab.icon : <Info className="w-4 h-4" />}

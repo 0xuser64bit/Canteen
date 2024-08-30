@@ -13,21 +13,25 @@ const tabs = [
     title: "Community",
     value: "community",
     icon: <Home className="w-4 h-4" />,
+    redirect: "/community",
   },
   {
     title: "Opportunities",
     value: "opportunities",
     icon: <BriefcaseBusiness className="w-4 h-4" />,
+    redirect: "/opportunities",
   },
   {
     title: "Reviews",
     value: "reviews",
     icon: <Star className="w-4 h-4" />,
+    redirect: "/reviews",
   },
   {
     title: "Clubs",
     value: "clubs",
     icon: <Users className="w-4 h-4" />,
+    redirect: "/clubs",
   },
 ];
 

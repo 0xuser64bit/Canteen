@@ -4,6 +4,8 @@ import { getPostsByUser } from "@/actions/getPostsByUser";
 import { WritePost } from "./WritePost";
 
 export const Timeline = async () => {
+  // Todo: Modify this component as such when opening profile it will show the user's post otherwise it will show post from other people.
+  // also in feed and my university section it will show different posts(in one it will randomly show user's choice related posts and in one only posts from university)
   const session = await auth();
   const user = session?.user;
 

@@ -2,7 +2,7 @@ import { Navbar } from "./_components/Navbar";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export default async function MarketingPage({
+export default async function ProtectedLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

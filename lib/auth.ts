@@ -40,6 +40,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  secret: process.env.SECRET,
   callbacks: {
     // @ts-ignore
     async signIn({ user, account, profile }) {
