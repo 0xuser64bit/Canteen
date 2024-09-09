@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { Post } from "./Post";
 import { getPostsByUser } from "@/actions/getPostsByUser";
-import { WritePost } from "./WritePost";
+import { QuickPost } from "./QuickPost";
 
 export const Timeline = async () => {
   // Todo: Modify this component as such when opening profile it will show the user's post otherwise it will show post from other people.
@@ -12,7 +12,7 @@ export const Timeline = async () => {
   const posts = await getPostsByUser({ email: user?.email as string });
   return (
     <div>
-      <WritePost />
+      <QuickPost />
       {posts?.map((post) => (
         <Post
           key={post.id}

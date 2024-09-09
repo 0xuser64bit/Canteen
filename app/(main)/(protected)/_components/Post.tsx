@@ -37,6 +37,7 @@ export const Post = ({
 }) => {
   const session = useSession();
   const user = session.data?.user;
+
   return (
     <div className="py-4 px-4 flex gap-x-4 cursor-pointer shadow-sm hover:shadow-md dark:hover:opacity-80 rounded-lg border dark:border-slate-100/15 select-none mb-3">
       <div className="">
@@ -90,20 +91,11 @@ export const Post = ({
           </div>
           {media && (
             <div className="flex justify-center items-center overflow-hidden pb-2">
-              {mediaType === "image" ? (
-                <img
-                  src={media}
-                  alt="media image"
-                  className="object-cover w-[450px] h-[300px] rounded-lg border"
-                />
-              ) : (
-                // TODO: remove this yt embed things and make it for all video
-                <iframe
-                  src={media + "?&autoplay=1&loop=1&mute=1&controls=0"}
-                  className="object-cover w-[450px] h-[300px] rounded-lg border"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                />
-              )}
+              <img
+                src={media}
+                alt="media image"
+                className="object-cover w-[450px] h-[300px] rounded-lg border"
+              />
             </div>
           )}
         </div>

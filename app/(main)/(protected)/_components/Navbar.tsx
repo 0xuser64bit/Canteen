@@ -1,12 +1,20 @@
 "use client";
 
-import { BriefcaseBusiness, Home, Search, Star, Users } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Home,
+  NotebookPen,
+  Search,
+  Star,
+  Users,
+} from "lucide-react";
 import { Tabs } from "./Tabs";
 import { useSession } from "next-auth/react";
 import { UserAvatar } from "./userAvatar";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Notification } from "./Notification";
+import { useRouter } from "next/navigation";
 
 const tabs = [
   {
@@ -37,6 +45,7 @@ const tabs = [
 
 export const Navbar = () => {
   const session = useSession();
+  const router = useRouter();
   const { theme } = useTheme();
   const [imageSrc, setImageSrc] = useState("/canteen.png");
 
@@ -63,6 +72,16 @@ export const Navbar = () => {
         <Tabs tabs={tabs} />
       </div>
       <div className="flex items-center gap-x-4 w-1/4 justify-end">
+        {/* Todo: Redirect to /write/post */}
+        <div
+          role="button"
+          className="hover:bg-slate-200 dark:bg-opacity-20 p-3 rounded-full"
+          onClick={() => {
+            router.push("/write/post");
+          }}
+        >
+          <NotebookPen />
+        </div>
         <Notification />
         <UserAvatar session={session} />
       </div>

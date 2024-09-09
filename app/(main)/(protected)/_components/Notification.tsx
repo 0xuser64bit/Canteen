@@ -12,7 +12,7 @@ export const Notification = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="hover:bg-slate-200 p-2 rounded-full cursor-pointer">
+        <div className="hover:bg-slate-200 p-3 rounded-full cursor-pointer dark:bg-opacity-20">
           <Bell />
         </div>
       </DropdownMenuTrigger>
@@ -25,7 +25,8 @@ export const Notification = () => {
         <DropdownMenuLabel>
           <div className="flex justify-between items-center py-2">
             <p>Notifications</p>
-            <div role="button" onClick={() => {}}>
+            {/* Todo: redirect to /notifications */}
+            <div role="button" className="hover:underline" onClick={() => {}}>
               See All
             </div>
           </div>
