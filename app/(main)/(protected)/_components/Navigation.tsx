@@ -7,21 +7,25 @@ export const Navigation = () => {
       title: "Feed",
       value: "feed",
       icon: <Library />,
+      path: "/community",
     },
     {
       title: "My University",
       value: "myUniversity",
       icon: <GraduationCap />,
+      path: "/my-university",
     },
     {
       title: "Polls",
       value: "polls",
       icon: <Vote />,
+      path: "/polls",
     },
     {
       title: "All Channels",
       value: "allChannels",
       icon: <LayoutGrid />,
+      path: "/all",
     },
   ];
   return (
