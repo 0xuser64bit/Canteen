@@ -5,7 +5,7 @@ import { Eye } from "lucide-react";
 
 export const Discover = () => {
   return (
-    <div>
+    <>
       <div className="border px-5">
         <span className="font-semibold text-sm text-slate-500">
           Popular post
@@ -26,6 +26,6 @@ export const Discover = () => {
           </div>
         </ul>
       </div>
-    </div>
+    </>
   );
 };
