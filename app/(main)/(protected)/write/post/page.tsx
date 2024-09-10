@@ -30,7 +30,7 @@ export default function WritePostPage() {
   const publishPost = async (formData: FormData) => {
     const title = formData.get("title") as string;
     const content = formData.get("content") as string;
-    const file = formData.get("file") as File;
+    const file = formData.get("file") as File | null;
     if (!title || !content) {
       toast.info("All fields are required");
       return;
@@ -38,7 +38,8 @@ export default function WritePostPage() {
     setLoading(true);
 
     let imageUrl;
-    if (file) {
+    // Todo: There should be a better way to do this.
+    if (file && file.name && file.size > 0) {
       const storageRef = await ref(storage, file?.name);
       try {
         await uploadBytes(storageRef, file);
@@ -96,7 +97,7 @@ export default function WritePostPage() {
             placeholder="Start a conversation. Keep it classy. No personal information or trade secrets"
           />
 
-          <Button disabled={loading} size={"lg"} type="submit">
+          <Button size={"lg"} type="submit">
             {loading ? <Spinner /> : "Post"}
           </Button>
         </div>
