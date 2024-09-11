@@ -1,6 +1,10 @@
 "use client";
 
+import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+
 import { logout } from "@/actions/logout";
+
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -10,10 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+
 import { LogOut, User } from "lucide-react";
-import { useTheme } from "next-themes";
 
 export const UserAvatar = ({ session }: { session: any }) => {
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const user = session?.data?.user;
   return (
@@ -37,7 +42,9 @@ export const UserAvatar = ({ session }: { session: any }) => {
             <div
               role="button"
               className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25"
-              onClick={() => {}}
+              onClick={() => {
+                router.push("/user/profile");
+              }}
             >
               <User className="h-4 w-4 mr-2" />
               <span className="line-clamp-1 text-start font-medium">
