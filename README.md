@@ -5,4 +5,5 @@ Hub for Students (inspired by Blind)
 ### Todos
 
 - width of sidebar | timeline | discover
+- Responsive website
 -
