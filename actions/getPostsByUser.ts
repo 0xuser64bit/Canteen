@@ -16,8 +16,8 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
       mediaType: true,
       content: true,
       author: true,
-      likes: true,
-      views: true,
+      likesCount: true,
+      viewsCount: true,
     },
   });
   return posts;
