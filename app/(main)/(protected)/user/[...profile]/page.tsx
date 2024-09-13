@@ -1,5 +1,7 @@
 "use client";
 
+import { updatesUserProfile } from "@/actions/updateUserProfile";
+
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Country, State, City, IState, ICity } from "country-state-city";
@@ -49,22 +51,21 @@ export default function UserProfilePage() {
 
   const actionSaveUserDate = async (formData: FormData) => {
     const { countryName, stateName, cityName } = getFullLocationNames();
-
     const username = formData.get("username");
     const universityName = formData.get("universityName");
     const bio = formData.get("bio");
-    // Todo: save to db :)
 
-    console.log({
-      username,
-      universityName,
+    updatesUserProfile({
+      email: data?.user?.email!,
+      username: username as string,
+      university: universityName as string,
       country: countryName,
       state: stateName,
       city: cityName,
-      bio,
+      bio: bio as string,
+    }).then(() => {
+      toast.success("User data saved successfully");
     });
-
-    toast.success("User data saved successfully");
   };
 
   return (
