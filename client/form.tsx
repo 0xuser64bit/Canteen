@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRef } from "react";
 
 const LoginForm = () => {
   const router = useRouter();
@@ -24,6 +25,8 @@ const LoginForm = () => {
     if (!error) {
       toast.success("Login successfully");
       router.push("/community");
+      // Hack: not refreshing lead to error where the user is not found(need to solve if possible).
+      router.refresh();
     } else toast.error(error.message);
   };
   return (
@@ -74,6 +77,7 @@ const LoginForm = () => {
 };
 
 const SignUpForm = () => {
+  const formRef = useRef<HTMLFormElement>(null);
   const handleSignup = async (formData: FormData) => {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
@@ -84,6 +88,7 @@ const SignUpForm = () => {
     const error = await credentialsSignUp({ name, email, password });
     if (!error) toast.success("Register successfully");
     if (error?.status) toast.success(error.message);
+    formRef.current?.reset();
   };
   return (
     <>
@@ -103,7 +108,7 @@ const SignUpForm = () => {
           Login with Google
         </Button>
       </div>
-      <form action={handleSignup}>
+      <form action={handleSignup} ref={formRef}>
         <CardContent className="space-y-2">
           <div className="space-y-1">
             <Label htmlFor="name">Name</Label>

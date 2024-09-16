@@ -14,8 +14,6 @@ const createPost = async ({
   content,
   imageUrl,
 }: createPostProps) => {
-  console.log("hello");
-
   const post = await db.post.create({
     data: {
       title,
