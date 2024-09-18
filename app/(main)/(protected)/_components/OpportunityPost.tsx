@@ -8,22 +8,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { ChevronUp, Eye } from "lucide-react";
 import { useState } from "react";
+import Tag from "./Tag";
 
 interface OpportunityPostProps {
   title: string;
   description: string;
   initialUpvotes: number;
   initialViews: number;
+  created_on: string;
+  tags?: string[];
 }
-
+// Todo: add Tags to post properties
 export const OpportunityPost = ({
   title,
   description,
   initialUpvotes,
   initialViews,
+  created_on,
+  tags,
 }: OpportunityPostProps) => {
   const [upvotes, setUpvotes] = useState(initialUpvotes);
   const [upvoted, setUpvoted] = useState(false);
@@ -41,29 +45,40 @@ export const OpportunityPost = ({
   };
 
   return (
-    <div role="button" onClick={() => {}}>
-      <Card className="w-full hover:shadow-xl">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>{description}</p>
-        </CardContent>
-        <CardFooter className="flex justify-end gap-x-2">
-          <Button
-            variant={upvoted ? "secondary" : "outline"}
-            size="sm"
-            onClick={handleUpvote}
-          >
-            <ChevronUp className="mr-2 h-4 w-4" />
-            {upvotes}
-          </Button>
-          <Button variant="outline" size="sm">
-            <Eye className="mr-2 h-4 w-4" />
-            {views}
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+    <Card className="w-4/5 hover:shadow-xl ms-5">
+      <CardHeader>
+        <CardTitle role="button" onClick={() => {}}>
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pb-2">
+        <div className="flex gap-x-5 justify-between">
+          <div>
+            <p className="pb-2">{description.slice(0, 100) + "..."}</p>
+            {tags &&
+              tags.map((tag, index) => (
+                <Tag key={index} label={tag} onClick={() => {}} />
+              ))}
+          </div>
+          <div className="flex gap-x-2">
+            <Button
+              variant={upvoted ? "secondary" : "outline"}
+              size="sm"
+              onClick={handleUpvote}
+            >
+              <ChevronUp className="mr-2 h-4 w-4" />
+              {upvotes}
+            </Button>
+            <Button variant={"ghost"} size="sm">
+              <Eye className="mr-2 h-4 w-4" />
+              {views}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="px-6 pb-2">
+        <p className="text-gray-500 text-xs">{created_on}</p>
+      </CardFooter>
+    </Card>
   );
 };
