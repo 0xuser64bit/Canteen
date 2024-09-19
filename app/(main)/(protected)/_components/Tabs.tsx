@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+
 import { cn } from "@/lib/utils";
+
 import { Info } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 type Tab = {
   title: string;
@@ -14,7 +16,11 @@ type Tab = {
 
 export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
   const router = useRouter();
-  const [active, setActive] = useState<Tab>(tabs?.[0]);
+  const pathname = usePathname();
+  const [active, setActive] = useState<Tab>(() => {
+    return tabs.find((tab) => tab.redirect === pathname) || tabs[0];
+  });
+
   return (
     <>
       <div

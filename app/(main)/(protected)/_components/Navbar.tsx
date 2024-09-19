@@ -72,7 +72,6 @@ export const Navbar = () => {
         <Tabs tabs={tabs} />
       </div>
       <div className="flex items-center gap-x-4 w-1/4 justify-end">
-        {/* Todo: Redirect to /write/post */}
         <div
           role="button"
           className="hover:bg-slate-200 dark:bg-opacity-20 p-3 rounded-full"

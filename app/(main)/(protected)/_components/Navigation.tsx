@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+
 import { cn } from "@/lib/utils";
+
 import { Info } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 type NavigationTab = {
   title: string;
@@ -18,8 +20,12 @@ export const Navigation = ({
   navigationTabs: NavigationTab[];
 }) => {
   const router = useRouter();
-  // Todo: we shouldn't pass navigationTabs[0] as default value because on reload it will have different active value and different page open.
-  const [active, setActive] = useState<NavigationTab>(navigationTabs?.[0]);
+  const pathname = usePathname();
+  const [active, setActive] = useState<NavigationTab>(() => {
+    return (
+      navigationTabs.find((tab) => tab.path === pathname) || navigationTabs[0]
+    );
+  });
 
   return (
     <>
