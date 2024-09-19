@@ -8,7 +8,6 @@
     "start": "next start",
     "prepare": "husky",
     "lint": "prettier --check .",
-    "preview": "vite preview",
     "format": "prettier --write ."
   },
   "dependencies": {
