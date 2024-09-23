@@ -17,15 +17,17 @@ import { Switch } from "@/components/ui/switch";
 
 import { LogOut, User } from "lucide-react";
 
-export const UserAvatar = ({ session }: { session: any }) => {
+export const UserAvatar = () => {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const user = session?.data?.user;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar role="button">
-          <AvatarImage src={user?.image ?? "/canteen.png"} />
+          <AvatarImage
+            src={theme === "dark" ? "/canteen-dark.png" : "/canteen.png"}
+          />
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent

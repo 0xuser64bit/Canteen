@@ -1,5 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+
 import {
   BriefcaseBusiness,
   Home,
@@ -8,13 +12,10 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { Tabs } from "./Tabs";
-import { useSession } from "next-auth/react";
-import { UserAvatar } from "./userAvatar";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+
 import { Notification } from "./Notification";
-import { useRouter } from "next/navigation";
+import { Tabs } from "./Tabs";
+import { UserAvatar } from "./userAvatar";
 
 const tabs = [
   {
@@ -44,7 +45,6 @@ const tabs = [
 ];
 
 export const Navbar = () => {
-  const session = useSession();
   const router = useRouter();
   const { theme } = useTheme();
   const [imageSrc, setImageSrc] = useState("/canteen.png");
@@ -82,7 +82,7 @@ export const Navbar = () => {
           <NotebookPen />
         </div>
         <Notification />
-        <UserAvatar session={session} />
+        <UserAvatar />
       </div>
     </div>
   );

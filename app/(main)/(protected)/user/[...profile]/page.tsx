@@ -49,7 +49,7 @@ export default function UserProfilePage() {
     };
   };
 
-  const actionSaveUserDate = async (formData: FormData) => {
+  const actionSaveUserData = async (formData: FormData) => {
     const { countryName, stateName, cityName } = getFullLocationNames();
     const username = formData.get("username");
     const universityName = formData.get("universityName");
@@ -71,7 +71,7 @@ export default function UserProfilePage() {
   return (
     <div className="mx-auto w-1/2">
       <h3 className="font-bold text-xl py-5">Your Profile</h3>
-      <form action={actionSaveUserDate}>
+      <form action={actionSaveUserData}>
         <div className="py-4 flex flex-col gap-y-4">
           <div>
             <Label htmlFor="username" className="font-bold">
