@@ -12,7 +12,7 @@ export default async function ProtectedLayout({
 
   return (
     <div className="min-h-screen">
-      <div className={`flex flex-col justify-center px-[10%]`}>
+      <div className={`flex flex-col justify-center lg:px-[10%]`}>
         <Navbar />
         <div className="">{children}</div>
       </div>

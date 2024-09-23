@@ -45,7 +45,7 @@ export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
             }}
           >
             {tab.icon ? tab.icon : <Info className="w-4 h-4" />}
-            <span className="block text-black dark:text-white">
+            <span className="block text-black dark:text-white md:text-current text-sm">
               {tab.title}
             </span>
           </div>

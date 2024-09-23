@@ -16,6 +16,7 @@ import {
 import { Notification } from "./Notification";
 import { Tabs } from "./Tabs";
 import { UserAvatar } from "./userAvatar";
+import { useSearch } from "@/components/hooks/useSearch";
 
 const tabs = [
   {
@@ -46,8 +47,9 @@ const tabs = [
 
 export const Navbar = () => {
   const router = useRouter();
-  const { theme } = useTheme();
+  const search = useSearch();
   const [imageSrc, setImageSrc] = useState("/canteen.png");
+  const { theme } = useTheme();
 
   useEffect(() => {
     setImageSrc(theme === "dark" ? "/canteen-dark.png" : "/canteen.png");
@@ -55,23 +57,28 @@ export const Navbar = () => {
 
   return (
     <div className="flex justify-center py-2">
-      <div className="flex items-center w-1/4">
-        <div>
-          <img src={imageSrc} className="w-16 h-16" />
-        </div>
-        <div className="flex items-center bg-slate-200 dark:bg-transparent rounded-xl px-2 dark:border dark:border-slate-200/30">
-          <Search className="w-5 h-5 mr-1 text-black dark:text-white" />
-          <input
-            type="text"
-            className="px-2 py-[6px] focus:outline-none bg-slate-200 dark:bg-transparent rounded-xl  text-black dark:text-white font-mono placeholder:opacity-40 placeholder:text-black dark:placeholder:text-white"
-            placeholder="Search"
-          />
+      <div className="flex items-center md:w-1/4">
+        <div
+          role="button"
+          onClick={() => {
+            router.push("/community");
+          }}
+        >
+          <img src={imageSrc} className="w-20" />
         </div>
       </div>
-      <div className="w-1/2">
+      <div className="md:w-1/2">
         <Tabs tabs={tabs} />
       </div>
-      <div className="flex items-center gap-x-4 w-1/4 justify-end">
+      <div className="flex items-center gap-x-4 md:w-1/4 justify-end">
+        <div
+          role="button"
+          onClick={() => {
+            search.onOpen();
+          }}
+        >
+          <Search className="w-7 h-7 mr-1 text-black dark:text-white" />
+        </div>
         <div
           role="button"
           className="hover:bg-slate-200 dark:bg-opacity-20 p-3 rounded-full"
