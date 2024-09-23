@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -17,9 +17,10 @@ type Tab = {
 export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [active, setActive] = useState<Tab>(() => {
-    return tabs.find((tab) => tab.redirect === pathname) || tabs[0];
-  });
+  const [active, setActive] = useState<Tab | null>();
+  useEffect(() => {
+    setActive(tabs.find((tab) => tab.redirect === pathname) || null);
+  }, [pathname]);
 
   return (
     <>
@@ -33,7 +34,8 @@ export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
             key={tab.title}
             className={cn(
               "flex flex-col justify-center items-center px-8 py-2 rounded-full",
-              active.value === tab.value &&
+              active &&
+                active.value === tab.value &&
                 "bg-gray-200 dark:bg-gray-200/10 rounded-lg ease-in-out",
             )}
             role="button"
