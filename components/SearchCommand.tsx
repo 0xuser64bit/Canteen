@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { User } from "lucide-react";
+
 import { useSearch } from "@/components/hooks/useSearch";
 
 import {
@@ -13,7 +15,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { User } from "lucide-react";
 
 export const SearchCommnad = () => {
   const router = useRouter();
@@ -24,7 +25,7 @@ export const SearchCommnad = () => {
   const onClose = useSearch((store) => store.onClose);
 
   useEffect(() => {
-    // fetch all the clubs/communities from the db.
+    // Todo: fetch all the university/communities from the db.
     setIsMounted(true);
   }, []);
 
@@ -40,7 +41,7 @@ export const SearchCommnad = () => {
   }, [toggle]);
 
   const onSelect = (id: string) => {
-    // Todo: redirect to page/club
+    // Todo: redirect to page/university
     router.push(`/`);
     onClose();
   };
@@ -54,21 +55,10 @@ export const SearchCommnad = () => {
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Find your favorite club or community">
-          {/* {data?.map((record) => ( */}
-          <CommandItem
-          //   key={id}
-          //   value={`club-community name`}
-          //   title={title}
-          //   onSelect={() => onSelect("club/community-id")}
-          >
-            {false ? (
-              <p className="mr-2 text-[18px]">/canteen.png</p>
-            ) : (
-              <User className="w-4 h-4 mr-2" />
-            )}
+          <CommandItem>
+            <User className="w-4 h-4 mr-2" />
             <span>{"super club"}</span>
           </CommandItem>
-          {/* ))} */}
         </CommandGroup>
       </CommandList>
     </CommandDialog>
