@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Maximize2, PlusCircleIcon } from "lucide-react";
-import { toast } from "sonner";
 
 import { createPost } from "@/actions/createPost";
+
+import { Maximize2, PlusCircleIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -68,7 +69,7 @@ export const QuickPost = () => {
   return (
     <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
-        <div className="mb-4 border rounded-lg" role="button">
+        <div className="mb-4 border rounded-lg cursor-pointer">
           <div className="px-4 py-6 flex space-x-2 items-center">
             <PlusCircleIcon className="w-5 h-5 text-red-500" />
             <p className="text-sm text-muted-foreground text-slate-400 font-bold">
@@ -80,7 +81,7 @@ export const QuickPost = () => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <p className="flex gap-x-2">
+            <div className="flex gap-x-2">
               <p>Quick Post</p>
               <Maximize2
                 className="w-4 h-4 hover:text-slate-300/80 ease-in-out"
@@ -89,7 +90,7 @@ export const QuickPost = () => {
                   router.push("/write/post");
                 }}
               />
-            </p>
+            </div>
           </DialogTitle>
         </DialogHeader>
         <form action={handleCreatePost}>
