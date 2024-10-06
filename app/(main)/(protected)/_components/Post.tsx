@@ -14,7 +14,7 @@ import {
   MessageCircle,
   Share,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
 
 export const Post = ({
   title,
@@ -35,14 +35,15 @@ export const Post = ({
   views: number;
   shares: number;
 }) => {
-  const session = useSession();
-  const user = session.data?.user;
+  const { theme } = useTheme();
 
   return (
     <div className="py-4 px-4 flex gap-x-4 cursor-pointer shadow-sm hover:shadow-md dark:hover:opacity-80 rounded-lg border dark:border-slate-100/15 select-none mb-3">
       <div className="">
         <Avatar role="button">
-          <AvatarImage src={user?.image ?? "canteen.png"} />
+          <AvatarImage
+            src={theme === "dark" ? "/canteen-dark.png" : "/canteen.png"}
+          />
         </Avatar>
       </div>
       <div className="text-black dark:text-white w-full">
