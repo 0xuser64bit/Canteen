@@ -67,7 +67,7 @@ export default function WritePostPage() {
       });
   };
   return (
-    <div className="lg:w-1/2 mx-auto">
+    <div className="lg:w-2/3 mx-auto w-[80%]">
       <form action={publishPost}>
         <div className="py-4 flex flex-col gap-y-4">
           <div className="">

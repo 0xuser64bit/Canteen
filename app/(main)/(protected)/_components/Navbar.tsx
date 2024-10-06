@@ -56,8 +56,8 @@ export const Navbar = () => {
   }, [theme]);
 
   return (
-    <div className="flex justify-center py-2">
-      <div className="flex items-center md:w-1/4">
+    <div className="flex justify-center py-2 border-b border-b-slate-500/50 mb-2">
+      <div className="flex items-center w-[20%]">
         <div
           role="button"
           onClick={() => {
@@ -67,7 +67,7 @@ export const Navbar = () => {
           <img src={imageSrc} className="w-20" />
         </div>
       </div>
-      <div className="md:w-1/2">
+      <div className="md:w-[65%] w-full">
         <Tabs tabs={tabs} />
       </div>
       <div className="flex items-center gap-x-4 md:w-1/4 justify-end">

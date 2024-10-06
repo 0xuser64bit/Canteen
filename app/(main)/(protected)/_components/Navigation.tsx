@@ -27,12 +27,12 @@ export const Navigation = ({
 
   return (
     <>
-      <div className={cn("flex flex-col")}>
+      <div className={"flex flex-col"}>
         {navigationTabs.map((navigationTab, _) => (
           <div
             key={navigationTab.title}
             className={cn(
-              "flex items-center px-4 sm:px-8 md:px-16 py-2 gap-x-4 text-gray-500",
+              "flex items-center px-4 py-2 gap-x-4 text-gray-500",
               active &&
                 active.value === navigationTab.value &&
                 "bg-gray-200 dark:bg-gray-200/10 rounded-lg ease-in-out text-black dark:text-white font-bold",

@@ -33,7 +33,7 @@ export const Tabs = ({ tabs }: { tabs: Tab[] }) => {
           <div
             key={tab.title}
             className={cn(
-              "flex flex-col justify-center items-center px-8 py-2 rounded-full",
+              "flex flex-col justify-center items-center lg:px-8 px-4 py-2 rounded-full",
               active &&
                 active.value === tab.value &&
                 "bg-gray-200 dark:bg-gray-200/10 rounded-lg ease-in-out",

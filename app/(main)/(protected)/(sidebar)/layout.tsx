@@ -37,11 +37,11 @@ export default function SideBarLayout({
 }>) {
   return (
     <div className="flex justify-center pt-2 w-full">
-      <div className="w-1/4">
+      <div className="md:block hidden w-[20%]">
         <Navigation navigationTabs={navigationTabs} />
       </div>
-      <div className="w-1/2 mx-2">{children}</div>
-      <div className="w-1/4">
+      <div className="md:w-[65%] w-full mx-5">{children}</div>
+      <div className="md:block hidden w-1/4">
         <Discover />
       </div>
     </div>
