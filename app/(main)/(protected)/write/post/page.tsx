@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { Spinner } from "@/components/Spinner";
-import { createPost } from "@/actions/createPost";
+import { createPost } from "@/actions/post/createPost";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";

@@ -1,6 +1,6 @@
 "use client";
 
-import { updatesUserProfile } from "@/actions/updateUserProfile";
+import { updatesUserProfile } from "@/actions/user/updateUserProfile";
 
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";

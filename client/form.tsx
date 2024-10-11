@@ -1,7 +1,7 @@
 "use client";
 
-import { credentialsLogin, login } from "@/actions/login";
-import { credentialsSignUp } from "@/actions/signUp";
+import { credentialsLogin, login } from "@/actions/user/login";
+import { credentialsSignUp } from "@/actions/user/signUp";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 

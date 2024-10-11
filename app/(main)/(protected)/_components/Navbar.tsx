@@ -67,7 +67,7 @@ export const Navbar = () => {
           <img src={imageSrc} className="w-20" />
         </div>
       </div>
-      <div className="md:w-[65%] w-full">
+      <div className="md:w-[65%] w-full flex items-center">
         <Tabs tabs={tabs} />
       </div>
       <div className="flex items-center gap-x-4 md:w-1/4 justify-end">

@@ -3,7 +3,7 @@
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 
-import { logout } from "@/actions/logout";
+import { logout } from "@/actions/user/logout";
 
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-import { createPost } from "@/actions/createPost";
+import { createPost } from "@/actions/post/createPost";
 
 import { Maximize2, PlusCircleIcon } from "lucide-react";
 import { toast } from "sonner";
