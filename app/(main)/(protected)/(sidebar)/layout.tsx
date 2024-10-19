@@ -1,7 +1,7 @@
 import { Discover } from "../_components/Discover";
 import { SidebarTab } from "../_components/SidebarTab";
 
-import { HandHelping, Home, Users } from "lucide-react";
+import { HandHelping, Home, University, Users } from "lucide-react";
 
 const navigationTabs = [
   {
@@ -9,6 +9,12 @@ const navigationTabs = [
     value: "home",
     icon: <Home />,
     path: "/home",
+  },
+  {
+    title: "My University",
+    value: "my-university",
+    icon: <University />,
+    path: "/my-university",
   },
   {
     title: "Opportunities",
