@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "prepare": "husky",
     "lint": "prettier --check .",
     "format": "prettier --write ."
   },
@@ -46,7 +45,6 @@
     "country-state-city": "^3.2.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.5",
-    "husky": "^9.1.6",
     "postcss": "^8.4.47",
     "prettier": "^3.3.3",
     "prisma": "^5.21.1",

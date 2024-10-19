@@ -45,7 +45,7 @@ export const Navbar = () => {
           College Canteen
         </div>
       </div>
-      <div className="flex items-center md:w-1/4 justify-evenly">
+      <div className="flex items-center md:w-1/4 justify-end">
         <div
           role="button"
           onClick={() => {

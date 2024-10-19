@@ -28,6 +28,7 @@ model User {
   password      String?
   university    String?
   country       String?
+  countryCode   String?
   state         String?
   city          String?
   bio           String?

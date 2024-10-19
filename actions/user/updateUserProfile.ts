@@ -4,9 +4,8 @@ import db from "@/db";
 
 interface updatesUserProfileProps {
   email: string;
-  username: string;
-  university: string;
   country?: string;
+  countryCode?: string;
   state?: string;
   city?: string;
   bio?: string;
@@ -14,9 +13,8 @@ interface updatesUserProfileProps {
 
 const updatesUserProfile = async ({
   email,
-  username,
-  university,
   country,
+  countryCode,
   state,
   city,
   bio,
@@ -26,9 +24,8 @@ const updatesUserProfile = async ({
       email: email,
     },
     data: {
-      name: username,
-      university,
       country,
+      countryCode,
       state,
       city,
       bio,
