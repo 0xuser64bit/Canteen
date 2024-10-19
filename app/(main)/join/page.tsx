@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { LoginForm, SignUpForm } from "@/client/form";
+import { LoginForm, SignUpForm } from "@/forms/form";
 import { redirect } from "next/navigation";
 
 import {
@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function JoinPage() {
   const session = await auth();
-  if (session?.user) redirect("/community");
+  if (session?.user) redirect("/home");
   return (
     <>
       <div className="flex justify-center items-center h-screen dark:bg-black">

@@ -45,7 +45,7 @@ const credentialsLogin = async ({
 };
 
 const login = async (provider: string) => {
-  await signIn(provider, { redirectTo: "/community" });
-  revalidatePath("/community");
+  await signIn(provider, { redirectTo: "/home" });
+  revalidatePath("/home");
 };
 export { credentialsLogin, login };

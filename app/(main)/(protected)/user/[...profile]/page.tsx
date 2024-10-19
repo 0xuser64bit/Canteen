@@ -2,10 +2,11 @@
 
 import { updatesUserProfile } from "@/actions/user/updateUserProfile";
 
+import { City, Country, ICity, IState, State } from "country-state-city";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { Country, State, City, IState, ICity } from "country-state-city";
 
+import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function UserProfilePage() {
   const { data } = useSession();
@@ -28,6 +29,7 @@ export default function UserProfilePage() {
   const [selectedState, setSelectedState] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [bio, setBio] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (data?.user?.name) {
@@ -50,6 +52,7 @@ export default function UserProfilePage() {
   };
 
   const actionSaveUserData = async (formData: FormData) => {
+    setIsSaving(true);
     const { countryName, stateName, cityName } = getFullLocationNames();
     const username = formData.get("username");
     const universityName = formData.get("universityName");
@@ -65,6 +68,8 @@ export default function UserProfilePage() {
       bio: bio as string,
     }).then(() => {
       toast.success("User data saved successfully");
+    }).finally(() => {
+      setIsSaving(false);
     });
   };
 
@@ -182,7 +187,7 @@ export default function UserProfilePage() {
             />
           </div>
           <Button className="w-full" type="submit">
-            Save Changes
+            {isSaving ? <Spinner /> : "Save Changes"}
           </Button>
         </div>
       </form>

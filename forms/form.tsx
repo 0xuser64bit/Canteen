@@ -24,7 +24,7 @@ const LoginForm = () => {
     const error = await credentialsLogin({ email, password });
     if (!error) {
       toast.success("Login successfully");
-      router.push("/community");
+      router.push("/home");
       // Hack: not refreshing lead to error where the user is not found(need to solve if possible).
       router.refresh();
     } else toast.error(error.message);

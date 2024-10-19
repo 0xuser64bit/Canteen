@@ -14,37 +14,37 @@ type NavigationTab = {
   path?: string;
 };
 
-export const Navigation = ({
-  navigationTabs,
+export const SidebarTab = ({
+  tabs,
 }: {
-  navigationTabs: NavigationTab[];
+  tabs: NavigationTab[];
 }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [active, setActive] = useState<NavigationTab | null>(() => {
-    return navigationTabs.find((tab) => tab.path === pathname) || null;
+    return tabs.find((tab) => tab.path === pathname) || null;
   });
 
   return (
     <>
       <div className={"flex flex-col"}>
-        {navigationTabs.map((navigationTab, _) => (
+        {tabs.map((tab, _) => (
           <div
-            key={navigationTab.title}
+            key={tab.title}
             className={cn(
               "flex items-center px-4 py-2 gap-x-4 text-gray-500",
               active &&
-                active.value === navigationTab.value &&
-                "bg-gray-200 dark:bg-gray-200/10 rounded-lg ease-in-out text-black dark:text-white font-bold",
+              active.value === tab.value &&
+              "bg-gray-200 dark:bg-gray-200/10 rounded-lg ease-in-out text-black dark:text-white font-bold",
             )}
             role="button"
             onClick={() => {
-              setActive(navigationTab);
-              router.push(navigationTab.path as string);
+              setActive(tab);
+              router.push(tab.path as string);
             }}
           >
-            {navigationTab.icon ? navigationTab.icon : <Info />}
-            <span className="block">{navigationTab.title}</span>
+            {tab.icon ? tab.icon : <Info />}
+            <span className="block">{tab.title}</span>
           </div>
         ))}
       </div>

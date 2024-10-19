@@ -14,7 +14,7 @@ export default function MarketingPage() {
   const router = useRouter();
   const session = useSession();
 
-  if (session.data?.user) router.push("/community");
+  if (session.data?.user) router.push("/home");
 
   return (
     <>

@@ -1,32 +1,26 @@
 import { Discover } from "../_components/Discover";
-import { Navigation } from "../_components/Navigation";
+import { SidebarTab } from "../_components/SidebarTab";
 
-import { GraduationCap, LayoutGrid, Library, Vote } from "lucide-react";
+import { HandHelping, Home, Users } from "lucide-react";
 
 const navigationTabs = [
   {
-    title: "Feed",
-    value: "feed",
-    icon: <Library />,
+    title: "Home",
+    value: "home",
+    icon: <Home />,
+    path: "/home",
+  },
+  {
+    title: "Opportunities",
+    value: "opportunities",
+    icon: <HandHelping />,
+    path: "/opportunities",
+  },
+  {
+    title: "Community",
+    value: "community",
+    icon: <Users />,
     path: "/community",
-  },
-  {
-    title: "My University",
-    value: "myUniversity",
-    icon: <GraduationCap />,
-    path: "/my-university",
-  },
-  {
-    title: "Polls",
-    value: "polls",
-    icon: <Vote />,
-    path: "/polls",
-  },
-  {
-    title: "All Channels",
-    value: "allChannels",
-    icon: <LayoutGrid />,
-    path: "/all",
   },
 ];
 
@@ -36,9 +30,9 @@ export default function SideBarLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex justify-center pt-2 w-full">
+    <div className="flex justify-center w-full pt-4">
       <div className="md:block hidden w-[20%]">
-        <Navigation navigationTabs={navigationTabs} />
+        <SidebarTab tabs={navigationTabs} />
       </div>
       <div className="md:w-[65%] w-full mx-5">{children}</div>
       <div className="md:block hidden w-1/4">

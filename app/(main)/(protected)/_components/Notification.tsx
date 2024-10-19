@@ -13,7 +13,7 @@ export const Notification = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <div className="hover:bg-slate-200 p-3 rounded-full cursor-pointer dark:bg-opacity-20">
-          <Bell />
+          <Bell className="w-7 h-7 text-black dark:text-white" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -26,7 +26,7 @@ export const Notification = () => {
           <div className="flex justify-between items-center py-2">
             <p>Notifications</p>
             {/* Todo: redirect to /notifications */}
-            <div role="button" className="hover:underline" onClick={() => {}}>
+            <div role="button" className="hover:underline" onClick={() => { }}>
               See All
             </div>
           </div>
@@ -41,7 +41,7 @@ export const Notification = () => {
             <div
               role="button"
               className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25"
-              onClick={() => {}}
+              onClick={() => { }}
             >
               <span className="line-clamp-1 text-start font-medium">
                 Profile

@@ -1,17 +1,17 @@
 "use client";
 
+import { createPost } from "@/actions/post/createPost";
+import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Image } from "lucide-react";
-import { useRef, useState } from "react";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
-import { Spinner } from "@/components/Spinner";
-import { createPost } from "@/actions/post/createPost";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { Image } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 export default function WritePostPage() {
   const session = useSession();
@@ -60,7 +60,7 @@ export default function WritePostPage() {
           toast.error("Error occured");
           return;
         }
-        router.push("/community");
+        router.push("/home");
       })
       .finally(() => {
         setLoading(false);
@@ -94,6 +94,7 @@ export default function WritePostPage() {
           <Textarea
             name="content"
             id="content"
+            rows={10}
             placeholder="Start a conversation. Keep it classy. No personal information or trade secrets"
           />
 
