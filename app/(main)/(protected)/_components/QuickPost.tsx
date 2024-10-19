@@ -57,6 +57,7 @@ export const QuickPost = () => {
       title: "",
       content: "",
     });
+    router.refresh();
   };
 
   const handleDialogChange = (open: boolean) => {
