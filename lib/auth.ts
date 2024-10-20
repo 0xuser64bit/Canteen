@@ -1,8 +1,8 @@
 import db from "@/db";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { getUserWithEmail } from "./utils";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
@@ -14,10 +14,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        name: {
-          label: "Name",
-          type: "text",
-        },
         email: {
           label: "Email",
           type: "email",
@@ -56,6 +52,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (existingUser) {
         return true;
       }
+      // const verify = await verifyUser({ email: user?.email as string });
+      // if (!verify) {
+      //   redirect("/join");
+      //   return null;
+      // }
       await db.user.create({
         data: {
           name: user.name,

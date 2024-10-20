@@ -40,6 +40,30 @@ model User {
   sessions      Session[]
 }
 
+model ValidUniversity {
+  id             String    @id @default(uuid())
+  name           String
+  domains        domain[]
+  web_pages      webPage[]
+  country        String
+  alpha_two_code String
+  state_province String?
+}
+
+model domain {
+  id                String          @id @default(uuid())
+  domainName        String
+  ValidUniversity   ValidUniversity @relation(fields: [validUniversityId], references: [id])
+  validUniversityId String
+}
+
+model webPage {
+  id                String          @id @default(uuid())
+  webPageName       String
+  ValidUniversity   ValidUniversity @relation(fields: [validUniversityId], references: [id])
+  validUniversityId String
+}
+
 model Post {
   id         String     @id @default(uuid())
   title      String

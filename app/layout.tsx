@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.className} new-amsterdam-regular font-sa bg-[#f9f9fb] dark:bg-[#262c36]`}
+        className={`${inter.className} new-amsterdam-regular font-sa bg-[#262c36] dark:bg-black`}
       >
         <Providers>
           <Toaster position="bottom-center" richColors />

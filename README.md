@@ -13,3 +13,8 @@ Hub for Students (inspired by Blind)
 
 - ~~Navbar tabs issue (when user clicks on tab(except community) and refresh page the focus is lost and goes back to community tab instead of current page tab)~~
 -
+
+## IMP
+
+-> Sign in /Sign up --> make it work
+-> Also google sign in --> make it work

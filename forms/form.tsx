@@ -1,10 +1,11 @@
 "use client";
 
-import { credentialsLogin, login } from "@/actions/user/login";
+import { credentialsLogin } from "@/actions/user/login";
 import { credentialsSignUp } from "@/actions/user/signUp";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { verifyUser } from "@/actions/verifyUser";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ const LoginForm = () => {
   };
   return (
     <>
-      <div className="flex justify-center items-centerdark:bg-black dark:bg-white">
+      {/* <div className="flex justify-center items-centerdark:bg-black dark:bg-white">
         <Button
           onClick={() => {
             login("google")
@@ -46,7 +47,7 @@ const LoginForm = () => {
         >
           Login with Google
         </Button>
-      </div>
+      </div> */}
       <form action={handleLogin}>
         <CardContent className="space-y-2">
           <div className="space-y-1">
@@ -69,7 +70,7 @@ const LoginForm = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit">Login</Button>
+          <Button type="submit" className="w-full">Login</Button>
         </CardFooter>
       </form>
     </>
@@ -78,21 +79,28 @@ const LoginForm = () => {
 
 const SignUpForm = () => {
   const formRef = useRef<HTMLFormElement>(null);
+
   const handleSignup = async (formData: FormData) => {
-    const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-    if (!name || !email || !password) {
+    if (!email || !password) {
       toast.info("All fields are required");
     }
-    const error = await credentialsSignUp({ name, email, password });
+    // Check if the email is of university
+    const verifyEmail = await verifyUser({ email });
+    if (!verifyEmail) {
+      toast.error("Use your university email");
+      formRef.current?.reset();
+      return;
+    }
+    const error = await credentialsSignUp({ email, password });
     if (!error) toast.success("Register successfully");
     if (error?.status) toast.success(error.message);
     formRef.current?.reset();
   };
   return (
     <>
-      <div className="flex justify-center items-centerdark:bg-black dark:bg-white">
+      {/* <div className="flex justify-center items-centerdark:bg-black dark:bg-white">
         <Button
           onClick={() => {
             login("google")
@@ -107,18 +115,9 @@ const SignUpForm = () => {
         >
           Login with Google
         </Button>
-      </div>
+      </div> */}
       <form action={handleSignup} ref={formRef}>
         <CardContent className="space-y-2">
-          <div className="space-y-1">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Alice Peterson"
-              name="name"
-            />
-          </div>
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -139,7 +138,7 @@ const SignUpForm = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit">Sign Up</Button>
+          <Button type="submit" className="w-full">Sign Up</Button>
         </CardFooter>
       </form>
     </>
