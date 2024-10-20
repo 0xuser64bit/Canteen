@@ -8,9 +8,9 @@ export const verifyUser = async ({ email }: { email: string }) => {
     where: {
       domainName: domain,
     },
+    include: {
+      ValidUniversity: true,
+    },
   });
-  if (verify) {
-    return true;
-  }
-  return false;
+  return verify;
 };

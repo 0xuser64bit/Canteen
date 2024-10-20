@@ -8,9 +8,15 @@ import { AuthError } from "next-auth";
 const credentialsSignUp = async ({
   email,
   password,
+  universityName,
+  country,
+  countryCode,
 }: {
   email: string;
   password: string;
+  universityName: string;
+  country: string;
+  countryCode: string;
 }) => {
   const user = await db.user.findFirst({
     where: {
@@ -28,6 +34,10 @@ const credentialsSignUp = async ({
     data: {
       email,
       password: hashedPassword,
+      university: universityName,
+      country: country,
+      countryCode: countryCode,
+      emailVerified: false, //Todo: send email on this email id get back 6 digit code and then let user sign in
     },
   });
   try {

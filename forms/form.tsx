@@ -70,7 +70,9 @@ const LoginForm = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full">Login</Button>
+          <Button type="submit" className="w-full">
+            Login
+          </Button>
         </CardFooter>
       </form>
     </>
@@ -88,13 +90,19 @@ const SignUpForm = () => {
       toast.info("All fields are required");
     }
     // Check if the email is of university
-    const verifyEmail = await verifyUser({ email });
-    if (!verifyEmail) {
+    const university = await verifyUser({ email });
+    if (!university) {
       toast.error("Use your university email");
       formRef.current?.reset();
       return;
     }
-    const error = await credentialsSignUp({ email, password });
+    const error = await credentialsSignUp({
+      email,
+      password,
+      universityName: university.ValidUniversity.name,
+      country: university.ValidUniversity.country,
+      countryCode: university.ValidUniversity.alpha_two_code,
+    });
     if (!error) {
       toast.success("Register successfully");
       router.push("/home");
@@ -142,7 +150,9 @@ const SignUpForm = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full">Sign Up</Button>
+          <Button type="submit" className="w-full">
+            Sign Up
+          </Button>
         </CardFooter>
       </form>
     </>

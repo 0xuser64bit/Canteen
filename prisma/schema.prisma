@@ -32,7 +32,7 @@ model User {
   state         String?
   city          String?
   bio           String?
-  emailVerified DateTime?
+  emailVerified Boolean
   image         String?
   posts         Post[]
   likes         Like[]

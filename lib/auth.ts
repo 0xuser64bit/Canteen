@@ -52,11 +52,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (existingUser) {
         return true;
       }
-      // const verify = await verifyUser({ email: user?.email as string });
-      // if (!verify) {
-      //   redirect("/join");
-      //   return null;
-      // }
       await db.user.create({
         data: {
           name: user.name,
