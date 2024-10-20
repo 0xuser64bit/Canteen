@@ -1,7 +1,9 @@
 "use server";
 
 import db from "@/db";
+import { signIn } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+import { AuthError } from "next-auth";
 
 const credentialsSignUp = async ({
   email,
@@ -28,6 +30,23 @@ const credentialsSignUp = async ({
       password: hashedPassword,
     },
   });
+  try {
+    await signIn("credentials", {
+      email,
+      password,
+    });
+  } catch (error: any) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return { message: "Invalid credentials!" };
+        default:
+          return { message: "Something went wrong!" };
+      }
+    }
+
+    throw error;
+  }
 };
 
 export { credentialsSignUp };

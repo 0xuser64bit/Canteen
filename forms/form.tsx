@@ -79,6 +79,7 @@ const LoginForm = () => {
 
 const SignUpForm = () => {
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
 
   const handleSignup = async (formData: FormData) => {
     const email = formData.get("email") as string;
@@ -94,7 +95,10 @@ const SignUpForm = () => {
       return;
     }
     const error = await credentialsSignUp({ email, password });
-    if (!error) toast.success("Register successfully");
+    if (!error) {
+      toast.success("Register successfully");
+      router.push("/home");
+    }
     if (error?.status) toast.success(error.message);
     formRef.current?.reset();
   };
