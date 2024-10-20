@@ -56,6 +56,14 @@
     "state-province": null
   },
   {
+    "name": "Government Engineering College Patan",
+    "domains": ["gecpat.gujgov.edu.in"],
+    "web_pages": ["https://gecpatan.ac.in/"],
+    "country": "India",
+    "alpha_two_code": "IN",
+    "state-province": "Gujarat"
+  },
+  {
     "name": "West Herts College",
     "domains": ["student.westherts.ac.uk", "westherts.ac.uk"],
     "web_pages": ["https://westherts.ac.uk"],
@@ -44015,7 +44023,7 @@
     "name": "Charotar University of Science and Technology",
     "alpha_two_code": "IN",
     "state-province": null,
-    "domains": ["charusat.ac.in"],
+    "domains": ["charusat.ac.in", "charusat.edu.in"],
     "country": "India"
   },
   {
