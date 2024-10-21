@@ -44,7 +44,7 @@ export const Post = ({
   const router = useRouter();
   const base_url = "http://localhost:3000";
   return (
-    <div className="flex gap-x-2 shadow-sm hover:shadow-md rounded-lg dark:border-slate-100/15 select-none mb-3">
+    <div className="flex gap-x-2 shadow-sm hover:shadow-md rounded-lg border dark:border-slate-100/15 select-none mb-3">
       <div className="p-2 h-24">
         <Avatar role="button">
           <AvatarImage className="w-16 object-cover" src={image} />
@@ -94,7 +94,7 @@ export const Post = ({
         </div>
         <div role="button" onClick={() => router.push("posts/" + id)}>
           <div>
-            <p className="text-xl font-bold">{title}</p>
+            <p className="text-xl font-bold hover:underline">{title}</p>
             <p className="pb-2 text-sm">{content}</p>
           </div>
           {media && (
@@ -107,14 +107,14 @@ export const Post = ({
             </div>
           )}
         </div>
-        <div className=" pt-2 flex justify-between">
+        <div className=" pt-4 flex justify-between">
           <div className="flex gap-x-1 items-center">
             <div
               className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
               role="button"
               onClick={() => {}}
             >
-              <Heart className="w-3 h-3" />
+              <Heart className="w-5 h-5" />
               <p className="text-xs">{likes}</p>
             </div>
             <div
@@ -122,7 +122,7 @@ export const Post = ({
               role="button"
               onClick={() => {}}
             >
-              <MessageCircle className="w-3 h-3" />
+              <MessageCircle className="w-5 h-5" />
               <p className="text-xs">{comments}</p>
             </div>
             <div
@@ -130,7 +130,7 @@ export const Post = ({
               role="button"
               onClick={() => {}}
             >
-              <Eye className="w-3 h-3" />
+              <Eye className="w-5 h-5" />
               <p className="text-xs">{views}</p>
             </div>
           </div>
@@ -139,7 +139,7 @@ export const Post = ({
             role="button"
             onClick={() => {}}
           >
-            <Share className="w-3 h-3" />
+            <Share className="w-5 h-5" />
             <p className="text-xs">{shares}</p>
           </div>
         </div>

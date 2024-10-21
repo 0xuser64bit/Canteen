@@ -21,7 +21,7 @@ export const Navbar = () => {
   }, [theme]);
 
   return (
-    <div className="flex justify-center py-2 border-b border-b-slate-500/50 mb-2 sticky top-0 z-50 bg-[#262c36]">
+    <div className="flex justify-center py-2 border-b border-b-slate-500/50 mb-2 sticky top-0 z-50 bg-[#f9f9fb] dark:bg-[#262c36]">
       <div className="flex items-center pl-5 w-[20%]">
         <div
           role="button"
