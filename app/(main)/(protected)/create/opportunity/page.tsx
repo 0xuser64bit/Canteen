@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { createOpportunityAction } from "@/actions/opportunity/createOpportunity";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import { X } from "lucide-react";
-import { createOpportunityAction } from "@/actions/opportunity/createOpportunity";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function CreateOpportunityPage() {
   const [title, setTitle] = useState("");
@@ -18,6 +19,8 @@ export default function CreateOpportunityPage() {
   const [newTag, setNewTag] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  // Todo: create this page to component and use getServerSession(or auth) instead of useSession()
+  const session = useSession();
 
   const handleOpportunitySubmit = async () => {
     if (!title || !description) {
@@ -37,6 +40,7 @@ export default function CreateOpportunityPage() {
       const response = await createOpportunityAction({
         title,
         description,
+        userId: session.data?.user?.id!,
         tags: Object.keys(tags),
       });
       if (response) {

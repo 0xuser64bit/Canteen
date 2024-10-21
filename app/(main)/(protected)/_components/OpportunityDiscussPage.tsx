@@ -1,11 +1,14 @@
 "use client";
 
+import { voteAction } from "@/actions/opportunity/vote";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, ChevronUp, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const OpportunityDiscussPage = ({
   opportunity,
@@ -13,12 +16,19 @@ export const OpportunityDiscussPage = ({
   opportunity: any;
 }) => {
   const router = useRouter();
+  const [upvoted, setUpvoted] = useState(false);
+
   const handleAddComment = (event: any) => {
     event.preventDefault();
     // db call and create comment in this opportunity
   };
-  const handleUpvote = () => {
-    // db call update the upvote counts
+  const handleUpvote = async () => {
+    try {
+      await voteAction({ id: opportunity.id, vote: "UP" });
+      setUpvoted(!upvoted);
+    } catch (err) {
+      toast.error("Unable to upvote...");
+    }
   };
   return (
     <div>
@@ -43,12 +53,14 @@ export const OpportunityDiscussPage = ({
           </p>
           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
             <Button
-              variant="ghost"
+              variant={upvoted ? "secondary" : "outline"}
               size="sm"
               className="flex items-center space-x-1"
               onClick={handleUpvote}
             >
-              <ChevronUp className="h-4 w-4" />
+              <ChevronUp
+                className={`h-4 w-4 ${upvoted ? "text-green-400" : ""}`}
+              />
               <span>{opportunity.upvotes}</span>
             </Button>
             <div className="flex items-center space-x-1">

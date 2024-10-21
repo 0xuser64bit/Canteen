@@ -29,7 +29,7 @@ export const OpportunityFeed = ({
           opportunities={opportunities}
         />
       </div>
-      {opportunities &&
+      {!!opportunities.length &&
         opportunities.map((opportunity: any) => (
           <OpportunityPost
             id={opportunity.id}
@@ -41,7 +41,7 @@ export const OpportunityFeed = ({
             tags={opportunity.tags.map((tag: any) => tag.name)}
           />
         ))}
-      {!opportunities && (
+      {!opportunities.length && (
         <div className="text-center pt-10">
           <p className="text-2xl font-bold">No Opportunity Created yet.</p>
           <p className="text-sm dark:text-gray-300">
