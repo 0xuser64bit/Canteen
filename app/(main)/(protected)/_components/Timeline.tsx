@@ -11,6 +11,8 @@ export const Timeline = async ({ posts }: { posts: any }) => {
       {posts && posts?.map((post: any) => (
         <Post
           key={post.id}
+          id={post.id}
+          image={post.author?.image}
           title={post.title}
           media={post.mediaUrl as string}
           mediaType={post.mediaType as string}

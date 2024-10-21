@@ -11,12 +11,14 @@ const credentialsSignUp = async ({
   universityName,
   country,
   countryCode,
+  profileImage,
 }: {
   email: string;
   password: string;
   universityName: string;
   country: string;
   countryCode: string;
+  profileImage: string;
 }) => {
   const user = await db.user.findFirst({
     where: {
@@ -38,6 +40,7 @@ const credentialsSignUp = async ({
       country: country,
       countryCode: countryCode,
       emailVerified: false, //Todo: send email on this email id get back 6 digit code and then let user sign in
+      image: profileImage,
     },
   });
   try {

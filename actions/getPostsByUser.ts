@@ -9,15 +9,12 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
     orderBy: {
       createdAt: "desc",
     },
-    select: {
-      id: true,
-      title: true,
-      mediaUrl: true,
-      mediaType: true,
-      content: true,
-      author: true,
-      likesCount: true,
-      viewsCount: true,
+    include: {
+      author: {
+        select: {
+          image: true,
+        },
+      },
     },
   });
   return posts;

@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { Image } from "lucide-react";
+import { useEdgeStore } from "@/lib/edgestore";
 
 const LoginForm = () => {
   const router = useRouter();
@@ -32,22 +34,6 @@ const LoginForm = () => {
   };
   return (
     <>
-      {/* <div className="flex justify-center items-centerdark:bg-black dark:bg-white">
-        <Button
-          onClick={() => {
-            login("google")
-              .then(() => {
-                console.log("Logged in with Google");
-              })
-              .catch(() => {
-                toast.error("Failed to login with Google");
-              });
-          }}
-          type="submit"
-        >
-          Login with Google
-        </Button>
-      </div> */}
       <form action={handleLogin}>
         <CardContent className="space-y-2">
           <div className="space-y-1">
@@ -82,11 +68,29 @@ const LoginForm = () => {
 const SignUpForm = () => {
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
+  const profileImage = useRef<HTMLInputElement | null>(null);
+  const [profileURL, setProfileURL] = useState("");
+  const [profileImageName, setProfileImageName] = useState("Profile");
+  const { edgestore } = useEdgeStore();
+
+
+
+  const handleProfileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await edgestore.publicFiles.upload({
+      file
+    },)
+    setProfileURL(url.url);
+    setProfileImageName(file.name);
+  }
 
   const handleSignup = async (formData: FormData) => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-    if (!email || !password) {
+    const profile = formData.get("file") as string;
+    if (!email || !password || !profile) {
       toast.info("All fields are required");
     }
     // Check if the email is of university
@@ -102,6 +106,7 @@ const SignUpForm = () => {
       universityName: university.ValidUniversity.name,
       country: university.ValidUniversity.country,
       countryCode: university.ValidUniversity.alpha_two_code,
+      profileImage: profileURL,
     });
     if (!error) {
       toast.success("Register successfully");
@@ -112,24 +117,30 @@ const SignUpForm = () => {
   };
   return (
     <>
-      {/* <div className="flex justify-center items-centerdark:bg-black dark:bg-white">
-        <Button
-          onClick={() => {
-            login("google")
-              .then(() => {
-                console.log("Logged in with Google");
-              })
-              .catch(() => {
-                toast.error("Failed to login with Google");
-              });
-          }}
-          type="submit"
-        >
-          Login with Google
-        </Button>
-      </div> */}
       <form action={handleSignup} ref={formRef}>
         <CardContent className="space-y-2">
+          <div className="space-y-1">
+            <div className="">
+              <input
+                type="file"
+                name="file"
+                id="file"
+                ref={profileImage}
+                accept="image/png, image/jpeg"
+                style={{ display: "none" }}
+                onChange={(e) => handleProfileUpload(e)}
+              />
+              <Button
+                type="button"
+                variant={"outline"}
+                onClick={() => {
+                  profileImage.current?.click();
+                }}
+              >
+                <Image className="w-4 h-4 mr-1" /> <span>{profileImageName}</span>
+              </Button>
+            </div>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
             <Input
