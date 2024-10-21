@@ -1,16 +1,10 @@
-import { OpportunityPost } from "../../_components/OpportunityPost";
+import { OpportunityFeed } from "../../_components/OpportunityFeed";
 
-export default function OpportunitiesPage() {
+export default async function OpportunitiesPage() {
+  const allOpportunies = "";
   return (
     <div>
-      <OpportunityPost
-        title="Opportunity 1"
-        description="This is a description of the opportunity"
-        initialUpvotes={10}
-        initialViews={10}
-        created_on="2023-03-01"
-        tags={["tag1", "tag2"]}
-      />
+      <OpportunityFeed allOpportunies={allOpportunies} />
     </div>
   );
 }

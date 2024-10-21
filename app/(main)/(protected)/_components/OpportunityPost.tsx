@@ -11,8 +11,10 @@ import {
 import { ChevronUp, Eye } from "lucide-react";
 import { useState } from "react";
 import Tag from "./Tag";
+import { useRouter } from "next/navigation";
 
 interface OpportunityPostProps {
+  id: number;
   title: string;
   description: string;
   initialUpvotes: number;
@@ -22,6 +24,7 @@ interface OpportunityPostProps {
 }
 // Todo: add Tags to post properties
 export const OpportunityPost = ({
+  id,
   title,
   description,
   initialUpvotes,
@@ -31,6 +34,7 @@ export const OpportunityPost = ({
 }: OpportunityPostProps) => {
   const [upvotes, setUpvotes] = useState(initialUpvotes);
   const [upvoted, setUpvoted] = useState(false);
+  const router = useRouter();
   const [views, setViews] = useState(initialViews); // Todo: views === clicks on post
 
   const handleUpvote = () => {
@@ -45,9 +49,15 @@ export const OpportunityPost = ({
   };
 
   return (
-    <Card className="w-full hover:shadow-xl ms-5 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20">
+    <Card className="w-full hover:shadow-xl bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20">
       <CardHeader>
-        <CardTitle role="button" onClick={() => {}}>
+        <CardTitle
+          role="button"
+          className="hover:underline"
+          onClick={() => {
+            router.push("/opportunity/" + id);
+          }}
+        >
           {title}
         </CardTitle>
       </CardHeader>
