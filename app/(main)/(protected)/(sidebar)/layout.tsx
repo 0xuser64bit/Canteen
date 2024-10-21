@@ -36,12 +36,14 @@ export default function SideBarLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex justify-center w-full pt-4">
-      <div className="md:block hidden w-1/4 mx-5">
+    <div className="flex justify-center w-full h-screen" >
+      <div className="hidden md:block w-1/4 p-4 sticky top-0 self-start">
         <SidebarTab tabs={navigationTabs} />
       </div>
-      <div className="md:w-1/2 w-full">{children}</div>
-      <div className="md:block hidden w-1/4 mx-5">
+      <div className="md:w-1/2 w-full h-full overflow-y-auto p-4 no-scrollbar">
+        {children}
+      </div>
+      <div className="hidden md:block w-1/4 p-4 sticky top-0 self-start">
         <Discover />
       </div>
     </div>
