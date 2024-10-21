@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export const SearchAndCreateOpportunity = ({
-  opportunies,
+  opportunities,
   setOpportunities,
 }: {
-  opportunies: any;
+  opportunities: any;
   setOpportunities: (opportunity: any) => void;
 }) => {
   const [searchText, setSearchText] = useState("");

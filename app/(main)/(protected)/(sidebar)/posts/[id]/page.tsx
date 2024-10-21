@@ -12,19 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ThumbsDown, ThumbsUp } from "lucide-react";
 import { PostFooter } from "../../../_components/PostFooter";
+import { formatDate } from "@/lib/helper";
 
 export default async function PostPage({ params }: { params: { id: string } }) {
   const post = await getPostAction({ postId: params?.id as string });
-  const formatDate = (dateString: Date) => {
-    const options: any = {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    };
-    return new Date(dateString).toLocaleDateString("en-US", options);
-  };
   if (!post) {
     return <div>Post not found</div>;
   }

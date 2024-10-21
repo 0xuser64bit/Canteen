@@ -1,10 +1,11 @@
+import { getAllOpportunityAction } from "@/actions/opportunity/getAllOpportunity";
 import { OpportunityFeed } from "../../_components/OpportunityFeed";
 
 export default async function OpportunitiesPage() {
-  const allOpportunies = "";
+  const allOpportunities = await getAllOpportunityAction();
   return (
     <div>
-      <OpportunityFeed allOpportunies={allOpportunies} />
+      <OpportunityFeed allOpportunities={allOpportunities} />
     </div>
   );
 }

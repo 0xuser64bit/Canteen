@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { OpportunityPost } from "./OpportunityPost";
 import { SearchAndCreateOpportunity } from "./SearchAndCreateOpportunity";
+import { formatDate } from "@/lib/helper";
 
 export const OpportunityFeed = ({
-  allOpportunies,
+  allOpportunities,
 }: {
-  allOpportunies: any;
+  allOpportunities: any;
 }) => {
-  const [opportunies, setOpportunities] = useState(allOpportunies);
+  const [opportunities, setOpportunities] = useState(allOpportunities);
+  useEffect(() => {
+    if (allOpportunities.length !== 0) {
+      setOpportunities(allOpportunities);
+    }
+  });
   return (
     <div>
       <div>
@@ -20,18 +26,29 @@ export const OpportunityFeed = ({
         */}
         <SearchAndCreateOpportunity
           setOpportunities={setOpportunities}
-          opportunies={opportunies}
+          opportunities={opportunities}
         />
       </div>
-      <OpportunityPost
-        id={1}
-        title="Opportunity 1"
-        description="This is a description of the opportunity"
-        initialUpvotes={10}
-        initialViews={10}
-        created_on="2023-03-01"
-        tags={["tag1", "tag2"]}
-      />
+      {opportunities &&
+        opportunities.map((opportunity: any) => (
+          <OpportunityPost
+            id={opportunity.id}
+            title={opportunity.title}
+            description={opportunity.description}
+            initialUpvotes={opportunity.upvotes}
+            initialViews={opportunity.views}
+            created_on={formatDate(opportunity.createdAt)}
+            tags={opportunity.tags.map((tag: any) => tag.name)}
+          />
+        ))}
+      {!opportunities && (
+        <div className="text-center pt-10">
+          <p className="text-2xl font-bold">No Opportunity Created yet.</p>
+          <p className="text-sm dark:text-gray-300">
+            Create one by clicking on Create button
+          </p>
+        </div>
+      )}
     </div>
   );
 };

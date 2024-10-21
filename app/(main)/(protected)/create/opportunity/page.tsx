@@ -34,7 +34,11 @@ export default function CreateOpportunityPage() {
     }
     setLoading(true);
     try {
-      const response = await createOpportunityAction({ title, description, tags: Object.keys(tags) });
+      const response = await createOpportunityAction({
+        title,
+        description,
+        tags: Object.keys(tags),
+      });
       if (response) {
         toast.success("Opportunity created successfully!");
       }

@@ -49,7 +49,7 @@ export const OpportunityPost = ({
   };
 
   return (
-    <Card className="w-full hover:shadow-xl bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20">
+    <Card className="w-full mb-2 hover:shadow-xl bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20">
       <CardHeader>
         <CardTitle
           role="button"
