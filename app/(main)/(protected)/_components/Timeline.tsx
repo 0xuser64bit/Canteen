@@ -13,6 +13,7 @@ export const Timeline = async ({ posts }: { posts: any }) => {
           key={post.id}
           id={post.id}
           image={post.author?.image}
+          university={post.author?.university}
           title={post.title}
           media={post.mediaUrl as string}
           mediaType={post.mediaType as string}

@@ -13,6 +13,7 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
       author: {
         select: {
           image: true,
+          university: true,
         },
       },
     },

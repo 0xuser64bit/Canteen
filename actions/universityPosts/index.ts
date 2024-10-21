@@ -17,15 +17,13 @@ export const getUniversityPosts = async ({ user }: { user: string }) => {
     orderBy: {
       createdAt: "desc",
     },
-    select: {
-      id: true,
-      title: true,
-      mediaUrl: true,
-      mediaType: true,
-      content: true,
-      author: true,
-      likesCount: true,
-      viewsCount: true,
+    include: {
+      author: {
+        select: {
+          university: true,
+          image: true,
+        },
+      },
     },
   });
   return posts;

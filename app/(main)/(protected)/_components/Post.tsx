@@ -27,6 +27,7 @@ export const Post = ({
   views,
   shares,
   image,
+  university,
 }: {
   id: string;
   title: string;
@@ -38,10 +39,10 @@ export const Post = ({
   views: number;
   shares: number;
   image: string;
+  university: string;
 }) => {
   const router = useRouter();
   const base_url = "http://localhost:3000";
-
   return (
     <div
       className="flex gap-x-2 shadow-sm hover:shadow-md rounded-lg border dark:border-slate-100/15 select-none mb-3">
@@ -56,7 +57,7 @@ export const Post = ({
       <div className="text-black dark:text-white w-full p-3">
         <div className="flex justify-between">
           <div role="button">
-            <span className="me-2 text-sm font-medium hover:underline">Canteen</span>
+            <span className="me-2 text-sm font-medium hover:underline">{university}</span>
           </div>
           <div>
             <DropdownMenu>
