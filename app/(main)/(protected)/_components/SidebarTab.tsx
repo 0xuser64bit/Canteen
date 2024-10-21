@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -17,9 +17,13 @@ type Tab = {
 export const SidebarTab = ({ tabs }: { tabs: Tab[] }) => {
   const router = useRouter();
   const pathname = usePathname();
+  console.log(pathname);
   const [active, setActive] = useState<Tab | null>(() => {
     return tabs.find((tab) => tab.path === pathname) || null;
   });
+  useEffect(() => {
+    setActive(tabs.find((tab) => tab.path === pathname) || null);
+  }, [pathname]);
 
   return (
     <>
