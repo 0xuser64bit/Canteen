@@ -73,18 +73,18 @@ const SignUpForm = () => {
   const [profileImageName, setProfileImageName] = useState("Profile");
   const { edgestore } = useEdgeStore();
 
-
-
-  const handleProfileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     e.preventDefault();
     const file = e.target.files?.[0];
     if (!file) return;
     const url = await edgestore.publicFiles.upload({
-      file
-    },)
+      file,
+    });
     setProfileURL(url.url);
     setProfileImageName(file.name);
-  }
+  };
 
   const handleSignup = async (formData: FormData) => {
     const email = formData.get("email") as string;
@@ -137,7 +137,8 @@ const SignUpForm = () => {
                   profileImage.current?.click();
                 }}
               >
-                <Image className="w-4 h-4 mr-1" /> <span>{profileImageName}</span>
+                <Image className="w-4 h-4 mr-1" />{" "}
+                <span>{profileImageName}</span>
               </Button>
             </div>
           </div>

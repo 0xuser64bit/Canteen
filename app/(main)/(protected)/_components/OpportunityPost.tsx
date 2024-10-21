@@ -47,7 +47,7 @@ export const OpportunityPost = ({
   return (
     <Card className="w-4/5 hover:shadow-xl ms-5">
       <CardHeader>
-        <CardTitle role="button" onClick={() => { }}>
+        <CardTitle role="button" onClick={() => {}}>
           {title}
         </CardTitle>
       </CardHeader>
@@ -57,7 +57,7 @@ export const OpportunityPost = ({
             <p className="pb-2">{description.slice(0, 100) + "..."}</p>
             {tags &&
               tags.map((tag, index) => (
-                <Tag key={index} label={tag} onClick={() => { }} />
+                <Tag key={index} label={tag} onClick={() => {}} />
               ))}
           </div>
           <div className="flex gap-x-2">

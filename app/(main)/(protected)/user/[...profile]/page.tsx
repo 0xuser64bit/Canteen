@@ -4,7 +4,9 @@ import { auth } from "@/lib/auth";
 
 export default async function UserProfilePage() {
   const session = await auth();
-  const userData = await checkIfUserExits({ email: session?.user?.email as string });
+  const userData = await checkIfUserExits({
+    email: session?.user?.email as string,
+  });
 
   return (
     <div className="mx-auto w-1/2">

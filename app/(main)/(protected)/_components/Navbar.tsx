@@ -4,15 +4,11 @@ import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import {
-  NotebookPen,
-  Search
-} from "lucide-react";
+import { NotebookPen, Search } from "lucide-react";
 
 import { useSearch } from "@/components/hooks/useSearch";
 import { Notification } from "./Notification";
 import { UserAvatar } from "./userAvatar";
-
 
 export const Navbar = () => {
   const router = useRouter();

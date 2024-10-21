@@ -9,11 +9,11 @@ export default async function MyUniversityPage() {
 
   const universityPosts = await getUniversityPosts({
     user: user?.email as string,
-  })
+  });
   return (
     <>
       <Timeline posts={universityPosts} />
-      {universityPosts.length === 0 &&
+      {universityPosts.length === 0 && (
         <div className="flex justify-center items-center gap-x-6">
           <div className="flex flex-col pt-10">
             <div className="text-center">
@@ -29,7 +29,7 @@ export default async function MyUniversityPage() {
             </div>
           </div>
         </div>
-      }
+      )}
     </>
   );
 }

@@ -49,17 +49,15 @@ export default async function PostPage({ params }: { params: { id: string } }) {
         </CardHeader>
         <CardContent className="pt-4">
           <p className="text-sm mb-4">{post.content}</p>
-          {
-            post.mediaUrl && (
-              <div className="flex justify-center items-center overflow-hidden pb-2">
-                <img
-                  src={post.mediaUrl as string}
-                  alt="media image"
-                  className="object-cover rounded-lg border"
-                />
-              </div>
-            )
-          }
+          {post.mediaUrl && (
+            <div className="flex justify-center items-center overflow-hidden pb-2">
+              <img
+                src={post.mediaUrl as string}
+                alt="media image"
+                className="object-cover rounded-lg border"
+              />
+            </div>
+          )}
         </CardContent>
         <CardFooter className="border-t border-slate-300/10">
           <PostFooter />

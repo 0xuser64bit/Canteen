@@ -30,7 +30,6 @@ export const UserProfile = ({
   const [bio, setBio] = useState<string>(bioValue);
   const [isSaving, setIsSaving] = useState(false);
 
-
   const actionSaveUserData = async () => {
     setIsSaving(true);
     await updatesUserProfile({
@@ -55,7 +54,12 @@ export const UserProfile = ({
           <Label htmlFor="universityName" className="font-bold">
             My University
           </Label>
-          <Input name="universityName" id="universityName" disabled value={university} />
+          <Input
+            name="universityName"
+            id="universityName"
+            disabled
+            value={university}
+          />
         </div>
 
         <div>
@@ -83,4 +87,4 @@ export const UserProfile = ({
       </div>
     </>
   );
-}
+};

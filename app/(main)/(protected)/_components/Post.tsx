@@ -44,20 +44,18 @@ export const Post = ({
   const router = useRouter();
   const base_url = "http://localhost:3000";
   return (
-    <div
-      className="flex gap-x-2 shadow-sm hover:shadow-md rounded-lg border dark:border-slate-100/15 select-none mb-3">
-      <div className="p-2">
+    <div className="flex gap-x-2 shadow-sm hover:shadow-md rounded-lg dark:border-slate-100/15 select-none mb-3">
+      <div className="p-2 h-24">
         <Avatar role="button">
-          <AvatarImage
-            className="w-16 object-cover"
-            src={image}
-          />
+          <AvatarImage className="w-16 object-cover" src={image} />
         </Avatar>
       </div>
       <div className="text-black dark:text-white w-full p-3">
         <div className="flex justify-between">
           <div role="button">
-            <span className="me-2 text-sm font-medium hover:underline">{university}</span>
+            <span className="me-2 text-sm font-medium hover:underline">
+              {university}
+            </span>
           </div>
           <div>
             <DropdownMenu>
@@ -79,7 +77,9 @@ export const Post = ({
                       role="button"
                       className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25"
                       onClick={(e) => {
-                        navigator.clipboard.writeText(base_url + "/posts/" + id);
+                        navigator.clipboard.writeText(
+                          base_url + "/posts/" + id,
+                        );
                       }}
                     >
                       <span className="line-clamp-1 text-start font-medium">
@@ -92,16 +92,13 @@ export const Post = ({
             </DropdownMenu>
           </div>
         </div>
-        <div
-          role="button"
-          onClick={() => router.push("posts/" + id)}
-        >
+        <div role="button" onClick={() => router.push("posts/" + id)}>
           <div>
             <p className="text-xl font-bold">{title}</p>
             <p className="pb-2 text-sm">{content}</p>
           </div>
           {media && (
-            <div className="flex justify-center items-center overflow-hidden pb-2">
+            <div className="flex justify-center items-center overflow-hidden pb-2 mr-5">
               <img
                 src={media}
                 alt="media image"

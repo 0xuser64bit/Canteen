@@ -8,22 +8,23 @@ export const Timeline = async ({ posts }: { posts: any }) => {
   return (
     <div>
       <QuickPost />
-      {posts && posts?.map((post: any) => (
-        <Post
-          key={post.id}
-          id={post.id}
-          image={post.author?.image}
-          university={post.author?.university}
-          title={post.title}
-          media={post.mediaUrl as string}
-          mediaType={post.mediaType as string}
-          content={post.content}
-          likes={0}
-          shares={0}
-          views={0}
-          comments={0}
-        />
-      ))}
+      {posts &&
+        posts?.map((post: any) => (
+          <Post
+            key={post.id}
+            id={post.id}
+            image={post.author?.image}
+            university={post.author?.university}
+            title={post.title}
+            media={post.mediaUrl as string}
+            mediaType={post.mediaType as string}
+            content={post.content}
+            likes={0}
+            shares={0}
+            views={0}
+            comments={0}
+          />
+        ))}
     </div>
   );
 };

@@ -13,9 +13,7 @@ export const Providers = ({ children }: { children: React.ReactNode }) => {
         enableSystem
         disableTransitionOnChange
       >
-        <EdgeStoreProvider>
-          {children}
-        </EdgeStoreProvider>
+        <EdgeStoreProvider>{children}</EdgeStoreProvider>
       </ThemeProvider>
     </SessionProvider>
   );
