@@ -105,7 +105,7 @@ export const Post = ({
               <img
                 src={media}
                 alt="media image"
-                className="object-cover w-[450px] h-[300px] rounded-lg border"
+                className="object-cover rounded-lg border"
               />
             </div>
           )}
