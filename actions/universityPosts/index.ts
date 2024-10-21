@@ -5,14 +5,13 @@ import db from "@/db";
 export const getUniversityPosts = async ({ user }: { user: string }) => {
   const university = await db.user.findFirst({
     where: {
-      id: user,
+      email: user,
     },
   });
-
   const posts = await db.post.findMany({
     where: {
       author: {
-        university: university?.name,
+        university: university?.name?.trim(),
       },
     },
     orderBy: {
