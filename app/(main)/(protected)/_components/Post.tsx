@@ -112,7 +112,7 @@ export const Post = ({
             <div
               className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
               role="button"
-              onClick={() => { }}
+              onClick={() => {}}
             >
               <Heart className="w-3 h-3" />
               <p className="text-xs">{likes}</p>
@@ -120,7 +120,7 @@ export const Post = ({
             <div
               className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
               role="button"
-              onClick={() => { }}
+              onClick={() => {}}
             >
               <MessageCircle className="w-3 h-3" />
               <p className="text-xs">{comments}</p>
@@ -128,7 +128,7 @@ export const Post = ({
             <div
               className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
               role="button"
-              onClick={() => { }}
+              onClick={() => {}}
             >
               <Eye className="w-3 h-3" />
               <p className="text-xs">{views}</p>
@@ -137,7 +137,7 @@ export const Post = ({
           <div
             className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-2 px-2 py-1 rounded-full"
             role="button"
-            onClick={() => { }}
+            onClick={() => {}}
           >
             <Share className="w-3 h-3" />
             <p className="text-xs">{shares}</p>

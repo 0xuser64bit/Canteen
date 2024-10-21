@@ -16,6 +16,8 @@ import { toast } from "sonner";
 export default function WritePostPage() {
   const session = useSession();
   const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const inputFile = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("Image");
@@ -27,10 +29,7 @@ export default function WritePostPage() {
     setFileName(file.name);
   };
 
-  const publishPost = async (formData: FormData) => {
-    const title = formData.get("title") as string;
-    const content = formData.get("content") as string;
-    const file = formData.get("file") as File | null;
+  const publishPost = async () => {
     if (!title || !content) {
       toast.info("All fields are required");
       return;
@@ -39,10 +38,14 @@ export default function WritePostPage() {
 
     let imageUrl;
     // Todo: There should be a better way to do this.
-    if (file && file.name && file.size > 0) {
-      const storageRef = await ref(storage, file?.name);
+    if (
+      inputFile.current &&
+      inputFile.current.name &&
+      inputFile.current.size > 0
+    ) {
+      const storageRef = await ref(storage, inputFile.current?.name);
       try {
-        await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, inputFile.current.files![0]);
         imageUrl = await getDownloadURL(storageRef);
       } catch (error) {
         toast.error(`Error uploading the file, ${error}`);
@@ -68,7 +71,7 @@ export default function WritePostPage() {
   };
   return (
     <div className="lg:w-2/3 mx-auto w-[80%]">
-      <form action={publishPost}>
+      <div>
         <div className="py-4 flex flex-col gap-y-4">
           <div className="">
             <input
@@ -90,19 +93,30 @@ export default function WritePostPage() {
               <Image className="w-4 h-4 mr-1" /> <span>{fileName}</span>
             </Button>
           </div>
-          <Input name="title" id="title" placeholder="Write a specific title" />
+          <Input
+            name="title"
+            id="title"
+            placeholder="Write a specific title"
+            onChange={(e) => setTitle(e.target.value)}
+          />
           <Textarea
             name="content"
             id="content"
+            onChange={(e) => setContent(e.target.value)}
             rows={10}
             placeholder="Start a conversation. Keep it classy. No personal information or trade secrets"
           />
 
-          <Button size={"lg"} type="submit">
+          <Button
+            size={"lg"}
+            type="button"
+            onClick={publishPost}
+            disabled={loading}
+          >
             {loading ? <Spinner /> : "Post"}
           </Button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
