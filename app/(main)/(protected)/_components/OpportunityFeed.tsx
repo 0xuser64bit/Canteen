@@ -8,14 +8,14 @@ import { formatDate } from "@/lib/helper";
 export const OpportunityFeed = ({
   allOpportunities,
 }: {
-  allOpportunities: any;
+  allOpportunities: any[];
 }) => {
-  const [opportunities, setOpportunities] = useState(allOpportunities);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
   useEffect(() => {
     if (allOpportunities.length !== 0) {
       setOpportunities(allOpportunities);
     }
-  });
+  }, [allOpportunities]);
   return (
     <div>
       <div>

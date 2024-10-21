@@ -10,12 +10,32 @@ export const SearchAndCreateOpportunity = ({
   setOpportunities,
 }: {
   opportunities: any;
-  setOpportunities: (opportunity: any) => void;
+  setOpportunities: (items: any[]) => void;
 }) => {
   const [searchText, setSearchText] = useState("");
   const router = useRouter();
   const handleOpportunitiesSearch = async () => {
-    // Todo: call db and get searchText related opportunities and then setOpportunities(opportunities)
+    const searchTextArr = searchText.split(" ");
+    if (searchText.length === 0) {
+      router.refresh();
+    }
+    let newOpportunities: any[] = [];
+    opportunities.map((opportunity: any) => {
+      let titleArr = opportunity?.title?.toLowerCase().split(" ") ?? [];
+      let descriptionArr =
+        opportunity?.description?.toLowerCase().split(" ") ?? [];
+      if (
+        titleArr.some((word: string) =>
+          searchTextArr.includes(word.trim().toLowerCase()),
+        ) ||
+        descriptionArr.some((word: string) =>
+          searchTextArr.includes(word.trim().toLowerCase()),
+        )
+      ) {
+        newOpportunities.push(opportunity);
+      }
+    });
+    setOpportunities(newOpportunities);
   };
 
   return (
@@ -24,7 +44,7 @@ export const SearchAndCreateOpportunity = ({
         <div className="w-full">
           <Input
             className="bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20 py-6 px-4 rounded-full"
-            placeholder="Search Opportunity"
+            placeholder="Search Opportunity and press enter"
             type="text"
             name="search"
             id="search"

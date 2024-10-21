@@ -17,7 +17,6 @@ type Tab = {
 export const SidebarTab = ({ tabs }: { tabs: Tab[] }) => {
   const router = useRouter();
   const pathname = usePathname();
-  console.log(pathname);
   const [active, setActive] = useState<Tab | null>(() => {
     return tabs.find((tab) => tab.path === pathname) || null;
   });
