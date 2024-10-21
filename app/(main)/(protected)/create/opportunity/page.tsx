@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { X } from "lucide-react";
+import { createOpportunityAction } from "@/actions/opportunity/createOpportunity";
+import { useRouter } from "next/navigation";
 
 export default function CreateOpportunityPage() {
   const [title, setTitle] = useState("");
@@ -15,8 +17,9 @@ export default function CreateOpportunityPage() {
   const [tags, setTags] = useState<{ [tag: string]: string }>({});
   const [newTag, setNewTag] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleOpportunitySubmit = useCallback(() => {
+  const handleOpportunitySubmit = async () => {
     if (!title || !description) {
       toast.error("Please fill in all the fields");
       return;
@@ -30,15 +33,21 @@ export default function CreateOpportunityPage() {
       return;
     }
     setLoading(true);
-    // TODO: Implement the actual submission logic here
-    setTimeout(() => {
-      toast.success("Opportunity created successfully!");
+    try {
+      const response = await createOpportunityAction({ title, description, tags: Object.keys(tags) });
+      if (response) {
+        toast.success("Opportunity created successfully!");
+      }
+    } catch (err) {
+      toast.error("Unable to create Opportunity");
+    } finally {
       setLoading(false);
       setTitle("");
       setDescription("");
       setTags({});
-    }, 1500);
-  }, [title, description]);
+      router.push("/opportunities");
+    }
+  };
 
   const addTag = () => {
     if (newTag && !Object.keys(tags).includes(newTag) && newTag.length > 0) {
