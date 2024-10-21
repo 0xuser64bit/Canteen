@@ -45,7 +45,7 @@ export const OpportunityPost = ({
   };
 
   return (
-    <Card className="w-4/5 hover:shadow-xl ms-5">
+    <Card className="w-full hover:shadow-xl ms-5 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20">
       <CardHeader>
         <CardTitle role="button" onClick={() => {}}>
           {title}
