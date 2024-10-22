@@ -14,9 +14,15 @@ import { formatDate } from "@/lib/helper";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { GoBack } from "../../../_components/GoBack";
 import { PostFooter } from "../../../_components/PostFooter";
+import { auth } from "@/lib/auth";
+import { PostInterection } from "../../../_components/PostInterection";
 
 export default async function PostPage({ params }: { params: { id: string } }) {
-  const post = await getPostAction({ postId: params?.id as string });
+  const session = await auth();
+  const post = await getPostAction({
+    postId: params?.id as string,
+    email: session?.user?.email!,
+  });
   if (!post) {
     return <div>Post not found</div>;
   }
@@ -32,7 +38,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
               {"Career"}
             </Badge>
             <span className="text-xs text-gray-500">
-              {formatDate(post.createdAt)}
+              {formatDate(post.createdAt!)}
             </span>
           </div>
           <h2 className="text-xl font-semibold mb-2">{post.title}</h2>
@@ -50,7 +56,16 @@ export default async function PostPage({ params }: { params: { id: string } }) {
           )}
         </CardContent>
         <CardFooter className="border-t border-slate-300/10">
-          <PostFooter />
+          <div className="w-full">
+            <PostInterection
+              likes={post.totalLikes?.likes ?? 0}
+              comments={0}
+              views={0}
+              hasLiked={post.hasLiked}
+              shares={0}
+              postId={params.id}
+            />
+          </div>
         </CardFooter>
       </Card>
 

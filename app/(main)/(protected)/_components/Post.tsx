@@ -7,14 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  EllipsisVertical,
-  Eye,
-  Heart,
-  MessageCircle,
-  Share,
-} from "lucide-react";
+import { EllipsisVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { PostInterection } from "./PostInterection";
 
 export const Post = ({
   id,
@@ -22,24 +17,26 @@ export const Post = ({
   media,
   mediaType,
   content,
-  likes,
   comments,
   views,
   shares,
   image,
   university,
+  hasLiked,
+  totalLikes,
 }: {
   id: string;
   title: string;
   media: string;
   mediaType: string;
   content: string;
-  likes: number;
   comments: number;
   views: number;
   shares: number;
   image: string;
   university: string;
+  hasLiked: boolean;
+  totalLikes: number;
 }) => {
   const router = useRouter();
   const base_url = "http://localhost:3000";
@@ -110,42 +107,14 @@ export const Post = ({
             </div>
           )}
         </div>
-        <div className=" pt-4 flex justify-between">
-          <div className="flex gap-x-1 items-center">
-            <div
-              className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
-              role="button"
-              onClick={() => {}}
-            >
-              <Heart className="w-5 h-5" />
-              <p className="text-xs">{likes}</p>
-            </div>
-            <div
-              className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
-              role="button"
-              onClick={() => {}}
-            >
-              <MessageCircle className="w-5 h-5" />
-              <p className="text-xs">{comments}</p>
-            </div>
-            <div
-              className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
-              role="button"
-              onClick={() => {}}
-            >
-              <Eye className="w-5 h-5" />
-              <p className="text-xs">{views}</p>
-            </div>
-          </div>
-          <div
-            className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-2 px-2 py-1 rounded-full"
-            role="button"
-            onClick={() => {}}
-          >
-            <Share className="w-5 h-5" />
-            <p className="text-xs">{shares}</p>
-          </div>
-        </div>
+        <PostInterection
+          likes={totalLikes}
+          views={views}
+          comments={comments}
+          shares={shares}
+          hasLiked={hasLiked}
+          postId={id}
+        />
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ export default async function HomePage() {
   const posts = await getPostsByUser({ email: user?.email as string });
   return (
     <>
-      <Timeline posts={posts} />
+      <Timeline allposts={posts} />
     </>
   );
 }

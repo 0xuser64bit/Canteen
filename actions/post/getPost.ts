@@ -1,7 +1,13 @@
 "use server";
 import db from "@/db";
 
-const getPostAction = async ({ postId }: { postId: string }) => {
+const getPostAction = async ({
+  postId,
+  email,
+}: {
+  postId: string;
+  email: string;
+}) => {
   const post = await db.post.findUnique({
     where: {
       id: postId,
@@ -13,9 +19,31 @@ const getPostAction = async ({ postId }: { postId: string }) => {
           image: true,
         },
       },
+      likes: {
+        where: {
+          userId: email,
+        },
+        select: {
+          id: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+        },
+      },
     },
   });
-  return post;
+
+  const transformedPost = {
+    ...post,
+    hasLiked: (post?.likes.length ?? 0) > 0,
+    totalLikes: post?._count,
+    likes: undefined,
+    _count: undefined,
+  };
+
+  return transformedPost;
 };
 
 export { getPostAction };

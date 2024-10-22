@@ -1,10 +1,14 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Post } from "./Post";
 import { QuickPost } from "./QuickPost";
 
-export const Timeline = async ({ posts }: { posts: any }) => {
-  // Todo: Modify this component as such when opening profile it will show the user's post otherwise it will show post from other people.
-  // also in feed and my university section it will show different posts(in one it will randomly show user's choice related posts and in one only posts from university)
-
+export const Timeline = ({ allposts }: { allposts: any }) => {
+  const [posts, setPosts] = useState(allposts ?? []);
+  useEffect(() => {
+    setPosts(allposts ?? []);
+  }, [allposts]);
   return (
     <div>
       <QuickPost />
@@ -19,7 +23,8 @@ export const Timeline = async ({ posts }: { posts: any }) => {
             media={post.mediaUrl as string}
             mediaType={post.mediaType as string}
             content={post.content}
-            likes={0}
+            hasLiked={post.hasLiked}
+            totalLikes={post.totalLikes.likes}
             shares={0}
             views={0}
             comments={0}

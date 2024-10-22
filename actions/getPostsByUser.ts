@@ -16,7 +16,29 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
           university: true,
         },
       },
+      likes: {
+        where: {
+          userId: email,
+        },
+        select: {
+          id: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+        },
+      },
     },
   });
-  return posts;
+
+  const transformedPost = posts.map((post) => ({
+    ...post,
+    hasLiked: post.likes.length > 0,
+    totalLikes: post._count,
+    likes: undefined,
+    _count: undefined,
+  }));
+
+  return transformedPost;
 };
