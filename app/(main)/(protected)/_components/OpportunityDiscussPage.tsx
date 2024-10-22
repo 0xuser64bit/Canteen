@@ -1,6 +1,5 @@
 "use client";
 
-import { voteAction } from "@/actions/opportunity/vote";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +23,7 @@ export const OpportunityDiscussPage = ({
   };
   const handleUpvote = async () => {
     try {
-      await voteAction({ id: opportunity.id, vote: "UP" });
+      // await voteAction({ id: opportunity.id, vote: "UP" });
       setUpvoted(!upvoted);
     } catch (err) {
       toast.error("Unable to upvote...");

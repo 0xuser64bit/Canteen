@@ -107,7 +107,7 @@ model Upvote {
 
 model Tag {
   id            String      @id @default(uuid())
-  name          String      @unique
+  name          String
   Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   opportunityId String
 }

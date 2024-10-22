@@ -7,8 +7,10 @@ import { formatDate } from "@/lib/helper";
 
 export const OpportunityFeed = ({
   allOpportunities,
+  userId,
 }: {
   allOpportunities: any[];
+  userId: string;
 }) => {
   const [opportunities, setOpportunities] = useState<any[]>([]);
   useEffect(() => {
@@ -40,6 +42,7 @@ export const OpportunityFeed = ({
             hasUpvoted={opportunity.hasUpvoted}
             created_on={formatDate(opportunity.createdAt)}
             tags={opportunity.tags.map((tag: any) => tag.name)}
+            userId={userId}
           />
         ))}
       {!opportunities.length && (

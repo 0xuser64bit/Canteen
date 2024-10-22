@@ -4,10 +4,15 @@ import { auth } from "@/lib/auth";
 
 export default async function OpportunitiesPage() {
   const session = await auth();
-  const allOpportunities = await getAllOpportunityAction({ email: session?.user?.email! });
+  const allOpportunities = await getAllOpportunityAction({
+    email: session?.user?.email!,
+  });
   return (
     <div>
-      <OpportunityFeed allOpportunities={allOpportunities} />
+      <OpportunityFeed
+        allOpportunities={allOpportunities}
+        userId={session?.user?.email}
+      />
     </div>
   );
 }

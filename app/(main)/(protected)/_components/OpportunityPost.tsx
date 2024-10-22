@@ -13,9 +13,11 @@ import { useState } from "react";
 import Tag from "./Tag";
 import { useRouter } from "next/navigation";
 import { generateRandomColour } from "@/lib/helper";
+import { toast } from "sonner";
+import { upvoteHandler } from "@/actions/opportunity/upvote";
 
 interface OpportunityPostProps {
-  id: number;
+  id: string;
   title: string;
   description: string;
   totalUpvotes: number;
@@ -23,6 +25,7 @@ interface OpportunityPostProps {
   created_on: string;
   tags?: string[];
   hasUpvoted: boolean;
+  userId: string;
 }
 
 export const OpportunityPost = ({
@@ -34,20 +37,20 @@ export const OpportunityPost = ({
   created_on,
   tags,
   hasUpvoted,
+  userId,
 }: OpportunityPostProps) => {
-  const [upvotes, setUpvotes] = useState(totalUpvotes);
   const [upvoted, setUpvoted] = useState(hasUpvoted);
   const router = useRouter();
   const [views, setViews] = useState(totalViews); // Todo: views === clicks on post
 
-  const handleUpvote = () => {
-    setUpvoted(!upvoted);
+  const handleUpvote = async () => {
     if (!upvoted) {
-      // Todo: db call to increase vote++
-      setUpvotes((prevUpvotes) => prevUpvotes + 1);
+      await upvoteHandler({ userId, opportunityId: id });
+      setUpvoted(true);
+      router.refresh();
     } else {
-      // Todo: db call to decrease vote--
-      setUpvotes((prevUpvotes) => prevUpvotes - 1);
+      // Todo: downvote?
+      toast.info("Already Upvoted.");
     }
   };
 
@@ -74,7 +77,7 @@ export const OpportunityPost = ({
                   key={index}
                   colour={generateRandomColour()}
                   label={tag}
-                  onClick={() => { }}
+                  onClick={() => {}}
                 />
               ))}
           </div>
@@ -84,9 +87,11 @@ export const OpportunityPost = ({
               size="sm"
               onClick={handleUpvote}
             >
-              <ChevronUp className={`mr-2 h-4 w-4 ${upvoted ? "text-green-400" : ""}`} />
+              <ChevronUp
+                className={`mr-2 h-4 w-4 ${upvoted ? "text-green-400" : ""}`}
+              />
               <span className={`${upvoted ? "text-green-400" : ""}`}>
-                {upvotes}
+                {totalUpvotes}
               </span>
             </Button>
             <Button variant={"ghost"} size="sm">
