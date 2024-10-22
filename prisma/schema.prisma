@@ -77,7 +77,7 @@ model Post {
   viewsCount Int        @default(0)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
-  author     User       @relation(fields: [authorId], references: [id])
+  author     User       @relation(fields: [authorId], references: [email])
   authorId   String
   likes      Like[]
   views      PostView[]

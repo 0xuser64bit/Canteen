@@ -1,22 +1,25 @@
 "use client";
 
 import { getLatestUpdateAction } from "@/actions/discover";
-import { Separator } from "@/components/ui/separator";
 import { Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export const Discover = () => {
-  const [latestOpportunities, setLatestOpportunities] = useState<any[]>([]);
-  const [latestPosts, setLatestPosts] = useState<any[]>([]);
+export const Discover = ({
+  opportunities,
+  posts,
+}: {
+  opportunities: any[];
+  posts: any[];
+}) => {
+  const [latestOpportunities, setLatestOpportunities] = useState<any[]>(
+    opportunities ?? [],
+  );
+  const [latestPosts, setLatestPosts] = useState<any[]>(posts ?? []);
 
   useEffect(() => {
-    const getData = async () => {
-      const { opportunities, posts } = await getLatestUpdateAction();
-      setLatestOpportunities(opportunities);
-      setLatestPosts(posts);
-    };
-    getData();
-  }, []);
+    setLatestOpportunities(opportunities ?? []);
+    setLatestPosts(posts ?? []);
+  }, [opportunities, posts]);
   if (latestOpportunities.length === 0 && latestPosts.length === 0) {
     return <div className="border px-5">No data</div>;
   }

@@ -1,4 +1,4 @@
-import { Discover } from "../_components/Discover";
+import { DiscoverSideBar } from "../_components/DiscoverSideBar";
 import { SidebarTab } from "../_components/SidebarTab";
 
 import { HandHelping, Home, University, Users } from "lucide-react";
@@ -44,7 +44,7 @@ export default function SideBarLayout({
         {children}
       </div>
       <div className="hidden md:block w-1/4 p-4 sticky top-0 self-start">
-        <Discover />
+        <DiscoverSideBar />
       </div>
     </div>
   );

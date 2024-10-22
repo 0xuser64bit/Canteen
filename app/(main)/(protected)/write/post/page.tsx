@@ -53,7 +53,7 @@ export default function WritePostPage() {
     }
     // TODO: security concerns, I don't think using "email" in user is safe.(I could be so wrong here but need to check)
     await createPost({
-      user: session.data?.user?.email as string,
+      user: session.data?.user?.email!,
       title,
       content,
       imageUrl,

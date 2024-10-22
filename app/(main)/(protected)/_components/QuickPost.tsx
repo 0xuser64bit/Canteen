@@ -41,7 +41,7 @@ export const QuickPost = () => {
       return;
     }
 
-    const user = session.data?.user?.email as string;
+    const user = session.data?.user?.email!;
     const post = await createPost({
       user,
       title,

@@ -47,7 +47,10 @@ export const Post = ({
     <div className="flex gap-x-2 shadow-sm hover:shadow-md rounded-lg border dark:border-slate-100/15 select-none mb-3">
       <div className="p-2 h-24">
         <Avatar role="button">
-          <AvatarImage className="w-16 object-cover" src={image} />
+          <AvatarImage
+            className="w-16 object-cover"
+            src={image ? image : "canteen-dark.png"}
+          />
         </Avatar>
       </div>
       <div className="text-black dark:text-white w-full p-3">
