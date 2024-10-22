@@ -19,7 +19,6 @@ export default function CreateOpportunityPage() {
   const [newTag, setNewTag] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  // Todo: create this page to component and use getServerSession(or auth) instead of useSession()
   const session = useSession();
 
   const handleOpportunitySubmit = async () => {
@@ -40,7 +39,7 @@ export default function CreateOpportunityPage() {
       const response = await createOpportunityAction({
         title,
         description,
-        userId: session.data?.user?.id!,
+        userId: session.data?.user?.email!,
         tags: Object.keys(tags),
       });
       if (response) {
