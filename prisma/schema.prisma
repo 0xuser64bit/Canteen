@@ -38,7 +38,8 @@ model User {
   likes         Like[]
   views         PostView[]
   sessions      Session[]
-  opportunity   Opportunity[]
+  opportunities Opportunity[]
+  upvotes       Upvote[]
 }
 
 model ValidUniversity {
@@ -86,19 +87,28 @@ model Opportunity {
   id          String   @id @default(uuid())
   title       String
   description String
-  upvotes     Int      @default(0)
   views       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   tags        Tag[]
-  User        User     @relation(fields: [userId], references: [email])
+  users       User     @relation(fields: [userId], references: [email], onDelete: Cascade)
   userId      String
+  upvotes     Upvote[]
+}
+
+model Upvote {
+  id            String      @id @default(uuid())
+  createdAt     DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [email], onDelete: Cascade)
+  userId        String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunityId String
 }
 
 model Tag {
   id            String      @id @default(uuid())
   name          String      @unique
-  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   opportunityId String
 }
 

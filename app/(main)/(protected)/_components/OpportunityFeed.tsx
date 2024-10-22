@@ -35,8 +35,9 @@ export const OpportunityFeed = ({
             id={opportunity.id}
             title={opportunity.title}
             description={opportunity.description}
-            initialUpvotes={opportunity.upvotes}
-            initialViews={opportunity.views}
+            totalUpvotes={opportunity.totalUpvotes.upvotes}
+            totalViews={opportunity.views}
+            hasUpvoted={opportunity.hasUpvoted}
             created_on={formatDate(opportunity.createdAt)}
             tags={opportunity.tags.map((tag: any) => tag.name)}
           />

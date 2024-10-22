@@ -2,14 +2,40 @@
 
 import db from "@/db";
 
-export const getAllOpportunityAction = async () => {
+export const getAllOpportunityAction = async ({ email }: { email: string }) => {
   const opportunities = await db.opportunity.findMany({
     orderBy: {
       createdAt: "desc",
     },
     include: {
-      tags: true,
+      tags: {
+        select: {
+          name: true,
+        },
+      },
+      upvotes: {
+        where: {
+          userId: email,
+        },
+        select: {
+          id: true,
+        },
+      },
+      _count: {
+        select: {
+          upvotes: true,
+        },
+      },
     },
   });
-  return opportunities;
+
+  const transformedOpportunities = opportunities.map((opportunity) => ({
+    ...opportunity,
+    hasUpvoted: opportunity.upvotes.length > 0,
+    totalUpvotes: opportunity._count,
+
+    upvotes: undefined,
+    _count: undefined,
+  }));
+  return transformedOpportunities;
 };

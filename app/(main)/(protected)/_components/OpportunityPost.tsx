@@ -18,25 +18,27 @@ interface OpportunityPostProps {
   id: number;
   title: string;
   description: string;
-  initialUpvotes: number;
-  initialViews: number;
+  totalUpvotes: number;
+  totalViews: number;
   created_on: string;
   tags?: string[];
+  hasUpvoted: boolean;
 }
-// Todo: add Tags to post properties
+
 export const OpportunityPost = ({
   id,
   title,
   description,
-  initialUpvotes,
-  initialViews,
+  totalUpvotes,
+  totalViews,
   created_on,
   tags,
+  hasUpvoted,
 }: OpportunityPostProps) => {
-  const [upvotes, setUpvotes] = useState(initialUpvotes);
-  const [upvoted, setUpvoted] = useState(false);
+  const [upvotes, setUpvotes] = useState(totalUpvotes);
+  const [upvoted, setUpvoted] = useState(hasUpvoted);
   const router = useRouter();
-  const [views, setViews] = useState(initialViews); // Todo: views === clicks on post
+  const [views, setViews] = useState(totalViews); // Todo: views === clicks on post
 
   const handleUpvote = () => {
     setUpvoted(!upvoted);
@@ -82,8 +84,10 @@ export const OpportunityPost = ({
               size="sm"
               onClick={handleUpvote}
             >
-              <ChevronUp className="mr-2 h-4 w-4" />
-              {upvotes}
+              <ChevronUp className={`mr-2 h-4 w-4 ${upvoted ? "text-green-400" : ""}`} />
+              <span className={`${upvoted ? "text-green-400" : ""}`}>
+                {upvotes}
+              </span>
             </Button>
             <Button variant={"ghost"} size="sm">
               <Eye className="mr-2 h-4 w-4" />
