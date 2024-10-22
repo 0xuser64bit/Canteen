@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ThumbsDown, ThumbsUp } from "lucide-react";
-import { PostFooter } from "../../../_components/PostFooter";
 import { formatDate } from "@/lib/helper";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { GoBack } from "../../../_components/GoBack";
+import { PostFooter } from "../../../_components/PostFooter";
 
 export default async function PostPage({ params }: { params: { id: string } }) {
   const post = await getPostAction({ postId: params?.id as string });
@@ -22,10 +23,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="">
-      {/* Todo: router.back() */}
-      <div className="w-8 py-2 px-1 hover:bg-slate-400/30 dark:hover:bg-slate-500/30 rounded-full cursor-pointer">
-        <ArrowLeft className="w-6 h-5 mr-2 text-black dark:text-white" />
-      </div>
+      <GoBack />
       <Card className="mb-2 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20 ">
         <CardHeader className="border-b border-slate-300/10">
           <div className="flex items-center justify-between mb-2">

@@ -1,7 +1,7 @@
 "use client";
 
-import { getLatestUpdateAction } from "@/actions/discover";
 import { Eye } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export const Discover = ({
@@ -15,6 +15,7 @@ export const Discover = ({
     opportunities ?? [],
   );
   const [latestPosts, setLatestPosts] = useState<any[]>(posts ?? []);
+  const router = useRouter();
 
   useEffect(() => {
     setLatestOpportunities(opportunities ?? []);
@@ -32,7 +33,11 @@ export const Discover = ({
           </span>
           <ul>
             {latestOpportunities.map((opportunity) => (
-              <div className="py-1" role="button" onClick={() => {}}>
+              <div
+                className="py-1"
+                role="button"
+                onClick={() => router.push("/opportunity/" + opportunity.id)}
+              >
                 <li className="flex gap-x-2 items-center justify-between pb-2">
                   <p className="font-semibold text-sm hover:underline">
                     {opportunity.title.slice(0, 30) + "..."}
@@ -52,7 +57,11 @@ export const Discover = ({
           </span>
           <ul>
             {latestPosts.map((post) => (
-              <div className="py-1" role="button" onClick={() => {}}>
+              <div
+                className="py-1"
+                role="button"
+                onClick={() => router.push("/posts/" + post.id)}
+              >
                 <li className="flex gap-x-2 items-center justify-between pb-2">
                   <p className="font-semibold text-sm hover:underline">
                     {post.title.slice(0, 30) + "..."}
