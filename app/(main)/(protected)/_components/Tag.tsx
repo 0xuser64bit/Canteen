@@ -4,15 +4,14 @@ export default function Tag({
   colour,
 }: {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   colour: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="border border-slate-600 px-2 text-sm dark:hover:border-white dark:bg-slate-200/20 bg-slate-200 dark:text-white text-black me-1 rounded-lg"
-      style={{ backgroundColor: colour }}
+      className="text-primary-foreground border border-slate-600 px-2 text-sm dark:hover:border-white dark:bg-slate-200/20 bg-slate-200 dark:text-white text-black me-1 rounded-lg bg-slate-400/10"
     >
       {label}
     </button>

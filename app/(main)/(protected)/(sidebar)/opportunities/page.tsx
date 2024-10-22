@@ -11,7 +11,7 @@ export default async function OpportunitiesPage() {
     <div>
       <OpportunityFeed
         allOpportunities={allOpportunities}
-        userId={session?.user?.email}
+        userId={session?.user?.email!}
       />
     </div>
   );

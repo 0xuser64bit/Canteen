@@ -80,11 +80,11 @@ export default function CreateOpportunityPage() {
 
       {Object.keys(tags).length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
-          {Object.entries(tags).map(([tag, color]) => (
+          {Object.entries(tags).map(([tag, colour]) => (
             <span
               key={tag}
               className={`text-primary-foreground px-2 py-1 rounded-full text-sm flex items-center`}
-              style={{ backgroundColor: color }}
+              style={{ backgroundColor: colour }}
             >
               {tag}
               <button

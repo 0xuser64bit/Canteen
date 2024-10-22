@@ -1,5 +1,6 @@
 "use client";
 
+import { upvoteHandler } from "@/actions/opportunity/upvote";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,23 +9,44 @@ import { ArrowLeft, ChevronUp, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import Tag from "./Tag";
+import { generateRandomColour } from "@/lib/helper";
 
 export const OpportunityDiscussPage = ({
-  opportunity,
+  id,
+  title,
+  description,
+  totalUpvotes,
+  hasUpvoted,
+  totalViews,
+  userId,
+  tags,
 }: {
-  opportunity: any;
+  id: string;
+  title: string;
+  description: string;
+  totalUpvotes: number;
+  hasUpvoted: boolean;
+  totalViews: number;
+  userId: string;
+  tags: string[];
 }) => {
   const router = useRouter();
-  const [upvoted, setUpvoted] = useState(false);
+  const [upvoted, setUpvoted] = useState(hasUpvoted);
 
   const handleAddComment = (event: any) => {
     event.preventDefault();
     // db call and create comment in this opportunity
   };
+
   const handleUpvote = async () => {
     try {
-      // await voteAction({ id: opportunity.id, vote: "UP" });
-      setUpvoted(!upvoted);
+      if (!upvoted) {
+        await upvoteHandler({ userId, opportunityId: id });
+        setUpvoted(true);
+      } else {
+        toast.info("You have already upvoted this opportunity");
+      }
     } catch (err) {
       toast.error("Unable to upvote...");
     }
@@ -42,14 +64,15 @@ export const OpportunityDiscussPage = ({
       </div>
       <Card className="mb-8 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">
-            {opportunity.title}
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold">{title}</CardTitle>
+          <div>
+            {tags.map((tag) => (
+              <Tag key={tag} label={tag} colour={generateRandomColour()} />
+            ))}
+          </div>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground mb-4">
-            {opportunity.description}
-          </p>
+          <p className="text-muted-foreground mb-4">{description}</p>
           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
             <Button
               variant={upvoted ? "secondary" : "outline"}
@@ -60,11 +83,11 @@ export const OpportunityDiscussPage = ({
               <ChevronUp
                 className={`h-4 w-4 ${upvoted ? "text-green-400" : ""}`}
               />
-              <span>{opportunity.upvotes}</span>
+              <span>{totalUpvotes}</span>
             </Button>
             <div className="flex items-center space-x-1">
               <Eye className="h-4 w-4" />
-              <span>{opportunity.views} views</span>
+              <span>{totalViews}</span>
             </div>
           </div>
         </CardContent>

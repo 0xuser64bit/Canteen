@@ -21,11 +21,6 @@ export const OpportunityFeed = ({
   return (
     <div>
       <div>
-        {/* 
-          Todo: Search bar and create Opportunity button 
-          fetch all opportunities from the database
-          use state variable and pass setOpportunity to search bar component and setOpportunity from there to showcase in below opportunity section.
-        */}
         <SearchAndCreateOpportunity
           setOpportunities={setOpportunities}
           opportunities={opportunities}
