@@ -9,6 +9,8 @@ import { ArrowLeft, ChevronUp, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import Tag from "./Tag";
+import { generateRandomColour } from "@/lib/helper";
 
 export const OpportunityDiscussPage = ({
   opportunity,

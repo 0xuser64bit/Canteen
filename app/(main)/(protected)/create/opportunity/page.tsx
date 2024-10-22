@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { generateRandomColour } from "@/lib/helper";
 import { X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -69,15 +70,6 @@ export default function CreateOpportunityPage() {
       ([key, value]) => key !== tagToRemove,
     );
     setTags(Object.fromEntries(newTags));
-  };
-
-  const generateRandomColour = () => {
-    const letters = "0123456789ABCDEF";
-    let color = "#";
-    for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
   };
 
   return (

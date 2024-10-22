@@ -12,6 +12,7 @@ import { ChevronUp, Eye } from "lucide-react";
 import { useState } from "react";
 import Tag from "./Tag";
 import { useRouter } from "next/navigation";
+import { generateRandomColour } from "@/lib/helper";
 
 interface OpportunityPostProps {
   id: number;
@@ -67,7 +68,12 @@ export const OpportunityPost = ({
             <p className="pb-2">{description.slice(0, 100) + "..."}</p>
             {tags &&
               tags.map((tag, index) => (
-                <Tag key={index} label={tag} onClick={() => {}} />
+                <Tag
+                  key={index}
+                  colour={generateRandomColour()}
+                  label={tag}
+                  onClick={() => { }}
+                />
               ))}
           </div>
           <div className="flex gap-x-2">
