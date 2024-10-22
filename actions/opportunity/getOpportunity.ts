@@ -23,6 +23,14 @@ export const getOpportunityAction = async ({
           id: true,
         },
       },
+      OpportunityComment: {
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          upvotes: true,
+        },
+      },
       _count: {
         select: {
           upvotes: true,

@@ -1,16 +1,24 @@
 "use client";
 
+import { postCommentAction } from "@/actions/opportunity/postComment";
 import { upvoteHandler } from "@/actions/opportunity/upvote";
+import { Spinner } from "@/components/Spinner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ChevronUp, Eye } from "lucide-react";
+import { formatDate, generateRandomColour } from "@/lib/helper";
+import { ArrowBigUp, ArrowLeft, ChevronUp, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import Tag from "./Tag";
-import { generateRandomColour } from "@/lib/helper";
 
 export const OpportunityDiscussPage = ({
   id,
@@ -21,6 +29,7 @@ export const OpportunityDiscussPage = ({
   totalViews,
   userId,
   tags,
+  comments,
 }: {
   id: string;
   title: string;
@@ -30,13 +39,30 @@ export const OpportunityDiscussPage = ({
   totalViews: number;
   userId: string;
   tags: string[];
+  comments: any[];
 }) => {
   const router = useRouter();
   const [upvoted, setUpvoted] = useState(hasUpvoted);
+  const [commentUpvoted, setCommentUpvoted] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
-  const handleAddComment = (event: any) => {
+  const handleAddComment = async (event: any) => {
     event.preventDefault();
-    // db call and create comment in this opportunity
+    setIsPosting(true);
+    try {
+      await postCommentAction({
+        userId,
+        opportunityId: id,
+        content: event.target.comment.value,
+      });
+      event.target.comment.value = "";
+      toast.success("Your comment has been posted!");
+    } catch (err) {
+      toast.error("Unable to post comment...");
+    } finally {
+      setIsPosting(false);
+      router.refresh();
+    }
   };
 
   const handleUpvote = async () => {
@@ -52,6 +78,20 @@ export const OpportunityDiscussPage = ({
       toast.error("Unable to upvote...");
     }
   };
+
+  // const handleCommentVote = async (id: string) => {
+  //   try {
+  //     if (!commentUpvoted) {
+  //       await upvoteCommentAction({ userId, opportunityCommentId: id });
+  //       setCommentUpvoted(true);
+  //       router.refresh();
+  //     } else {
+  //       toast.info("You have already upvoted this comment");
+  //     }
+  //   } catch (err) {
+  //     toast.error("Unable to upvote this comment");
+  //   }
+  // }
   return (
     <div>
       <div
@@ -104,40 +144,46 @@ export const OpportunityDiscussPage = ({
               placeholder="Type your comment here."
               className="mb-2 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20"
             />
-            <Button type="submit">Post Comment</Button>
+            <Button type="submit">
+              {isPosting ? <Spinner /> : "Post Comment"}
+            </Button>
           </form>
         </CardContent>
       </Card>
       <h2 className="text-xl font-semibold mb-4">Comments</h2>
       <div className="space-y-4 mb-8">
-        {[
-          {
-            id: 1,
-            author: "Alice",
-            content: "Great solution! Thanks for sharing.",
-          },
-          {
-            id: 2,
-            author: "Bob",
-            content:
-              "I have a question about the time complexity. Can you explain it further?",
-          },
-        ].map((comment) => (
+        {comments.map((comment) => (
           <Card
             key={comment.id}
             className="bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20"
           >
             <CardHeader>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-x-2">
                 <Avatar>
-                  <AvatarFallback>{comment.author[0]}</AvatarFallback>
+                  <AvatarFallback>{"CC"}</AvatarFallback>
                 </Avatar>
-                <span className="font-semibold">{comment.author}</span>
+                <span className="text-sm text-slate-400">
+                  {formatDate(comment.createdAt)}
+                </span>
               </div>
             </CardHeader>
             <CardContent>
               <p>{comment.content}</p>
             </CardContent>
+            <CardFooter>
+              <div className="flex items-center gap-x-2">
+                <div
+                  role="button"
+                  // onClick={() => handleCommentVote(comment.id)}
+                >
+                  <ArrowBigUp
+                    className="w-6 h-6"
+                    fill={commentUpvoted ? "#05fc43" : ""}
+                  />
+                </div>
+                <p>{comment.upvotes}</p>
+              </div>
+            </CardFooter>
           </Card>
         ))}
       </div>

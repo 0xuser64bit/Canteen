@@ -22,24 +22,25 @@ model Session {
 }
 
 model User {
-  id            String        @id @default(uuid())
-  name          String?
-  email         String        @unique
-  password      String?
-  university    String?
-  country       String?
-  countryCode   String?
-  state         String?
-  city          String?
-  bio           String?
-  emailVerified Boolean
-  image         String?
-  posts         Post[]
-  likes         Like[]
-  views         PostView[]
-  sessions      Session[]
-  opportunities Opportunity[]
-  upvotes       Upvote[]
+  id                 String               @id @default(uuid())
+  name               String?
+  email              String               @unique
+  password           String?
+  university         String?
+  country            String?
+  countryCode        String?
+  state              String?
+  city               String?
+  bio                String?
+  emailVerified      Boolean
+  image              String?
+  posts              Post[]
+  likes              Like[]
+  views              PostView[]
+  sessions           Session[]
+  opportunities      Opportunity[]
+  upvotes            Upvote[]
+  OpportunityComment OpportunityComment[]
 }
 
 model ValidUniversity {
@@ -84,25 +85,40 @@ model Post {
 }
 
 model Opportunity {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  views       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tags        Tag[]
-  users       User     @relation(fields: [userId], references: [email], onDelete: Cascade)
-  userId      String
-  upvotes     Upvote[]
+  id                 String               @id @default(uuid())
+  title              String
+  description        String
+  views              Int                  @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  tags               Tag[]
+  users              User                 @relation(fields: [userId], references: [email], onDelete: Cascade)
+  userId             String
+  upvotes            Upvote[]
+  OpportunityComment OpportunityComment[]
 }
 
 model Upvote {
-  id            String      @id @default(uuid())
-  createdAt     DateTime    @default(now())
-  user          User        @relation(fields: [userId], references: [email], onDelete: Cascade)
+  id            String       @id @default(uuid())
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [email], onDelete: Cascade)
   userId        String
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunityId String?
+
+  @@unique([userId, opportunityId])
+}
+
+model OpportunityComment {
+  id            String      @id @default(uuid())
+  content       String
+  upvotes       Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   opportunityId String
+  user          User        @relation(fields: [userId], references: [email], onDelete: Cascade)
+  userId        String
 }
 
 model Tag {

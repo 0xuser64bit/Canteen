@@ -24,6 +24,7 @@ export default async function OpportunityPage({
         hasUpvoted={opportunity.hasUpvoted}
         userId={session?.user?.email!}
         tags={opportunity.tags?.map((tag) => tag.name) ?? []}
+        comments={opportunity.OpportunityComment || []}
       />
     </div>
   );
