@@ -8,7 +8,7 @@ export default async function MyUniversityPage() {
   const user = session?.user;
 
   const universityPosts = await getUniversityPosts({
-    user: user?.email as string,
+    email: user?.email as string,
   });
   return (
     <>

@@ -12,7 +12,7 @@ export const upvoteCommentAction = async ({
   const comment = await db.upvote.create({
     data: {
       userId,
-      opportunityCommentId,
+      // opportunityCommentId,
     },
   });
   return comment;

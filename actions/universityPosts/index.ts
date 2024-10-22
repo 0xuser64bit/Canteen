@@ -2,10 +2,10 @@
 
 import db from "@/db";
 
-export const getUniversityPosts = async ({ user }: { user: string }) => {
+export const getUniversityPosts = async ({ email }: { email: string }) => {
   const university = await db.user.findFirst({
     where: {
-      email: user,
+      email: email,
     },
   });
   const posts = await db.post.findMany({
@@ -24,7 +24,33 @@ export const getUniversityPosts = async ({ user }: { user: string }) => {
           image: true,
         },
       },
+      likes: {
+        where: {
+          userId: email,
+        },
+        select: {
+          id: true,
+        },
+      },
+      comments: {
+        select: {
+          id: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+        },
+      },
     },
   });
-  return posts;
+  const transformedPost = posts.map((post) => ({
+    ...post,
+    hasLiked: post.likes.length > 0,
+    totalLikes: post._count,
+    totalComments: post.comments,
+    likes: undefined,
+    _count: undefined,
+  }));
+  return transformedPost;
 };

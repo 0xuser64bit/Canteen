@@ -24,10 +24,10 @@ export const Timeline = ({ allposts }: { allposts: any }) => {
             mediaType={post.mediaType as string}
             content={post.content}
             hasLiked={post.hasLiked}
-            totalLikes={post.totalLikes.likes}
+            totalLikes={post.totalLikes.likes!}
             shares={0}
             views={0}
-            comments={0}
+            comments={post.totalComments.length!}
           />
         ))}
     </div>

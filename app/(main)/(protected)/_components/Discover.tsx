@@ -34,6 +34,7 @@ export const Discover = ({
           <ul>
             {latestOpportunities.map((opportunity) => (
               <div
+                key={opportunity.id}
                 className="py-1"
                 role="button"
                 onClick={() => router.push("/opportunity/" + opportunity.id)}
@@ -58,6 +59,7 @@ export const Discover = ({
           <ul>
             {latestPosts.map((post) => (
               <div
+                key={post.id}
                 className="py-1"
                 role="button"
                 onClick={() => router.push("/posts/" + post.id)}

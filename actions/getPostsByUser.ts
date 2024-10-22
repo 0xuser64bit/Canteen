@@ -24,6 +24,11 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
           id: true,
         },
       },
+      comments: {
+        select: {
+          id: true,
+        },
+      },
       _count: {
         select: {
           likes: true,
@@ -36,6 +41,7 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
     ...post,
     hasLiked: post.likes.length > 0,
     totalLikes: post._count,
+    totalComments: post.comments,
     likes: undefined,
     _count: undefined,
   }));

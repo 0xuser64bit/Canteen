@@ -1,20 +1,15 @@
 import { getPostAction } from "@/actions/post/getPost";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { formatDate } from "@/lib/helper";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { GoBack } from "../../../_components/GoBack";
-import { PostFooter } from "../../../_components/PostFooter";
 import { auth } from "@/lib/auth";
+import { formatDate } from "@/lib/helper";
+import { CommentInterection } from "../../../_components/CommentInterection";
+import { GoBack } from "../../../_components/GoBack";
 import { PostInterection } from "../../../_components/PostInterection";
 
 export default async function PostPage({ params }: { params: { id: string } }) {
@@ -30,7 +25,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
   return (
     <div className="">
       <GoBack />
-      <Card className="mb-2 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20 ">
+      <Card className="mb-4 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20 ">
         <CardHeader className="border-b border-slate-300/10">
           <div className="flex items-center justify-between mb-2">
             {/* Todo: add tag while creating post */}
@@ -59,7 +54,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
           <div className="w-full">
             <PostInterection
               likes={post.totalLikes?.likes ?? 0}
-              comments={0}
+              comments={post.totalComments?.length!}
               views={0}
               hasLiked={post.hasLiked}
               shares={0}
@@ -68,72 +63,11 @@ export default async function PostPage({ params }: { params: { id: string } }) {
           </div>
         </CardFooter>
       </Card>
-
-      <Card className="mb-8 bg-[#f9f9fb] dark:bg-black dark:bg-opacity-20 ">
-        <CardHeader className="border-b">
-          <h3 className="text-lg font-semibold">Comments</h3>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-4 mb-6">
-            <Avatar className="w-8 h-8">
-              <AvatarFallback>CC</AvatarFallback>
-            </Avatar>
-            <Input
-              placeholder="What are your thoughts?"
-              className="flex-grow bg-[#f9f9fb] dark:bg-black "
-            />
-          </div>
-          <Button className="mb-6">Post anonymously</Button>
-          <Separator className="my-6" />
-          {[
-            {
-              company: "FAANG",
-              content:
-                "The job market is tough, but there are still opportunities. Focus on building strong projects and networking.",
-            },
-            {
-              company: "Startup",
-              content:
-                "Consider joining a startup. We're always looking for fresh talent and you'll get hands-on experience.",
-            },
-            {
-              company: "Consulting",
-              content:
-                "Don't forget about consulting firms. They often have good entry-level positions for new grads.",
-            },
-          ].map((comment, index) => (
-            <div key={index} className="mb-6">
-              <div className="flex items-start gap-4 mb-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback>{comment.company[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">
-                      {comment.company}
-                    </span>
-                    <span className="text-xs text-gray-500">• 2h ago</span>
-                  </div>
-                  <p className="text-sm">{comment.content}</p>
-                  <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                    <Button variant="ghost" size="sm">
-                      <ThumbsUp className="w-4 h-4 mr-1" />
-                      Agree
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <ThumbsDown className="w-4 h-4 mr-1" />
-                      Disagree
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      Reply
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <CommentInterection
+        comments={post.totalComments ?? []}
+        postId={params?.id}
+        email={session?.user?.email!}
+      />
     </div>
   );
 }

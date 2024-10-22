@@ -41,6 +41,7 @@ model User {
   upvotes            Upvote[]
   OpportunityComment OpportunityComment[]
   Comment            Comment[]
+  commentUpvotes     CommentUpvote[]
 }
 
 model ValidUniversity {
@@ -68,20 +69,21 @@ model webPage {
 }
 
 model Post {
-  id         String    @id @default(uuid())
-  title      String
-  content    String
-  mediaUrl   String?
-  mediaType  String?
-  likesCount Int       @default(0)
-  viewsCount Int       @default(0)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  author     User      @relation(fields: [authorId], references: [email])
-  authorId   String
-  likes      Like[]
-  type       Type?
-  Comment    Comment[]
+  id             String          @id @default(uuid())
+  title          String
+  content        String
+  mediaUrl       String?
+  mediaType      String?
+  likesCount     Int             @default(0)
+  viewsCount     Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  author         User            @relation(fields: [authorId], references: [email])
+  authorId       String
+  likes          Like[]
+  type           Type?
+  comments       Comment[]
+  commentUpvotes CommentUpvote[]
 }
 
 model Opportunity {
@@ -140,14 +142,24 @@ model Like {
 }
 
 model Comment {
+  id        String          @id @default(uuid())
+  content   String
+  user      User            @relation(fields: [userId], references: [email])
+  userId    String
+  post      Post            @relation(fields: [postId], references: [id])
+  postId    String
+  createdAt DateTime        @default(now())
+  upvotes   CommentUpvote[]
+}
+
+model CommentUpvote {
   id        String   @id @default(uuid())
+  comment   Comment? @relation(fields: [commentId], references: [id])
+  commentId String?
   user      User     @relation(fields: [userId], references: [email])
   userId    String
-  post      Post     @relation(fields: [postId], references: [id])
-  postId    String
-  createdAt DateTime @default(now())
-
-  @@unique([userId, postId])
+  Post      Post?    @relation(fields: [postId], references: [id])
+  postId    String?
 }
 
 // Enums

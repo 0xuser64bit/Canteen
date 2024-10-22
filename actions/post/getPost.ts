@@ -27,6 +27,14 @@ const getPostAction = async ({
           id: true,
         },
       },
+      comments: {
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          upvotes: true,
+        },
+      },
       _count: {
         select: {
           likes: true,
@@ -39,6 +47,7 @@ const getPostAction = async ({
     ...post,
     hasLiked: (post?.likes.length ?? 0) > 0,
     totalLikes: post?._count,
+    totalComments: post?.comments,
     likes: undefined,
     _count: undefined,
   };
