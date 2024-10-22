@@ -44,6 +44,7 @@ export const OpportunityDiscussPage = ({
       if (!upvoted) {
         await upvoteHandler({ userId, opportunityId: id });
         setUpvoted(true);
+        router.refresh();
       } else {
         toast.info("You have already upvoted this opportunity");
       }

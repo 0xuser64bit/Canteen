@@ -54,6 +54,7 @@ export default function CreateOpportunityPage() {
       setDescription("");
       setTags({});
       router.push("/opportunities");
+      router.refresh();
     }
   };
 
