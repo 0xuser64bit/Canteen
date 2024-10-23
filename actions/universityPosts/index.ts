@@ -3,15 +3,18 @@
 import db from "@/db";
 
 export const getUniversityPosts = async ({ email }: { email: string }) => {
-  const university = await db.user.findFirst({
+  const universityName = await db.user.findFirst({
     where: {
       email: email,
+    },
+    select: {
+      university: true,
     },
   });
   const posts = await db.post.findMany({
     where: {
       author: {
-        university: university?.name?.trim(),
+        university: universityName?.university?.trim(),
       },
     },
     orderBy: {
