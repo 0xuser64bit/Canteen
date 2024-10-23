@@ -11,7 +11,7 @@ export default function MainLayout({
 }>) {
   const { setTheme } = useTheme();
   useEffect(() => {
-    setTheme(localStorage.getItem("theme") ?? "light");
+    setTheme(localStorage.getItem("theme") ?? "dark");
   });
 
   return (

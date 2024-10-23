@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { User } from "lucide-react";
+import { University } from "lucide-react";
 
 import { useSearch } from "@/components/hooks/useSearch";
 
@@ -15,17 +15,23 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { getUniversityofAllCurrentUsers } from "@/actions/user/getUniversityofAllCurrentUser";
 
 export const SearchCommnad = () => {
-  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+  const [universities, setUniversities] = useState<any[]>([]);
+  const router = useRouter();
 
   const toggle = useSearch((store) => store.toggle);
   const isOpen = useSearch((store) => store.isOpen);
   const onClose = useSearch((store) => store.onClose);
 
   useEffect(() => {
-    // Todo: fetch all the university/communities from the db.
+    const universities = async () => {
+      const allUniversities = await getUniversityofAllCurrentUsers();
+      setUniversities(allUniversities);
+    };
+    universities();
     setIsMounted(true);
   }, []);
 
@@ -40,9 +46,8 @@ export const SearchCommnad = () => {
     return () => document.removeEventListener("keydown", down);
   }, [toggle]);
 
-  const onSelect = (id: string) => {
-    // Todo: redirect to page/university
-    router.push(`/`);
+  const onSelect = (name: string) => {
+    router.push(`university/${name.split(" ").join("-")}`);
     onClose();
   };
   if (!isMounted) {
@@ -54,11 +59,17 @@ export const SearchCommnad = () => {
       <CommandInput placeholder="Search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Find your favorite club or community">
-          <CommandItem>
-            <User className="w-4 h-4 mr-2" />
-            <span>{"super club"}</span>
-          </CommandItem>
+        <CommandGroup heading="Search for university...">
+          {universities &&
+            universities.map((university) => (
+              <CommandItem
+                key={university}
+                onSelect={() => onSelect(university)}
+              >
+                <University className="w-4 h-4 mr-2" />
+                <span>{university}</span>
+              </CommandItem>
+            ))}
         </CommandGroup>
       </CommandList>
     </CommandDialog>
