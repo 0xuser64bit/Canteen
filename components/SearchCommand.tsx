@@ -47,7 +47,7 @@ export const SearchCommnad = () => {
   }, [toggle]);
 
   const onSelect = (name: string) => {
-    router.push(`university/${name.split(" ").join("-")}`);
+    router.push(`/university/${name.split(" ").join("-")}`);
     onClose();
   };
   if (!isMounted) {

@@ -1,3 +1,4 @@
+// post.tsx
 "use client";
 
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
@@ -78,7 +79,7 @@ export const Post = ({
                       className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25"
                       onClick={(e) => {
                         navigator.clipboard.writeText(
-                          base_url + "/posts/" + id,
+                          `${base_url}/posts/${id}`,
                         );
                       }}
                     >
@@ -92,7 +93,7 @@ export const Post = ({
             </DropdownMenu>
           </div>
         </div>
-        <div role="button" onClick={() => router.push("posts/" + id)}>
+        <div role="button" onClick={() => router.push("/posts/" + id)}>
           <div>
             <p className="text-xl font-bold hover:underline">{title}</p>
             <p className="pb-2 text-sm">{content}</p>

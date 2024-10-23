@@ -1,3 +1,4 @@
+// posts/[id]/page.tsx
 import { getPostAction } from "@/actions/post/getPost";
 import { Badge } from "@/components/ui/badge";
 import {
