@@ -17,8 +17,7 @@ export const getFeedPosts = async ({ email }: { email: string }) => {
       mediaType: true,
       content: true,
       author: true,
-      likesCount: true,
-      viewsCount: true,
+      views: true,
     },
   });
   return posts;

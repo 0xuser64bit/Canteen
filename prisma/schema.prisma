@@ -74,8 +74,7 @@ model Post {
   content        String
   mediaUrl       String?
   mediaType      String?
-  likesCount     Int             @default(0)
-  viewsCount     Int             @default(0)
+  views          Int             @default(0)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   author         User            @relation(fields: [authorId], references: [email])

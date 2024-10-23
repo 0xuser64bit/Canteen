@@ -1,9 +1,9 @@
 "use client";
 
+import { formatDate } from "@/lib/helper";
 import { useEffect, useState } from "react";
 import { OpportunityPost } from "./OpportunityPost";
 import { SearchAndCreateOpportunity } from "./SearchAndCreateOpportunity";
-import { formatDate } from "@/lib/helper";
 
 export const OpportunityFeed = ({
   allOpportunities,

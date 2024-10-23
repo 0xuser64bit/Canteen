@@ -26,7 +26,7 @@ export const getLatestUpdateAction = async () => {
     select: {
       id: true,
       title: true,
-      viewsCount: true,
+      views: true,
     },
   });
   return { opportunities, posts };

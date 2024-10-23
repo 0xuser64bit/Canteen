@@ -11,8 +11,10 @@ import { formatDate } from "@/lib/helper";
 import { CommentInterection } from "../../../_components/CommentInterection";
 import { GoBack } from "../../../_components/GoBack";
 import { PostInterection } from "../../../_components/PostInterection";
+import { viewsAction } from "@/actions/post/views";
 
 export default async function PostPage({ params }: { params: { id: string } }) {
+  await viewsAction({ postId: params.id });
   const session = await auth();
   const post = await getPostAction({
     postId: params?.id as string,
@@ -55,7 +57,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
             <PostInterection
               likes={post.totalLikes?.likes ?? 0}
               comments={post.totalComments?.length!}
-              views={0}
+              views={post.views ?? 0}
               hasLiked={post.hasLiked}
               shares={0}
               postId={params.id}

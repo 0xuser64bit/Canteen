@@ -1,12 +1,14 @@
 import { getOpportunityAction } from "@/actions/opportunity/getOpportunity";
 import { OpportunityDiscussPage } from "../../../_components/OpportunityDiscussPage";
 import { auth } from "@/lib/auth";
+import { viewsAction } from "@/actions/opportunity/views";
 
 export default async function OpportunityPage({
   params,
 }: {
   params: { id: string };
 }) {
+  await viewsAction({ opportunityId: params.id });
   const session = await auth();
   const opportunity = await getOpportunityAction({
     id: params.id,

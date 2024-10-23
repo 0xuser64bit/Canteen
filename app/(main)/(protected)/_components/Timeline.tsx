@@ -26,7 +26,7 @@ export const Timeline = ({ allposts }: { allposts: any }) => {
             hasLiked={post.hasLiked}
             totalLikes={post.totalLikes.likes!}
             shares={0}
-            views={0}
+            views={post.views}
             comments={post.totalComments.length!}
           />
         ))}
