@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { createPost } from "@/actions/post/createPost";
 
 import { Maximize2, PlusCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -26,6 +26,13 @@ export const QuickPost = () => {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [errors, setErrors] = useState({ title: "", content: "" });
+
+  useEffect(() => {
+    // Hack: to get rid of author is missing error
+    if (session.status === "authenticated" && !session) {
+      router.refresh();
+    }
+  }, [session.status, session]);
 
   // Todo: I don't know if this should be done as formData or will it be better if we had state variables here instead?.🤷‍♂️
   const handleCreatePost = async (formData: FormData) => {
