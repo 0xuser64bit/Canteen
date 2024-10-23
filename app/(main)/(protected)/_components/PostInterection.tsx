@@ -1,10 +1,23 @@
 "use client";
 
+import { createCommentAction } from "@/actions/post/createComment";
 import { PostLikeAction } from "@/actions/post/postLike";
+import { Spinner } from "@/components/Spinner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Eye, Heart, MessageCircle, Share } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const PostInterection = ({
   likes,
@@ -22,6 +35,9 @@ export const PostInterection = ({
   postId: string;
 }) => {
   const [liked, setLiked] = useState(hasLiked);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [content, setContent] = useState("");
   const session = useSession();
   const router = useRouter();
 
@@ -44,6 +60,28 @@ export const PostInterection = ({
       router.refresh();
     }
   };
+
+  const handlePostComment = async () => {
+    if (!content) {
+      toast.info("Comment is empty");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await createCommentAction({
+        postId,
+        content,
+        email: session.data?.user?.email!,
+      });
+    } catch (err) {
+      toast.error("Unable to post your commnet");
+    } finally {
+      setIsLoading(false);
+      setIsDialogOpen(false);
+      setContent("");
+      router.refresh();
+    }
+  };
   return (
     <div className="pt-4 flex justify-between">
       <div className="flex gap-x-1 items-center">
@@ -55,13 +93,38 @@ export const PostInterection = ({
           <Heart className="w-5 h-5" fill={liked ? "#FF0000" : ""} />
           <p className="text-xs">{likes}</p>
         </div>
-        <div
-          className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
-          role="button"
-        >
-          <MessageCircle className="w-5 h-5" />
-          <p className="text-xs">{comments}</p>
-        </div>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <div
+              className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
+              role="button"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <p className="text-xs">{comments}</p>
+            </div>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>What are your thoughts on this?</DialogTitle>
+            </DialogHeader>
+            <div>
+              <Textarea
+                id="comment"
+                name="comment"
+                value={content}
+                placeholder="write down something here..."
+                onChange={(e) => setContent(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button onClick={() => handlePostComment()}>
+                {isLoading ? <Spinner /> : "Comment"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <div
           className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-1 px-2 py-1 rounded-full"
           role="button"

@@ -24,7 +24,7 @@ export const CommentInterection = ({
 }) => {
   const session = useSession();
   const [isUpvoted, setIsUpvoted] = useState(false);
-  const [content, setContet] = useState("");
+  const [content, setContent] = useState("");
   const router = useRouter();
 
   const nhandleCommentUpvote = async (commentId: string) => {
@@ -45,10 +45,11 @@ export const CommentInterection = ({
     try {
       await createCommentAction({ content, postId, email });
       toast.success("Comment posted successfully.");
-      setContet("");
-      router.refresh();
     } catch (err) {
       toast.error("unable to post comment");
+    } finally {
+      setContent("");
+      router.refresh();
     }
   };
   return (
@@ -64,7 +65,8 @@ export const CommentInterection = ({
           <Input
             placeholder="What are your thoughts?"
             className="flex-grow bg-[#f9f9fb] dark:bg-black"
-            onChange={(e) => setContet(e.target.value)}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
           />
         </div>
         <Button className="mb-6" onClick={() => handlePostComment()}>
