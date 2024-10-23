@@ -41,3 +41,13 @@ export const generateRandomColour = () => {
   }
   return color;
 };
+
+export const shuffleArray = (arr: any[]) => {
+  arr.map((item, i) => {
+    let randomIdx = Math.floor(Math.random() * (i + 1));
+    let temp = arr[i];
+    arr[i] = arr[randomIdx];
+    arr[randomIdx] = temp;
+  });
+  return arr;
+};

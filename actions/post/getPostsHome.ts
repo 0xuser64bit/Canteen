@@ -1,11 +1,9 @@
 "use server";
 import db from "@/db";
+import { shuffleArray } from "@/lib/helper";
 
-export const getPostsByUser = async ({ email }: { email: string }) => {
+export const getPostsHome = async ({ email }: { email: string }) => {
   const posts = await db.post.findMany({
-    where: {
-      authorId: email,
-    },
     orderBy: {
       createdAt: "desc",
     },
@@ -37,7 +35,7 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
     },
   });
 
-  const transformedPost = posts.map((post) => ({
+  let transformedPost = posts.map((post) => ({
     ...post,
     hasLiked: post.likes.length > 0,
     totalLikes: post._count,
@@ -46,5 +44,6 @@ export const getPostsByUser = async ({ email }: { email: string }) => {
     _count: undefined,
   }));
 
+  transformedPost = shuffleArray(transformedPost);
   return transformedPost;
 };
