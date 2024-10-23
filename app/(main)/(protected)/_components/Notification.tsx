@@ -26,8 +26,8 @@ export const Notification = () => {
           <div className="flex justify-between items-center py-2">
             <p>Notifications</p>
             {/* Todo: redirect to /notifications */}
-            <div role="button" className="hover:underline" onClick={() => {}}>
-              See All
+            <div role="button" className="hover:underline" onClick={() => { }}>
+              Mark as Reacd All
             </div>
           </div>
         </DropdownMenuLabel>
@@ -41,10 +41,10 @@ export const Notification = () => {
             <div
               role="button"
               className="flex w-full select-none items-center p-3 text-sm hover:bg-slate-300/25"
-              onClick={() => {}}
+              onClick={() => { }}
             >
-              <span className="line-clamp-1 text-start font-medium">
-                Profile
+              <span className="line-clamp-1 text-start font-medium py-2">
+                Todo: Implement notification system.
               </span>
             </div>
           </DropdownMenuItem>
