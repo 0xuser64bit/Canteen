@@ -10,7 +10,6 @@ import {
 import { EllipsisVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PostInterection } from "./PostInterection";
-import { useState } from "react";
 
 export const Post = ({
   id,

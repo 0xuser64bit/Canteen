@@ -1,6 +1,5 @@
 "use server";
 import db from "@/db";
-import { shuffleArray } from "@/lib/helper";
 
 export const getPostsHome = async ({ email }: { email: string }) => {
   const posts = await db.post.findMany({
@@ -44,6 +43,5 @@ export const getPostsHome = async ({ email }: { email: string }) => {
     _count: undefined,
   }));
 
-  transformedPost = shuffleArray(transformedPost);
   return transformedPost;
 };

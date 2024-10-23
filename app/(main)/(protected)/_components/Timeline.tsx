@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { Post } from "./Post";
 import { QuickPost } from "./QuickPost";
+import { shuffleArray } from "@/lib/helper";
 
 export const Timeline = ({ allposts }: { allposts: any }) => {
   const [posts, setPosts] = useState(allposts ?? []);
   useEffect(() => {
     setPosts(allposts ?? []);
+    shuffleArray(posts);
   }, [allposts]);
   return (
     <div>
@@ -25,7 +27,7 @@ export const Timeline = ({ allposts }: { allposts: any }) => {
             content={post.content}
             hasLiked={post.hasLiked}
             totalLikes={post.totalLikes.likes!}
-            shares={0}
+            shares={post.shares ?? 0}
             views={post.views}
             comments={post.totalComments.length!}
           />

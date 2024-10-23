@@ -2,6 +2,7 @@
 
 import { createCommentAction } from "@/actions/post/createComment";
 import { PostLikeAction } from "@/actions/post/postLike";
+import { sharesAction } from "@/actions/post/shares";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +41,7 @@ export const PostInterection = ({
   const [content, setContent] = useState("");
   const session = useSession();
   const router = useRouter();
+  const base_url = "http://localhost:3000";
 
   const handleInterection = async () => {
     if (!liked) {
@@ -79,6 +81,18 @@ export const PostInterection = ({
       setIsLoading(false);
       setIsDialogOpen(false);
       setContent("");
+      router.refresh();
+    }
+  };
+
+  const handleShares = async () => {
+    try {
+      await sharesAction({ postId });
+      navigator.clipboard.writeText(base_url + "/posts/" + postId);
+      toast.success("Link copied to clipboard");
+    } catch (err) {
+      console.log("not able to share post");
+    } finally {
       router.refresh();
     }
   };
@@ -136,6 +150,7 @@ export const PostInterection = ({
       <div
         className="bg-slate-100 dark:bg-transparent dark:hover:bg-slate-100/10 hover:bg-slate-200 flex justify-center items-center gap-x-2 px-2 py-1 rounded-full"
         role="button"
+        onClick={() => handleShares()}
       >
         <Share className="w-5 h-5" />
         <p className="text-xs">{shares}</p>
