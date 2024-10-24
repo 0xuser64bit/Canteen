@@ -12,6 +12,8 @@ Canteen is a platform designed to bring students from different universities tog
 - Communities
 - Personal DMs
 - and much more
+- Events management
+- Alumni tag
 
 # Contributions
 
