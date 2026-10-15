@@ -45,7 +45,8 @@ const google =
         google: {
           clientId: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          // Only Google Workspace accounts; personal Gmail is rejected by Google itself.
+          // Only Google Workspace accounts. Google still lets people pick a personal
+          // Gmail; Better Auth then rejects its token for having no `hd` claim.
           hd: "*",
           prompt: "select_account" as const,
           // Canteen never stores real names or photos.
