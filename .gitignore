@@ -31,3 +31,4 @@ npm-debug.log*
 /.impeccable/build/
 /.impeccable/mocks/
 /.impeccable/live/
+/.impeccable/hook.cache.json
