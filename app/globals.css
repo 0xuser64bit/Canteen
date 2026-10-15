@@ -1,0 +1,216 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(0.974 0.004 255);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.953 0.006 255);
+  --surface-3: oklch(0.918 0.008 255);
+  --ink: oklch(0.205 0.016 265);
+  --muted: oklch(0.46 0.016 265);
+  --line: oklch(0.895 0.008 255);
+  --line-strong: oklch(0.82 0.01 255);
+
+  /* "You": the student's own voice and actions. Never decoration. */
+  --you: oklch(0.885 0.165 96);
+  --you-hover: oklch(0.855 0.17 93);
+  --you-ink: oklch(0.235 0.04 80);
+  --you-muted: oklch(0.38 0.06 82);
+
+  --danger: oklch(0.55 0.2 25);
+  --danger-surface: oklch(0.955 0.03 25);
+  --ring: oklch(0.205 0.016 265);
+  --doodle: oklch(0.205 0.016 265 / 0.05);
+  --shadow-soft:
+    0 1px 2px oklch(0.2 0.02 265 / 0.05),
+    0 6px 20px -6px oklch(0.2 0.02 265 / 0.08);
+  --shadow-pop:
+    0 2px 6px oklch(0.2 0.02 265 / 0.08),
+    0 18px 40px -12px oklch(0.2 0.02 265 / 0.2);
+
+  /* Per-thread alias colours: hue comes from the alias, lightness from the theme. */
+  --alias-name-l: 0.5;
+  --alias-name-c: 0.15;
+  --alias-bg-l: 0.92;
+  --alias-bg-c: 0.07;
+  --alias-fg-l: 0.36;
+  --alias-fg-c: 0.11;
+
+  color-scheme: light;
+}
+
+.dark {
+  --background: oklch(0.155 0.012 265);
+  --surface: oklch(0.212 0.014 265);
+  --surface-2: oklch(0.188 0.013 265);
+  --surface-3: oklch(0.255 0.015 265);
+  --ink: oklch(0.965 0.004 265);
+  --muted: oklch(0.74 0.012 265);
+  --line: oklch(0.285 0.014 265);
+  --line-strong: oklch(0.36 0.016 265);
+
+  --you-hover: oklch(0.92 0.15 98);
+  --danger: oklch(0.7 0.17 25);
+  --danger-surface: oklch(0.27 0.06 25);
+  --ring: oklch(0.885 0.165 96);
+  --doodle: oklch(1 0 0 / 0.04);
+  --shadow-soft:
+    0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -8px oklch(0 0 0 / 0.5);
+  --shadow-pop:
+    0 2px 8px oklch(0 0 0 / 0.4), 0 22px 48px -12px oklch(0 0 0 / 0.65);
+
+  --alias-name-l: 0.8;
+  --alias-name-c: 0.13;
+  --alias-bg-l: 0.34;
+  --alias-bg-c: 0.075;
+  --alias-fg-l: 0.93;
+  --alias-fg-c: 0.06;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-you: var(--you);
+  --color-you-hover: var(--you-hover);
+  --color-you-ink: var(--you-ink);
+  --color-you-muted: var(--you-muted);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-mona), ui-sans-serif, system-ui, sans-serif;
+  --shadow-soft: var(--shadow-soft);
+  --shadow-pop: var(--shadow-pop);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  body {
+    @apply bg-background text-ink antialiased;
+    font-feature-settings: "ss01" on;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--you);
+    color: var(--you-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  input,
+  textarea {
+    caret-color: var(--ink);
+  }
+  a {
+    text-underline-offset: 0.2em;
+  }
+}
+
+/* Expanded heavy cut of Mona Sans for display moments. */
+@utility font-display {
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+@utility font-wide {
+  font-stretch: 112%;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The chat wallpaper: authored doodles tinted by the theme. */
+@utility wallpaper {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-color: var(--doodle);
+    mask: url("/doodles.svg") 0 0 / 300px 300px repeat;
+    pointer-events: none;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* A message arriving: rises out of the composer with a small overshoot. */
+@keyframes bubble-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes heart-pop {
+  40% {
+    transform: scale(1.3);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@utility animate-bubble-pop {
+  animation: bubble-pop 320ms var(--ease-spring) both;
+  transform-origin: bottom right;
+}
+
+@utility animate-heart-pop {
+  animation: heart-pop 300ms var(--ease-out-quart);
+}
+
+@utility animate-typing {
+  animation: typing 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
