@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
 import { HelplineNote } from "@/components/helpline";
+import { PollView } from "@/components/poll";
 import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
@@ -338,9 +339,18 @@ export function ThreadView({ thread }: { thread: Thread }) {
               <h1 className="text-[22px] leading-tight font-bold tracking-tight text-balance sm:text-[26px]">
                 {thread.title}
               </h1>
-              <div className="mt-3 text-[16px] leading-relaxed break-words whitespace-pre-wrap">
-                <Linkified text={thread.body} />
-              </div>
+              {thread.body && (
+                <div className="mt-3 text-[16px] leading-relaxed break-words whitespace-pre-wrap">
+                  <Linkified text={thread.body} />
+                </div>
+              )}
+              {thread.poll && (
+                <PollView
+                  postId={thread.id}
+                  poll={thread.poll}
+                  onYellow={mine}
+                />
+              )}
               {thread.image && (
                 <PostImage image={thread.image} alt="" priority />
               )}

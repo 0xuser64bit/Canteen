@@ -16,6 +16,7 @@ import {
   DELETE_CONFIRMATION,
   LIMITS,
   moderationInput,
+  pollVoteInput,
   postInput,
   reportInput,
 } from "@/lib/validation";
@@ -95,7 +96,7 @@ function sniffImage(bytes: Buffer) {
 export type ComposeState = {
   error?: string;
   fieldErrors?: Partial<
-    Record<"title" | "body" | "topic" | "audience" | "image", string>
+    Record<"title" | "body" | "topic" | "audience" | "image" | "poll", string>
   >;
 } | null;
 
@@ -106,11 +107,13 @@ export async function createPost(
   const viewer = await getViewer();
   if (!viewer) return { error: SIGNED_OUT.error };
 
+  const choices = form.getAll("pollChoice");
   const parsed = postInput.safeParse({
     title: form.get("title"),
     body: form.get("body"),
     topic: form.get("topic"),
     audience: form.get("audience"),
+    poll: choices.length > 0 ? choices : undefined,
   });
   if (!parsed.success) {
     const fieldErrors: NonNullable<ComposeState>["fieldErrors"] = {};
@@ -160,9 +163,13 @@ export async function createPost(
     imageUrl = blob.url;
   }
 
+  const { poll, ...fields } = parsed.data;
   const post = await db.post.create({
     data: {
-      ...parsed.data,
+      ...fields,
+      pollOptions: poll && {
+        create: poll.map((label, position) => ({ label, position })),
+      },
       imageUrl,
       imageWidth: imageUrl ? dimension("imageWidth") : null,
       imageHeight: imageUrl ? dimension("imageHeight") : null,
@@ -213,6 +220,31 @@ export async function setLike(
     await db.like.deleteMany({ where: { userId: viewer.id, postId } });
   }
   return ok({ liked, likeCount: await db.like.count({ where: { postId } }) });
+}
+
+export async function votePoll(
+  postId: string,
+  optionId: string,
+): Promise<ActionResult<queries.Poll>> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  const parsed = pollVoteInput.safeParse({ postId, optionId });
+  if (!parsed.success || !(await postVisibleTo(viewer, postId)))
+    return NOT_FOUND;
+  const option = await db.pollOption.findFirst({
+    where: { id: optionId, postId },
+    select: { id: true },
+  });
+  if (!option) return { ok: false, error: "That choice isn't in this poll." };
+
+  // One vote per student; voting again moves it.
+  await db.pollVote.upsert({
+    where: { userId_postId: { userId: viewer.id, postId } },
+    create: { userId: viewer.id, postId, optionId },
+    update: { optionId },
+  });
+  const poll = await queries.getPoll(viewer, postId);
+  return poll ? ok(poll) : NOT_FOUND;
 }
 
 export async function recordView(postId: string): Promise<void> {

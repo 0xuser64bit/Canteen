@@ -1,6 +1,14 @@
 "use client";
 
-import { Globe, ImagePlus, Loader2, Lock, X } from "lucide-react";
+import {
+  Globe,
+  ImagePlus,
+  ListChecks,
+  Loader2,
+  Lock,
+  Plus,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import {
   startTransition,
@@ -137,6 +145,7 @@ export function Composer({
   const [topic, setTopic] = useState<Topic>(initialTopic);
   const [audience, setAudience] = useState<Audience>("EVERYONE");
   const [image, setImage] = useState<PreparedImage | null>(null);
+  const [poll, setPoll] = useState<string[] | null>(null);
   const [imageError, setImageError] = useState<string>();
   const [preparing, setPreparing] = useState(false);
   const restored = useRef(false);
@@ -189,6 +198,7 @@ export function Composer({
     form.set("body", body);
     form.set("topic", topic);
     form.set("audience", audience);
+    poll?.forEach((choice) => form.append("pollChoice", choice));
     if (image) {
       form.set("image", image.file);
       form.set("imageWidth", String(image.width));
@@ -203,9 +213,13 @@ export function Composer({
   const nearLimit =
     title.length > LIMITS.title.max * 0.8 ||
     body.length > LIMITS.body.max * 0.8;
+  const choices = poll?.map((choice) => choice.trim().toLowerCase()) ?? [];
+  const pollReady =
+    choices.every(Boolean) && new Set(choices).size === choices.length;
   const ready =
     title.trim().length >= LIMITS.title.min &&
-    body.trim().length > 0 &&
+    (body.trim().length > 0 || poll !== null) &&
+    pollReady &&
     !tooLong;
 
   return (
@@ -282,7 +296,7 @@ export function Composer({
             id="title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="What's on your mind?"
+            placeholder={poll ? "Ask your question" : "What's on your mind?"}
             autoComplete="off"
             aria-invalid={!!errors.title || undefined}
             aria-describedby={errors.title ? "title-error" : undefined}
@@ -295,12 +309,75 @@ export function Composer({
             id="body"
             value={body}
             onChange={(event) => setBody(event.target.value)}
-            placeholder="Give people the context they need to answer well. Skip names and anything that could identify you."
-            rows={6}
+            placeholder={
+              poll
+                ? "Add context if it helps (optional)"
+                : "Give people the context they need to answer well. Skip names and anything that could identify you."
+            }
+            rows={poll ? 2 : 6}
             aria-invalid={!!errors.body || undefined}
             aria-describedby={errors.body ? "body-error" : undefined}
-            className="[field-sizing:content] min-h-48 w-full resize-none bg-transparent px-4 pb-4 text-[16px] leading-relaxed outline-none placeholder:text-muted"
+            className={cn(
+              "[field-sizing:content] w-full resize-none bg-transparent px-4 pb-4 text-[16px] leading-relaxed outline-none placeholder:text-muted",
+              poll ? "min-h-20" : "min-h-48",
+            )}
           />
+          {poll && (
+            <fieldset className="mx-3 mb-3 flex flex-col gap-2 rounded-2xl bg-surface-2 p-3 ring-1 ring-line">
+              <legend className="sr-only">Poll choices</legend>
+              {poll.map((choice, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    aria-label={`Choice ${index + 1}`}
+                    value={choice}
+                    onChange={(event) =>
+                      setPoll(
+                        poll.map((c, i) =>
+                          i === index ? event.target.value : c,
+                        ),
+                      )
+                    }
+                    placeholder={`Choice ${index + 1}`}
+                    maxLength={LIMITS.pollChoice.max}
+                    autoComplete="off"
+                    className="h-11 min-w-0 flex-1 rounded-xl bg-surface px-3.5 text-[15px] ring-1 ring-line outline-none ring-inset placeholder:text-muted focus:ring-2 focus:ring-ink dark:focus:ring-you"
+                  />
+                  {poll.length > LIMITS.pollChoices.min && (
+                    <button
+                      type="button"
+                      aria-label={`Remove choice ${index + 1}`}
+                      onClick={() =>
+                        setPoll(poll.filter((_, i) => i !== index))
+                      }
+                      className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-2">
+                {poll.length < LIMITS.pollChoices.max ? (
+                  <button
+                    type="button"
+                    onClick={() => setPoll([...poll, ""])}
+                    className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                  >
+                    <Plus className="size-4" /> Add a choice
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPoll(null)}
+                  className="h-9 cursor-pointer rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                >
+                  Remove poll
+                </button>
+              </div>
+            </fieldset>
+          )}
           {image && (
             <div className="relative mx-3 mb-3">
               {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
@@ -319,7 +396,7 @@ export function Composer({
               </button>
             </div>
           )}
-          {(imagesEnabled || nearLimit) && (
+          {(imagesEnabled || !poll || nearLimit) && (
             <div className="flex items-center gap-2 border-t border-line px-3 py-2">
               {imagesEnabled && (
                 <>
@@ -344,6 +421,15 @@ export function Composer({
                   </label>
                 </>
               )}
+              {!poll && (
+                <button
+                  type="button"
+                  onClick={() => setPoll(["", ""])}
+                  className="flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                >
+                  <ListChecks className="size-[18px]" /> Add poll
+                </button>
+              )}
               <span className="flex-1" />
               <Counter value={title.length} max={LIMITS.title.max} />
               <Counter value={body.length} max={LIMITS.body.max} />
@@ -352,6 +438,7 @@ export function Composer({
         </div>
         <FieldError id="title-error">{errors.title}</FieldError>
         <FieldError id="body-error">{errors.body}</FieldError>
+        <FieldError>{errors.poll}</FieldError>
         <FieldError>
           {imageError ?? errors.image ?? errors.topic ?? errors.audience}
         </FieldError>

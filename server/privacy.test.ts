@@ -505,4 +505,105 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       ).toBeNull();
     });
   });
+
+  describe("polls", () => {
+    async function pollPost(
+      author: string,
+      labels: string[],
+      audience: "EVERYONE" | "CAMPUS" = "EVERYONE",
+    ) {
+      const user = await db.user.findUniqueOrThrow({ where: { id: author } });
+      return db.post.create({
+        data: {
+          title: "Which one?",
+          body: "",
+          audience,
+          authorId: author,
+          universityId: user.universityId,
+          pollOptions: {
+            create: labels.map((label, position) => ({ label, position })),
+          },
+        },
+        include: { pollOptions: { orderBy: { position: "asc" } } },
+      });
+    }
+    const pollFor = async (viewerId: string, postId: string) =>
+      (
+        await queries.getFeed(await viewer(viewerId), {
+          scope: { kind: "everyone" },
+        })
+      ).items.find((item) => item.id === postId)?.poll;
+
+    it("creates a poll from the composer's form", async () => {
+      as("ada");
+      const form = new FormData();
+      form.set("title", "Best dining hall?");
+      form.set("body", "");
+      form.set("topic", "CAMPUS_LIFE");
+      form.set("audience", "EVERYONE");
+      form.append("pollChoice", "North");
+      form.append("pollChoice", "South");
+      await expect(actions.createPost(null, form)).rejects.toMatchObject({
+        url: expect.stringMatching(/^\/p\//),
+      });
+      const options = await db.pollOption.findMany({
+        orderBy: { position: "asc" },
+      });
+      expect(options.map((option) => option.label)).toEqual(["North", "South"]);
+    });
+
+    it("hides results until you vote and moves your vote when you change it", async () => {
+      const p = await pollPost("ada", ["North", "South"]);
+      const [north, south] = p.pollOptions;
+      expect((await pollFor("ada", p.id))?.options.map((o) => o.votes)).toEqual(
+        [0, 0],
+      );
+
+      as("grace");
+      const first = await actions.votePoll(p.id, north!.id);
+      expect(first.ok && first.data.options.map((o) => o.votes)).toEqual([
+        1, 0,
+      ]);
+      expect(await pollFor("linus", p.id)).toMatchObject({
+        total: 1,
+        choice: null,
+        options: [{ votes: null }, { votes: null }],
+      });
+
+      const moved = await actions.votePoll(p.id, south!.id);
+      expect(moved.ok && moved.data).toMatchObject({
+        total: 1,
+        choice: south!.id,
+        options: [{ votes: 0 }, { votes: 1 }],
+      });
+      expect(await db.pollVote.count()).toBe(1);
+    });
+
+    it("rejects choices from another poll and polls you can't see", async () => {
+      const a = await pollPost("ada", ["Yes", "No"]);
+      const b = await pollPost("ada", ["Up", "Down"]);
+      const campus = await pollPost("ada", ["Here", "There"], "CAMPUS");
+      as("grace");
+      expect((await actions.votePoll(b.id, a.pollOptions[0]!.id)).ok).toBe(
+        false,
+      );
+      expect(
+        (await actions.votePoll(campus.id, campus.pollOptions[0]!.id)).ok,
+      ).toBe(false);
+      expect(await db.pollVote.count()).toBe(0);
+    });
+
+    it("never says who voted", async () => {
+      const p = await pollPost("ada", ["Yes", "No"]);
+      as("grace");
+      await actions.votePoll(p.id, p.pollOptions[0]!.id);
+      as("linus");
+      await actions.votePoll(p.id, p.pollOptions[1]!.id);
+      const payload = JSON.stringify(
+        await queries.getThread(await viewer("alan"), p.id),
+      );
+      for (const secret of ['"grace"', '"linus"', "grace@mit.edu"])
+        expect(payload).not.toContain(secret);
+    });
+  });
 });

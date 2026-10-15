@@ -44,6 +44,35 @@ describe("postInput", () => {
   });
 });
 
+describe("postInput polls", () => {
+  const poll = {
+    title: "Best dining hall?",
+    body: "",
+    topic: "CAMPUS_LIFE",
+    audience: "EVERYONE",
+  };
+
+  it("lets a poll stand on its question, trimming its choices", () => {
+    const parsed = postInput.parse({ ...poll, poll: [" North ", "South"] });
+    expect(parsed.poll).toEqual(["North", "South"]);
+    expect(parsed.body).toBe("");
+  });
+
+  it("still needs a body without a poll", () => {
+    expect(postInput.safeParse(poll).success).toBe(false);
+  });
+
+  it.each([
+    [["Only one"]],
+    [["A", "B", "C", "D", "E"]],
+    [["Same", "same"]],
+    [["A", "  "]],
+    [["Text me", "415-555-0132"]],
+  ])("rejects choices %j", (choices) => {
+    expect(postInput.safeParse({ ...poll, poll: choices }).success).toBe(false);
+  });
+});
+
 describe("commentInput", () => {
   it("enforces the length limit", () => {
     expect(

@@ -5,6 +5,8 @@ export const LIMITS = {
   title: { min: 4, max: 140 },
   body: { min: 1, max: 6000 },
   comment: { min: 1, max: 2000 },
+  pollChoice: { max: 80 },
+  pollChoices: { min: 2, max: 4 },
   imageBytes: 4 * 1024 * 1024,
 } as const;
 
@@ -48,11 +50,34 @@ const text = (min: number, max: number, field: string) =>
         .refine((value) => !hasContactInfo(value), CONTACT_INFO_MESSAGE),
     );
 
-export const postInput = z.object({
-  title: text(LIMITS.title.min, LIMITS.title.max, "Title"),
-  body: text(LIMITS.body.min, LIMITS.body.max, "Post"),
-  topic: z.enum(Topic),
-  audience: z.enum(Audience),
+const pollChoices = z
+  .array(text(1, LIMITS.pollChoice.max, "Each choice"))
+  .min(LIMITS.pollChoices.min, "A poll needs at least two choices.")
+  .max(LIMITS.pollChoices.max, "A poll can have up to four choices.")
+  .refine(
+    (choices) =>
+      new Set(choices.map((choice) => choice.toLowerCase())).size ===
+      choices.length,
+    "Each choice needs to be different.",
+  );
+
+export const postInput = z
+  .object({
+    title: text(LIMITS.title.min, LIMITS.title.max, "Title"),
+    body: text(0, LIMITS.body.max, "Post"),
+    topic: z.enum(Topic),
+    audience: z.enum(Audience),
+    poll: pollChoices.optional(),
+  })
+  // A poll can stand on its question; anything else needs a body.
+  .refine((post) => post.poll || post.body.length >= LIMITS.body.min, {
+    path: ["body"],
+    message: "Post is too short.",
+  });
+
+export const pollVoteInput = z.object({
+  postId: z.string().min(1).max(64),
+  optionId: z.string().min(1).max(64),
 });
 
 export const commentInput = z.object({

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
+import { PollView } from "@/components/poll";
 import { PostMenu } from "@/components/post-menu";
 import { TimeAgo } from "@/components/time";
 import { topicLabel } from "@/lib/topics";
@@ -234,14 +235,19 @@ export function PostCard({
               {post.title}
             </Link>
           </h2>
-          <p
-            className={cn(
-              "mt-1 line-clamp-4 text-[15px] leading-relaxed whitespace-pre-line",
-              mine ? "text-you-ink" : "text-ink/85",
-            )}
-          >
-            {post.excerpt}
-          </p>
+          {post.excerpt && (
+            <p
+              className={cn(
+                "mt-1 line-clamp-4 text-[15px] leading-relaxed whitespace-pre-line",
+                mine ? "text-you-ink" : "text-ink/85",
+              )}
+            >
+              {post.excerpt}
+            </p>
+          )}
+          {post.poll && (
+            <PollView postId={post.id} poll={post.poll} onYellow={mine} />
+          )}
           {post.image && (
             <PostImage
               image={post.image}

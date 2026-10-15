@@ -83,6 +83,57 @@ function afterCursor(cursor: string | undefined): Prisma.PostWhereInput {
 }
 
 // ---------------------------------------------------------------------------
+// Polls
+// ---------------------------------------------------------------------------
+
+export type Poll = {
+  /** `votes` is null until the viewer votes (or if the poll isn't theirs). */
+  options: { id: string; label: string; votes: number | null }[];
+  total: number;
+  /** The option the viewer picked, if any. */
+  choice: string | null;
+};
+
+function pollSelect(viewerId: string) {
+  return {
+    authorId: true,
+    pollOptions: {
+      orderBy: { position: "asc" },
+      select: { id: true, label: true, _count: { select: { votes: true } } },
+    },
+    pollVotes: { where: { userId: viewerId }, select: { optionId: true } },
+  } satisfies Prisma.PostSelect;
+}
+
+type PollRow = Prisma.PostGetPayload<{
+  select: ReturnType<typeof pollSelect>;
+}>;
+
+function toPoll(row: PollRow, viewer: Viewer): Poll | null {
+  if (row.pollOptions.length === 0) return null;
+  const choice = row.pollVotes[0]?.optionId ?? null;
+  // Results stay hidden until you vote, so early votes don't herd later ones.
+  const reveal = choice !== null || row.authorId === viewer.id;
+  return {
+    options: row.pollOptions.map((option) => ({
+      id: option.id,
+      label: option.label,
+      votes: reveal ? option._count.votes : null,
+    })),
+    total: row.pollOptions.reduce((sum, o) => sum + o._count.votes, 0),
+    choice,
+  };
+}
+
+export async function getPoll(viewer: Viewer, postId: string) {
+  const row = await db.post.findFirst({
+    where: { id: postId, ...visibleTo(viewer) },
+    select: pollSelect(viewer.id),
+  });
+  return row && toPoll(row, viewer);
+}
+
+// ---------------------------------------------------------------------------
 // Posts
 // ---------------------------------------------------------------------------
 
@@ -98,7 +149,7 @@ function postSelect(viewerId: string) {
     audience: true,
     createdAt: true,
     hiddenAt: true,
-    authorId: true,
+    ...pollSelect(viewerId),
     university: { select: universitySelect },
     likes: { where: { userId: viewerId }, select: { userId: true } },
     _count: {
@@ -129,6 +180,7 @@ export type PostSummary = {
   commentCount: number;
   viewCount: number;
   hidden: boolean;
+  poll: Poll | null;
 };
 
 function toSummary(row: PostRow, viewer: Viewer): PostSummary {
@@ -157,6 +209,7 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
     commentCount: row._count.comments,
     viewCount: row._count.views,
     hidden: row.hiddenAt !== null,
+    poll: toPoll(row, viewer),
   };
 }
 

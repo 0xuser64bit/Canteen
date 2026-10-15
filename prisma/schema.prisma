@@ -35,6 +35,7 @@ model User {
   views         PostView[]
   reports       Report[]
   notifications Notification[]
+  pollVotes     PollVote[]
 
   @@index([universityId])
 }
@@ -152,6 +153,8 @@ model Post {
   views         PostView[]
   reports       Report[]
   notifications Notification[]
+  pollOptions   PollOption[]
+  pollVotes     PollVote[]
 
   @@index([createdAt])
   @@index([universityId, createdAt])
@@ -186,6 +189,34 @@ model Like {
 
   @@id([userId, postId])
   @@index([postId, createdAt])
+}
+
+// A post's poll: two to four choices, in order.
+model PollOption {
+  id       String @id @default(cuid())
+  label    String
+  position Int
+
+  postId String
+  post   Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  votes  PollVote[]
+
+  @@unique([postId, position])
+}
+
+// One vote per student per poll; voting again moves it. Only totals ever leave the server.
+model PollVote {
+  createdAt DateTime @default(now())
+
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId   String
+  post     Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  optionId String
+  option   PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([optionId])
 }
 
 // One row per student who opened a post, so view counts can't be inflated by refreshing.
