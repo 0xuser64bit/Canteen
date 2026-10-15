@@ -1,13 +1,7 @@
-# Ignore artifacts:
-build
-coverage
-node_modules
 .next
-.cache
-package-lock.json
-public
+node_modules
+lib/generated
+prisma/migrations
+data/universities.json
+bun.lock
 next-env.d.ts
-next.config.ts
-bun.lockb
-package-lock.json
-ListofUniversity
