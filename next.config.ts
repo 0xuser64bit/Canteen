@@ -13,6 +13,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   typedRoutes: true,
+  experimental: {
+    // Posts carry an image (capped at 4 MB in lib/validation.ts) through a
+    // Server Action. 4.5 MB is also Vercel's request body ceiling.
+    serverActions: { bodySizeLimit: "4.5mb" },
+  },
   images: {
     // Post images live in Vercel Blob.
     remotePatterns: [
