@@ -9,5 +9,8 @@ try {
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: { path: "prisma/migrations" },
-  datasource: { url: process.env.DATABASE_URL },
+  // Migrations need a direct connection; poolers (PgBouncer) break migrate's locks.
+  datasource: {
+    url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
+  },
 });
