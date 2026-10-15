@@ -1,0 +1,376 @@
+"use client";
+
+import { Globe, ImagePlus, Loader2, Lock, X } from "lucide-react";
+import Link from "next/link";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { Button } from "@/components/ui/button";
+import { Counter, FieldError } from "@/components/ui/field";
+import type { Audience, Topic } from "@/lib/generated/prisma/enums";
+import { TOPICS } from "@/lib/topics";
+import { cn } from "@/lib/utils";
+import { LIMITS } from "@/lib/validation";
+import { createPost, type ComposeState } from "@/server/actions";
+
+const DRAFT_KEY = "canteen:draft";
+const MAX_IMAGE_EDGE = 2048;
+
+type Draft = { title: string; body: string };
+type PreparedImage = {
+  file: File;
+  width: number;
+  height: number;
+  preview: string;
+};
+
+function readDraft(): Draft {
+  try {
+    return {
+      title: "",
+      body: "",
+      ...JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}"),
+    };
+  } catch {
+    return { title: "", body: "" };
+  }
+}
+
+function writeDraft(draft: Draft | null) {
+  try {
+    if (draft && (draft.title || draft.body))
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    else localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Storage can be unavailable (private mode); drafts are a convenience.
+  }
+}
+
+/**
+ * Redraws the photo onto a canvas and exports a fresh file. The new file has
+ * no EXIF block, so GPS coordinates and camera details never leave the device.
+ */
+async function prepareImage(file: File): Promise<PreparedImage> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(
+    1,
+    MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height),
+  );
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const encode = (type: string, quality: number) =>
+    new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, type, quality),
+    );
+  let blob = await encode("image/webp", 0.86);
+  // Browsers without a WebP encoder silently fall back to PNG; use JPEG instead.
+  if (!blob || blob.type !== "image/webp")
+    blob = await encode("image/jpeg", 0.88);
+  if (!blob) throw new Error("encode failed");
+
+  const extension = blob.type === "image/webp" ? "webp" : "jpg";
+  return {
+    file: new File([blob], `image.${extension}`, { type: blob.type }),
+    width,
+    height,
+    preview: URL.createObjectURL(blob),
+  };
+}
+
+function Choice({
+  checked,
+  onSelect,
+  children,
+  className,
+}: {
+  checked: boolean;
+  onSelect: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={cn(
+        "flex shrink-0 cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold ring-1 transition-colors ring-inset",
+        checked
+          ? "bg-ink text-background ring-ink"
+          : "bg-surface text-muted ring-line hover:text-ink",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function Composer({
+  university,
+  initialTopic,
+  imagesEnabled,
+}: {
+  university: string;
+  initialTopic: Topic;
+  imagesEnabled: boolean;
+}) {
+  const [state, dispatch, pending] = useActionState<ComposeState, FormData>(
+    createPost,
+    null,
+  );
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [topic, setTopic] = useState<Topic>(initialTopic);
+  const [audience, setAudience] = useState<Audience>("EVERYONE");
+  const [image, setImage] = useState<PreparedImage | null>(null);
+  const [imageError, setImageError] = useState<string>();
+  const [preparing, setPreparing] = useState(false);
+  const restored = useRef(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  // Restore a draft once, after hydration (storage doesn't exist on the server).
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    const draft = readDraft();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage
+    if (draft.title) setTitle(draft.title);
+    if (draft.body) setBody(draft.body);
+  }, []);
+
+  // Saves as you type, and again if the server rejects a submit (state changes).
+  useEffect(() => {
+    if (restored.current) writeDraft({ title, body });
+  }, [title, body, state]);
+
+  useEffect(
+    () => () => void (image && URL.revokeObjectURL(image.preview)),
+    [image],
+  );
+
+  const pickImage = async (file: File | undefined) => {
+    setImageError(undefined);
+    if (!file) return;
+    if (!file.type.startsWith("image/"))
+      return setImageError("Pick an image file.");
+    setPreparing(true);
+    try {
+      const prepared = await prepareImage(file);
+      if (prepared.file.size > LIMITS.imageBytes)
+        setImageError("That image is too large even after compressing.");
+      else setImage(prepared);
+    } catch {
+      setImageError("We couldn't read that image. Try a JPEG or PNG.");
+    } finally {
+      setPreparing(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    writeDraft(null); // a successful post navigates away; a failure re-saves via the effect
+    const form = new FormData();
+    form.set("title", title);
+    form.set("body", body);
+    form.set("topic", topic);
+    form.set("audience", audience);
+    if (image) {
+      form.set("image", image.file);
+      form.set("imageWidth", String(image.width));
+      form.set("imageHeight", String(image.height));
+    }
+    startTransition(() => dispatch(form));
+  };
+
+  const errors = state?.fieldErrors ?? {};
+  const tooLong =
+    title.length > LIMITS.title.max || body.length > LIMITS.body.max;
+  const nearLimit =
+    title.length > LIMITS.title.max * 0.8 ||
+    body.length > LIMITS.body.max * 0.8;
+  const ready =
+    title.trim().length >= LIMITS.title.min &&
+    body.trim().length > 0 &&
+    !tooLong;
+
+  return (
+    <form onSubmit={submit} className="flex min-h-dvh flex-col lg:min-h-0">
+      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-background/85 px-4 py-2.5 backdrop-blur-xl lg:px-6 lg:py-4">
+        <Button asChild variant="ghost" size="icon" className="-ml-2">
+          <Link href="/home" aria-label="Cancel">
+            <X />
+          </Link>
+        </Button>
+        <h1 className="flex-1 text-[20px] font-display">New post</h1>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!ready || pending || preparing}
+        >
+          {pending && <Loader2 className="animate-spin" />}
+          {pending ? "Posting" : "Post"}
+        </Button>
+      </header>
+
+      <div className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6">
+        <fieldset className="min-w-0">
+          <legend className="mb-2 text-[13px] font-semibold text-muted">
+            Topic
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label="Topic"
+            className="-mx-4 no-scrollbar flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:px-0"
+          >
+            {TOPICS.map((option) => (
+              <Choice
+                key={option.id}
+                checked={topic === option.id}
+                onSelect={() => setTopic(option.id)}
+              >
+                {option.label}
+              </Choice>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="min-w-0">
+          <legend className="mb-2 text-[13px] font-semibold text-muted">
+            Who can see it
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label="Audience"
+            className="flex flex-wrap gap-2"
+          >
+            <Choice
+              checked={audience === "EVERYONE"}
+              onSelect={() => setAudience("EVERYONE")}
+            >
+              <Globe className="size-4" /> Every university
+            </Choice>
+            <Choice
+              checked={audience === "CAMPUS"}
+              onSelect={() => setAudience("CAMPUS")}
+            >
+              <Lock className="size-4" /> Only {university}
+            </Choice>
+          </div>
+        </fieldset>
+
+        <div className="rounded-[26px] bg-surface p-1 shadow-soft ring-1 ring-line focus-within:ring-2 focus-within:ring-ink dark:focus-within:ring-you">
+          <label htmlFor="title" className="sr-only">
+            Title
+          </label>
+          <input
+            id="title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="What's on your mind?"
+            autoComplete="off"
+            aria-invalid={!!errors.title || undefined}
+            aria-describedby={errors.title ? "title-error" : undefined}
+            className="w-full rounded-t-[22px] bg-transparent px-4 pt-4 pb-2 text-[20px] font-semibold tracking-tight outline-none placeholder:text-muted"
+          />
+          <label htmlFor="body" className="sr-only">
+            Post
+          </label>
+          <textarea
+            id="body"
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            placeholder="Give people the context they need to answer well. Skip names and anything that could identify you."
+            rows={6}
+            aria-invalid={!!errors.body || undefined}
+            aria-describedby={errors.body ? "body-error" : undefined}
+            className="[field-sizing:content] min-h-48 w-full resize-none bg-transparent px-4 pb-4 text-[16px] leading-relaxed outline-none placeholder:text-muted"
+          />
+          {image && (
+            <div className="relative mx-3 mb-3">
+              {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
+              <img
+                src={image.preview}
+                alt="Attached image preview"
+                className="max-h-80 w-full rounded-2xl object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setImage(null)}
+                aria-label="Remove image"
+                className="absolute top-2 right-2 grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur transition-colors hover:bg-black/80"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
+          {(imagesEnabled || nearLimit) && (
+            <div className="flex items-center gap-2 border-t border-line px-3 py-2">
+              {imagesEnabled && (
+                <>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    id="image"
+                    onChange={(event) => pickImage(event.target.files?.[0])}
+                  />
+                  <label
+                    htmlFor="image"
+                    className="flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring"
+                  >
+                    {preparing ? (
+                      <Loader2 className="size-[18px] animate-spin" />
+                    ) : (
+                      <ImagePlus className="size-[18px]" />
+                    )}
+                    {image ? "Replace image" : "Add image"}
+                  </label>
+                </>
+              )}
+              <span className="flex-1" />
+              <Counter value={title.length} max={LIMITS.title.max} />
+              <Counter value={body.length} max={LIMITS.body.max} />
+            </div>
+          )}
+        </div>
+        <FieldError id="title-error">{errors.title}</FieldError>
+        <FieldError id="body-error">{errors.body}</FieldError>
+        <FieldError>
+          {imageError ?? errors.image ?? errors.topic ?? errors.audience}
+        </FieldError>
+        {state?.error && (
+          <p
+            role="alert"
+            className="rounded-2xl bg-danger-surface px-4 py-3 text-[14px] font-medium text-danger"
+          >
+            {state.error}
+          </p>
+        )}
+
+        <p className="text-[13px] leading-relaxed text-pretty text-muted">
+          You&apos;ll appear under a fresh alias that only exists in this
+          thread.
+          {imagesEnabled &&
+            " Photos are re-encoded on your device first, so location data is removed before upload."}{" "}
+          Keep it kind: no names, no screenshots of private chats, no personal
+          details.
+        </p>
+      </div>
+    </form>
+  );
+}
