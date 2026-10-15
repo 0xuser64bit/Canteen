@@ -3,6 +3,7 @@ import { Discover } from "@/components/discover";
 import { MobileNav, SideNav } from "@/components/nav";
 import { SearchPalette } from "@/components/search";
 import { requireViewer } from "@/lib/session";
+import { TEAM } from "@/lib/universities";
 import { getUnreadCount } from "@/server/queries";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -12,7 +13,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1320px]">
       <Suspense>
-        <SideNav unread={unread} university={viewer.university.name} />
+        <SideNav
+          unread={unread}
+          university={viewer.university.name}
+          team={viewer.university.slug === TEAM.slug}
+        />
       </Suspense>
       <main className="min-w-0 flex-1 lg:border-x lg:border-line max-lg:[&:has(~[data-mobile-nav])]:pb-24">
         {children}

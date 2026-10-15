@@ -21,6 +21,7 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - **Campus-only posts.** Posts can be limited to students of your own university. Other universities can't load them at all.
 - **No identity on the wire.** Server code turns database rows into view models before anything is rendered; author ids and emails never leave the server. Integration tests check the serialized payloads.
 - **Photos lose their metadata.** Images are re-encoded in the browser before upload, which strips EXIF data such as GPS coordinates.
+- **Staff are labeled.** Whoever runs a deployment can let their own accounts in with `TEAM_EMAILS`. Those accounts skip the university check, and everything they post says "Canteen team".
 - **Safety without surveillance.** Reports are anonymous. Content that three different students report is hidden automatically. Notifications say that someone replied or liked, never who.
 
 ## Features
@@ -66,14 +67,15 @@ Open http://localhost:3000 and sign in with any address at a real university dom
 
 ### Configuration
 
-| Variable                                   | Required | Purpose                                                                                                    |
-| ------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                             | yes      | PostgreSQL connection string. Use a pooled URL in production.                                              |
-| `BETTER_AUTH_SECRET`                       | yes      | Signs sessions and derives aliases. `openssl rand -base64 32`.                                             |
-| `BETTER_AUTH_URL`                          | no       | Public site URL. Derived automatically on Vercel and in development.                                       |
-| `RESEND_API_KEY`, `EMAIL_FROM`             | no       | Sends sign-in codes by email. Without them, production offers Google sign-in only.                         |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no       | "Continue with Google" for university Workspace accounts. Redirect URI: `<site>/api/auth/callback/google`. |
-| `BLOB_READ_WRITE_TOKEN`                    | no       | Enables image uploads through Vercel Blob.                                                                 |
+| Variable                                   | Required | Purpose                                                                                                                |
+| ------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                             | yes      | PostgreSQL connection string. Use a pooled URL in production.                                                          |
+| `BETTER_AUTH_SECRET`                       | yes      | Signs sessions and derives aliases. `openssl rand -base64 32`.                                                         |
+| `BETTER_AUTH_URL`                          | no       | Public site URL. Derived automatically on Vercel and in development.                                                   |
+| `RESEND_API_KEY`, `EMAIL_FROM`             | no       | Sends sign-in codes by email. Without them, production offers Google sign-in only.                                     |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no       | "Continue with Google" for accounts with a verified university email. Redirect URI: `<site>/api/auth/callback/google`. |
+| `BLOB_READ_WRITE_TOKEN`                    | no       | Enables image uploads through Vercel Blob.                                                                             |
+| `TEAM_EMAILS`                              | no       | Comma-separated staff emails that can join without a university email. They post as "Canteen team".                    |
 
 ## Checks and tests
 

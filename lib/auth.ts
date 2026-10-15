@@ -6,10 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { db } from "@/lib/db";
 import { sendSignInCode } from "@/lib/email";
-import {
-  findUniversityByEmail,
-  type UniversityMatch,
-} from "@/lib/universities";
+import { universityForSignIn, type UniversityMatch } from "@/lib/universities";
 
 const UNIVERSITY_EMAIL_REQUIRED = {
   code: "UNIVERSITY_EMAIL_REQUIRED",
@@ -45,9 +42,8 @@ const google =
         google: {
           clientId: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          // Only Google Workspace accounts. Google still lets people pick a personal
-          // Gmail; Better Auth then rejects its token for having no `hd` claim.
-          hd: "*",
+          // No `hd` restriction: team members sign in with personal Gmail. Students
+          // still need a verified university address (validateUserInfo below).
           prompt: "select_account" as const,
           // Canteen never stores real names or photos.
           mapProfileToUser: () => ({ name: "", image: undefined }),
@@ -69,8 +65,14 @@ export const auth = betterAuth({
       // Always set by the create hook below; never accepted from the client.
       universityId: { type: "string", required: false, input: false },
     },
+    // Runs on every sign-up and Google sign-in, so removing someone from
+    // TEAM_EMAILS locks them out at their next sign-in.
     validateUserInfo: ({ user }) => {
-      if (!user.email || !findUniversityByEmail(user.email)) {
+      if (
+        !user.email ||
+        !user.emailVerified ||
+        !universityForSignIn(user.email)
+      ) {
         return {
           error: UNIVERSITY_EMAIL_REQUIRED.code,
           errorDescription: UNIVERSITY_EMAIL_REQUIRED.message,
@@ -82,7 +84,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          const match = findUniversityByEmail(user.email);
+          const match = universityForSignIn(user.email);
           if (!match)
             throw APIError.from("FORBIDDEN", UNIVERSITY_EMAIL_REQUIRED);
           const university = await ensureUniversity(match);
@@ -137,7 +139,7 @@ export const auth = betterAuth({
         });
       }
       // Never send mail to addresses that can't join.
-      if (!findUniversityByEmail(email)) {
+      if (!universityForSignIn(email)) {
         throw APIError.from("BAD_REQUEST", UNIVERSITY_EMAIL_REQUIRED);
       }
       // Per-address cooldown; the IP rate limit alone can't stop inbox flooding

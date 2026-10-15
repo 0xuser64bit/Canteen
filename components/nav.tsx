@@ -107,9 +107,11 @@ function Badge({ count, className }: { count: number; className?: string }) {
 export function SideNav({
   unread: serverUnread,
   university,
+  team,
 }: {
   unread: number;
   university: string;
+  team: boolean;
 }) {
   const isActive = useActive();
   const unread = useUnread(serverUnread);
@@ -168,7 +170,7 @@ export function SideNav({
         </button>
         <div className="flex items-center justify-between gap-2 px-1">
           <p className="truncate text-[13px] text-muted" title={university}>
-            Verified at{" "}
+            {team ? "Signed in as" : "Verified at"}{" "}
             <span className="font-semibold text-ink">{university}</span>
           </p>
           <ThemeToggle />

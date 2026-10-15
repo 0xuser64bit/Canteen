@@ -9,6 +9,7 @@ import {
 import { Feed } from "@/components/feed";
 import { PageHeader } from "@/components/page-header";
 import { requireViewer } from "@/lib/session";
+import { TEAM } from "@/lib/universities";
 import { compactNumber } from "@/lib/utils";
 import {
   getAccountStats,
@@ -25,6 +26,7 @@ const joined = new Intl.DateTimeFormat("en", {
 
 export default async function MePage() {
   const viewer = await requireViewer();
+  const isTeam = viewer.university.slug === TEAM.slug;
   const [stats, posts] = await Promise.all([
     getAccountStats(viewer),
     getFeed(viewer, { scope: { kind: "mine" } }),
@@ -36,7 +38,8 @@ export default async function MePage() {
       <div className="flex flex-col gap-8 px-4 py-6 lg:px-6">
         <section className="rounded-[28px] bg-surface p-5 shadow-soft ring-1 ring-line sm:p-6">
           <p className="flex items-center gap-2 text-[13px] font-semibold text-muted">
-            <BadgeCheck className="size-[18px] text-ink" /> Verified student
+            <BadgeCheck className="size-[18px] text-ink" />{" "}
+            {isTeam ? "Team account" : "Verified student"}
           </p>
           <Link
             href={`/u/${viewer.university.slug}`}
@@ -82,9 +85,16 @@ export default async function MePage() {
             <li className="flex gap-3">
               <EyeOff className="mt-0.5 size-[18px] shrink-0 text-ink" />
               <span>
-                Your email never appears anywhere. Other universities only see
-                your university once at least {MIN_MEMBERS_TO_NAME_UNIVERSITY}{" "}
-                students from it have joined.
+                Your email never appears anywhere.{" "}
+                {isTeam ? (
+                  "Everything you post is labeled Canteen team, so students know it's staff."
+                ) : (
+                  <>
+                    Other universities only see your university once at least{" "}
+                    {MIN_MEMBERS_TO_NAME_UNIVERSITY} students from it have
+                    joined.
+                  </>
+                )}
               </span>
             </li>
             {process.env.BLOB_READ_WRITE_TOKEN && (

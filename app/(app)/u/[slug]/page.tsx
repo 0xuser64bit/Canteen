@@ -40,7 +40,9 @@ export default async function UniversityPage({
         title={university.name}
         subtitle={
           <>
-            {countryName(university.countryCode)} ·{" "}
+            {university.countryCode && (
+              <>{countryName(university.countryCode)} · </>
+            )}
             {plural(university.memberCount, "student")}
             {university.isMine && " · your campus"}
           </>

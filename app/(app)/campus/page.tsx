@@ -4,6 +4,7 @@ import { Feed } from "@/components/feed";
 import { PageHeader, TopicChips } from "@/components/page-header";
 import { requireViewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
+import { TEAM } from "@/lib/universities";
 import {
   getFeed,
   getUniversityPage,
@@ -22,7 +23,9 @@ export default async function CampusPage({
     getFeed(viewer, { scope: { kind: "campus" }, topic: topic?.id }),
     getUniversityPage(viewer, viewer.university.slug),
   ]);
-  const small = (university?.memberCount ?? 0) < MIN_MEMBERS_TO_NAME_UNIVERSITY;
+  const small =
+    viewer.university.slug !== TEAM.slug &&
+    (university?.memberCount ?? 0) < MIN_MEMBERS_TO_NAME_UNIVERSITY;
 
   return (
     <>

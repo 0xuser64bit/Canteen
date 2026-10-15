@@ -70,6 +70,29 @@ function index() {
 }
 
 /**
+ * Staff accounts (TEAM_EMAILS) join this instead of a university. Everything
+ * they post is labeled "Canteen team", so students can always tell it's staff.
+ */
+export const TEAM: UniversityMatch = {
+  domain: "team.canteen.invalid", // reserved TLD, so no real address can match it
+  slug: "canteen-team",
+  name: "Canteen team",
+  country: "",
+  countryCode: "",
+  website: null,
+};
+
+/** Where an email signs up: its university, the team, or nowhere (null). */
+export function universityForSignIn(email: string): UniversityMatch | null {
+  const address = email.trim().toLowerCase();
+  const team = (process.env.TEAM_EMAILS ?? "")
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  return team.includes(address) ? TEAM : findUniversityByEmail(address);
+}
+
+/**
  * Maps an email address to its university by the longest matching domain suffix,
  * so `jane@cs.stanford.edu` and `jane@stanford.edu` both resolve to Stanford.
  */

@@ -25,9 +25,6 @@ const RESEND_SECONDS = 30;
 const ERROR_MESSAGES: Record<string, string> = {
   UNIVERSITY_EMAIL_REQUIRED:
     "That account isn't from a university we recognize. Use the Google account your university gave you.",
-  // Google accounts without a Workspace domain (personal Gmail) fail the `hd` check.
-  unable_to_get_user_info:
-    "That's a personal Google account. Use the Google account your university gave you.",
   account_not_linked: "That email is already linked to another sign-in method.",
 };
 

@@ -10,6 +10,7 @@ import type {
 } from "@/lib/generated/prisma/enums";
 import { pseudonym, type Pseudonym } from "@/lib/pseudonym";
 import type { Viewer } from "@/lib/session";
+import { TEAM } from "@/lib/universities";
 
 export const PAGE_SIZE = 20;
 
@@ -45,13 +46,15 @@ type UniversityRow = Prisma.UniversityGetPayload<{
   select: typeof universitySelect;
 }>;
 
-/** `slug` is null when the university must not be named to this viewer. */
+/** `slug` is null when the label must not link to a university page. */
 export type PublicUniversity = { name: string; slug: string | null };
 
 function publicUniversity(
   university: UniversityRow,
   viewer: Viewer,
 ): PublicUniversity {
+  // Staff are always labeled, whatever the team's size.
+  if (university.slug === TEAM.slug) return { name: TEAM.name, slug: null };
   const nameable =
     university.id === viewer.university.id ||
     university._count.users >= MIN_MEMBERS_TO_NAME_UNIVERSITY;
