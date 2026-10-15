@@ -14,6 +14,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
+import { HelplineNote } from "@/components/helpline";
 import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
@@ -375,6 +376,10 @@ export function ThreadView({ thread }: { thread: Thread }) {
             </div>
           </div>
         </article>
+
+        {thread.topic === "MENTAL_HEALTH" && (
+          <HelplineNote className="mx-auto mt-6 max-w-xl" />
+        )}
 
         <div className="my-8 flex items-center gap-3 text-[12px] font-semibold text-muted">
           <span className="h-px flex-1 bg-line" />

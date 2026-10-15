@@ -10,6 +10,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { HelplineNote } from "@/components/helpline";
 import { Button } from "@/components/ui/button";
 import { Counter, FieldError } from "@/components/ui/field";
 import type { Audience, Topic } from "@/lib/generated/prisma/enums";
@@ -246,6 +247,7 @@ export function Composer({
               </Choice>
             ))}
           </div>
+          {topic === "MENTAL_HEALTH" && <HelplineNote className="mt-3" />}
         </fieldset>
 
         <fieldset className="min-w-0">
