@@ -14,6 +14,11 @@ const UNIVERSITY_EMAIL_REQUIRED = {
     "That doesn't look like a university email. Use the address your university gave you.",
 };
 
+const ACCOUNT_SUSPENDED = {
+  code: "ACCOUNT_SUSPENDED",
+  message: "This account was suspended for breaking Canteen's rules.",
+};
+
 const RESEND_COOLDOWN_MS = 30_000;
 
 function baseURL(): BetterAuthOptions["baseURL"] {
@@ -91,6 +96,19 @@ export const auth = betterAuth({
           return {
             data: { name: "", image: null, universityId: university.id },
           };
+        },
+      },
+    },
+    session: {
+      create: {
+        // Every sign-in method ends here, so one check keeps banned accounts out.
+        before: async (session) => {
+          const user = await db.user.findUnique({
+            where: { id: session.userId },
+            select: { bannedAt: true },
+          });
+          if (user?.bannedAt)
+            throw APIError.from("FORBIDDEN", ACCOUNT_SUSPENDED);
         },
       },
     },

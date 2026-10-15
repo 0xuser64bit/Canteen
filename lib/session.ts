@@ -5,12 +5,15 @@ import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-/** The signed-in student for this request, or null. Deduplicated per request. */
+/**
+ * The signed-in student for this request, or null. Banned accounts count as
+ * signed out, even while a cached session cookie is still valid.
+ */
 export const getViewer = cache(async () => {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
   return db.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: session.user.id, bannedAt: null },
     select: {
       id: true,
       email: true,

@@ -15,6 +15,7 @@ import {
   commentInput,
   DELETE_CONFIRMATION,
   LIMITS,
+  moderationInput,
   postInput,
   reportInput,
 } from "@/lib/validation";
@@ -314,12 +315,92 @@ export async function reportContent(input: {
     data: [{ reporterId: viewer.id, reason, ...key }],
     skipDuplicates: true,
   });
-  const reports = await db.report.count({ where: key });
+  // Reports a moderator already reviewed don't count again, and the same
+  // student can't report twice, so it takes new reporters to re-hide.
+  const reports = await db.report.count({
+    where: { ...key, resolvedAt: null },
+  });
   if (reports >= HIDE_AFTER_REPORTS) {
     const hide = { where: { id }, data: { hiddenAt: new Date() } };
     if (target === "post") await db.post.update(hide);
     else await db.comment.update(hide);
   }
+  return ok(null);
+}
+
+/**
+ * Team only. Keep restores the content and closes its reports; remove deletes
+ * it; ban also signs the author out for good and hides everything they wrote.
+ */
+export async function moderate(input: {
+  target: "post" | "comment";
+  id: string;
+  decision: "keep" | "remove" | "ban";
+}): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  if (!queries.isModerator(viewer))
+    return { ok: false, error: "Only the Canteen team can do that." };
+  const parsed = moderationInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Pick an action." };
+  const { target, id, decision } = parsed.data;
+
+  const item =
+    target === "post"
+      ? await db.post.findUnique({
+          where: { id },
+          select: { authorId: true, imageUrl: true },
+        })
+      : await db.comment
+          .findUnique({ where: { id }, select: { authorId: true } })
+          .then((comment) => comment && { ...comment, imageUrl: null });
+  if (!item) return { ok: false, error: "That isn't available anymore." };
+  if (decision === "ban" && item.authorId === viewer.id)
+    return { ok: false, error: "You can't ban your own account." };
+
+  const now = new Date();
+  const key = target === "post" ? { postId: id } : { commentId: id };
+  if (decision === "keep") {
+    const restore = { where: { id }, data: { hiddenAt: null } };
+    await db.$transaction([
+      target === "post" ? db.post.update(restore) : db.comment.update(restore),
+      db.report.updateMany({
+        where: { ...key, resolvedAt: null },
+        data: { resolvedAt: now },
+      }),
+    ]);
+  } else {
+    // Its reports cascade with it.
+    if (target === "post") await db.post.delete({ where: { id } });
+    else await db.comment.delete({ where: { id } });
+    if (item.imageUrl) {
+      const url = item.imageUrl;
+      after(() => del(url));
+    }
+  }
+
+  if (decision === "ban") {
+    const author = item.authorId;
+    const theirs = { authorId: author, hiddenAt: null };
+    await db.$transaction([
+      db.user.update({ where: { id: author }, data: { bannedAt: now } }),
+      db.session.deleteMany({ where: { userId: author } }),
+      db.post.updateMany({ where: theirs, data: { hiddenAt: now } }),
+      db.comment.updateMany({ where: theirs, data: { hiddenAt: now } }),
+      // The ban settles every open report against them.
+      db.report.updateMany({
+        where: {
+          resolvedAt: null,
+          OR: [
+            { post: { authorId: author } },
+            { comment: { authorId: author } },
+          ],
+        },
+        data: { resolvedAt: now },
+      }),
+    ]);
+  }
+  refresh();
   return ok(null);
 }
 

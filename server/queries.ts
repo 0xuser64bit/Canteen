@@ -6,11 +6,12 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import type {
   Audience,
   NotificationType,
+  ReportReason,
   Topic,
 } from "@/lib/generated/prisma/enums";
 import { pseudonym, type Pseudonym } from "@/lib/pseudonym";
 import type { Viewer } from "@/lib/session";
-import { TEAM } from "@/lib/universities";
+import { isTeamEmail, TEAM } from "@/lib/universities";
 
 export const PAGE_SIZE = 20;
 
@@ -419,6 +420,159 @@ export async function search(
       .map((u) => ({ slug: u.slug, name: u.name, countryCode: u.countryCode })),
     posts,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Moderation
+// ---------------------------------------------------------------------------
+
+/**
+ * Team accounts that TEAM_EMAILS still lists. Checked per request, so taking
+ * someone off the list removes their access straight away.
+ */
+export function isModerator(viewer: Viewer) {
+  return viewer.university.slug === TEAM.slug && isTeamEmail(viewer.email);
+}
+
+/** Reported content as moderators see it: what was said, never who said it. */
+export type ModItem = {
+  target: "post" | "comment";
+  id: string;
+  /** The post title, or for a reply, the title of its thread. */
+  title: string;
+  body: string;
+  image: PostSummary["image"];
+  alias: Pseudonym;
+  university: PublicUniversity;
+  createdAt: Date;
+  hidden: boolean;
+  /** Null when the moderator can't open the thread (hidden or campus-only). */
+  threadId: string | null;
+  reasons: { reason: ReportReason; count: number }[];
+  reportCount: number;
+};
+
+const OPEN_REPORTS = { reports: { some: { resolvedAt: null } } };
+const openReportsSelect = {
+  where: { resolvedAt: null },
+  select: { reason: true },
+} as const;
+
+function tally(reports: { reason: ReportReason }[]) {
+  const counts = new Map<ReportReason, number>();
+  for (const { reason } of reports)
+    counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  return [...counts]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
+  const openable = (post: {
+    hiddenAt: Date | null;
+    audience: Audience;
+    universityId: string;
+  }) =>
+    post.hiddenAt === null &&
+    (post.audience === "EVERYONE" ||
+      post.universityId === viewer.university.id);
+
+  // ponytail: first 100 of each; page the queue once it's ever that long.
+  const [posts, comments] = await Promise.all([
+    db.post.findMany({
+      where: OPEN_REPORTS,
+      take: 100,
+      select: {
+        id: true,
+        title: true,
+        body: true,
+        imageUrl: true,
+        imageWidth: true,
+        imageHeight: true,
+        audience: true,
+        hiddenAt: true,
+        createdAt: true,
+        authorId: true,
+        universityId: true,
+        university: { select: universitySelect },
+        reports: openReportsSelect,
+      },
+    }),
+    db.comment.findMany({
+      where: OPEN_REPORTS,
+      take: 100,
+      select: {
+        id: true,
+        body: true,
+        hiddenAt: true,
+        createdAt: true,
+        authorId: true,
+        author: { select: { university: { select: universitySelect } } },
+        post: {
+          select: {
+            id: true,
+            title: true,
+            audience: true,
+            hiddenAt: true,
+            universityId: true,
+          },
+        },
+        reports: openReportsSelect,
+      },
+    }),
+  ]);
+
+  const items: ModItem[] = [
+    ...posts.map((post) => ({
+      target: "post" as const,
+      id: post.id,
+      title: post.title,
+      body: post.body,
+      image: post.imageUrl
+        ? {
+            url: post.imageUrl,
+            width: post.imageWidth ?? 1200,
+            height: post.imageHeight ?? 900,
+          }
+        : null,
+      alias: pseudonym(post.authorId, post.id),
+      university: publicUniversity(post.university, viewer),
+      createdAt: post.createdAt,
+      hidden: post.hiddenAt !== null,
+      threadId: openable(post) ? post.id : null,
+      reasons: tally(post.reports),
+      reportCount: post.reports.length,
+    })),
+    ...comments.map((comment) => ({
+      target: "comment" as const,
+      id: comment.id,
+      title: comment.post.title,
+      body: comment.body,
+      image: null,
+      alias: pseudonym(comment.authorId, comment.post.id),
+      university: publicUniversity(comment.author.university, viewer),
+      createdAt: comment.createdAt,
+      hidden: comment.hiddenAt !== null,
+      threadId: openable(comment.post) ? comment.post.id : null,
+      reasons: tally(comment.reports),
+      reportCount: comment.reports.length,
+    })),
+  ];
+  // Hidden content first: it's already off the feeds, waiting on a decision.
+  return items.sort(
+    (a, b) =>
+      Number(b.hidden) - Number(a.hidden) ||
+      b.reportCount - a.reportCount ||
+      b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+}
+
+export async function getModQueueSize() {
+  const [posts, comments] = await Promise.all([
+    db.post.count({ where: OPEN_REPORTS }),
+    db.comment.count({ where: OPEN_REPORTS }),
+  ]);
+  return posts + comments;
 }
 
 // ---------------------------------------------------------------------------

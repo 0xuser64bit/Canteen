@@ -69,6 +69,12 @@ export const reportInput = z.object({
   reason: z.enum(ReportReason),
 });
 
+export const moderationInput = z.object({
+  target: z.enum(["post", "comment"]),
+  id: z.string().min(1).max(64),
+  decision: z.enum(["keep", "remove", "ban"]),
+});
+
 export const DELETE_CONFIRMATION = "delete my account";
 
 export const REPORT_REASONS: { id: ReportReason; label: string }[] = [

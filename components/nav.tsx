@@ -8,6 +8,7 @@ import {
   Plus,
   School,
   Search,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
@@ -25,7 +26,8 @@ type Item = {
     | "/campus"
     | "/home?topic=opportunities"
     | "/notifications"
-    | "/me";
+    | "/me"
+    | "/mod";
   label: string;
   short: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
@@ -70,6 +72,14 @@ const ITEMS: Item[] = [
   },
 ];
 
+const MODERATION: Item = {
+  href: "/mod",
+  label: "Moderation",
+  short: "Mod",
+  icon: ShieldCheck,
+  active: (p) => p === "/mod",
+};
+
 export const NOTIFICATIONS_READ = "canteen:notifications-read";
 
 /** The server count, zeroed once the notifications page marks it read. */
@@ -89,7 +99,15 @@ function useActive() {
   return (item: Item) => item.active(pathname, topic);
 }
 
-function Badge({ count, className }: { count: number; className?: string }) {
+function Badge({
+  count,
+  className,
+  label = "unread",
+}: {
+  count: number;
+  className?: string;
+  label?: string;
+}) {
   if (count === 0) return null;
   return (
     <span
@@ -99,7 +117,7 @@ function Badge({ count, className }: { count: number; className?: string }) {
       )}
     >
       {count > 99 ? "99+" : count}
-      <span className="sr-only"> unread</span>
+      <span className="sr-only"> {label}</span>
     </span>
   );
 }
@@ -108,10 +126,13 @@ export function SideNav({
   unread: serverUnread,
   university,
   team,
+  modQueue,
 }: {
   unread: number;
   university: string;
   team: boolean;
+  /** Open reports, for moderators only. */
+  modQueue?: number;
 }) {
   const isActive = useActive();
   const unread = useUnread(serverUnread);
@@ -128,28 +149,33 @@ export function SideNav({
         <Logo />
       </Link>
       <ul className="flex flex-col gap-1">
-        {ITEMS.map((item) => {
-          const active = isActive(item);
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "group flex h-12 items-center gap-3.5 rounded-2xl px-3.5 text-[15px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink",
-                  active &&
-                    "bg-surface font-semibold text-ink shadow-soft ring-1 ring-line",
-                )}
-              >
-                <item.icon
-                  className={cn("size-[22px]", active && "stroke-[2.4]")}
-                />
-                <span className="flex-1">{item.label}</span>
-                {item.href === "/notifications" && <Badge count={unread} />}
-              </Link>
-            </li>
-          );
-        })}
+        {(modQueue === undefined ? ITEMS : [...ITEMS, MODERATION]).map(
+          (item) => {
+            const active = isActive(item);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group flex h-12 items-center gap-3.5 rounded-2xl px-3.5 text-[15px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink",
+                    active &&
+                      "bg-surface font-semibold text-ink shadow-soft ring-1 ring-line",
+                  )}
+                >
+                  <item.icon
+                    className={cn("size-[22px]", active && "stroke-[2.4]")}
+                  />
+                  <span className="flex-1">{item.label}</span>
+                  {item.href === "/notifications" && <Badge count={unread} />}
+                  {item.href === "/mod" && (
+                    <Badge count={modQueue ?? 0} label="waiting" />
+                  )}
+                </Link>
+              </li>
+            );
+          },
+        )}
       </ul>
       <Button asChild variant="primary" size="lg" className="mt-6 w-full">
         <Link href="/new">

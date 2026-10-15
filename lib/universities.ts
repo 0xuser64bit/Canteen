@@ -82,14 +82,18 @@ export const TEAM: UniversityMatch = {
   website: null,
 };
 
-/** Where an email signs up: its university, the team, or nowhere (null). */
-export function universityForSignIn(email: string): UniversityMatch | null {
-  const address = email.trim().toLowerCase();
-  const team = (process.env.TEAM_EMAILS ?? "")
+/** Whether TEAM_EMAILS lists this address right now. */
+export function isTeamEmail(email: string) {
+  return (process.env.TEAM_EMAILS ?? "")
     .toLowerCase()
     .split(/[\s,]+/)
-    .filter(Boolean);
-  return team.includes(address) ? TEAM : findUniversityByEmail(address);
+    .filter(Boolean)
+    .includes(email.trim().toLowerCase());
+}
+
+/** Where an email signs up: its university, the team, or nowhere (null). */
+export function universityForSignIn(email: string): UniversityMatch | null {
+  return isTeamEmail(email) ? TEAM : findUniversityByEmail(email);
 }
 
 /**

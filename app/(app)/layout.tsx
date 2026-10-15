@@ -4,11 +4,14 @@ import { MobileNav, SideNav } from "@/components/nav";
 import { SearchPalette } from "@/components/search";
 import { requireViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
-import { getUnreadCount } from "@/server/queries";
+import { getModQueueSize, getUnreadCount, isModerator } from "@/server/queries";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const viewer = await requireViewer();
-  const unread = await getUnreadCount(viewer);
+  const [unread, modQueue] = await Promise.all([
+    getUnreadCount(viewer),
+    isModerator(viewer) ? getModQueueSize() : undefined,
+  ]);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1320px]">
@@ -17,6 +20,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           unread={unread}
           university={viewer.university.name}
           team={viewer.university.slug === TEAM.slug}
+          modQueue={modQueue}
         />
       </Suspense>
       <main className="min-w-0 flex-1 lg:border-x lg:border-line max-lg:[&:has(~[data-mobile-nav])]:pb-24">

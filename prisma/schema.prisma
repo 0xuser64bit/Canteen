@@ -24,6 +24,8 @@ model User {
 
   universityId String
   university   University @relation(fields: [universityId], references: [id])
+  // Set when moderators ban the account: no new sessions, everything it wrote hidden.
+  bannedAt     DateTime?
 
   sessions      Session[]
   accounts      Account[]
@@ -209,9 +211,11 @@ enum ReportReason {
 }
 
 model Report {
-  id        String       @id @default(cuid())
-  reason    ReportReason
-  createdAt DateTime     @default(now())
+  id         String       @id @default(cuid())
+  reason     ReportReason
+  createdAt  DateTime     @default(now())
+  // Set when a moderator reviews it; only open reports count toward hiding.
+  resolvedAt DateTime?
 
   reporterId String
   reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)

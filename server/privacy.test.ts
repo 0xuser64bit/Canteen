@@ -5,6 +5,7 @@
  */
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -12,6 +13,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { TEAM } from "@/lib/universities";
 
 const TEST_DATABASE_URL = vi.hoisted(() => {
   const url = process.env.TEST_DATABASE_URL;
@@ -27,7 +29,7 @@ vi.mock("@/lib/session", async () => {
     getViewer: async () =>
       state.viewerId
         ? db.user.findUnique({
-            where: { id: state.viewerId },
+            where: { id: state.viewerId, bannedAt: null },
             select: {
               id: true,
               email: true,
@@ -355,5 +357,152 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.comment.count()).toBe(0);
     expect(await db.like.count()).toBe(0);
     expect(await db.post.count()).toBe(1);
+  });
+
+  describe("moderation", () => {
+    beforeEach(async () => {
+      vi.stubEnv("TEAM_EMAILS", "mod@example.com");
+      await db.university.create({ data: { ...TEAM, id: "u-team" } });
+      await db.user.create({
+        data: {
+          id: "mod",
+          email: "mod@example.com",
+          universityId: "u-team",
+          emailVerified: true,
+        },
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    const report = async (
+      reporter: string,
+      target: "post" | "comment",
+      id: string,
+    ) => {
+      as(reporter);
+      return actions.reportContent({ target, id, reason: "HARASSMENT" });
+    };
+    const hiddenAt = async (id: string) =>
+      (await db.post.findUniqueOrThrow({ where: { id } })).hiddenAt;
+
+    it("is team-only and shows content, never identities", async () => {
+      const p = await post("ada");
+      await report("grace", "post", p.id);
+
+      as("alan");
+      const decision = {
+        target: "post",
+        id: p.id,
+        decision: "remove",
+      } as const;
+      expect((await actions.moderate(decision)).ok).toBe(false);
+      // Being listed isn't enough: the account must also be a team account.
+      vi.stubEnv("TEAM_EMAILS", "mod@example.com, alan@stanford.edu");
+      expect((await actions.moderate(decision)).ok).toBe(false);
+      expect(await db.post.count()).toBe(1);
+
+      const queue = await queries.getModQueue(await viewer("mod"));
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toMatchObject({
+        target: "post",
+        reportCount: 1,
+        reasons: [{ reason: "HARASSMENT", count: 1 }],
+      });
+      const payload = JSON.stringify(queue);
+      for (const secret of [
+        "ada@stanford.edu",
+        '"ada"',
+        '"grace"',
+        "u-stanford",
+      ])
+        expect(payload).not.toContain(secret);
+
+      as("mod");
+      expect((await actions.moderate(decision)).ok).toBe(true);
+      expect(await db.post.count()).toBe(0);
+    });
+
+    it("keeps content and makes it take new reporters to hide it again", async () => {
+      const p = await post("ada");
+      for (const reporter of ["grace", "linus", "margaret"])
+        await report(reporter, "post", p.id);
+      expect(await hiddenAt(p.id)).not.toBeNull();
+
+      as("mod");
+      const kept = await actions.moderate({
+        target: "post",
+        id: p.id,
+        decision: "keep",
+      });
+      expect(kept.ok).toBe(true);
+      expect(await hiddenAt(p.id)).toBeNull();
+      expect(await queries.getModQueueSize()).toBe(0);
+
+      for (const reporter of ["grace", "linus", "margaret"])
+        await report(reporter, "post", p.id);
+      expect(await hiddenAt(p.id)).toBeNull();
+      expect(await queries.getModQueueSize()).toBe(0);
+
+      await report("alan", "post", p.id);
+      expect(await queries.getModQueueSize()).toBe(1);
+      expect(await hiddenAt(p.id)).toBeNull();
+    });
+
+    it("bans the author: signed out, locked out, and everything they wrote hidden", async () => {
+      const reported = await post("ada", { title: "The reported one" });
+      const other = await post("ada", { title: "Another one" });
+      as("ada");
+      await actions.addComment(other.id, "A reply of mine");
+      await db.session.create({
+        data: {
+          id: "session-ada",
+          token: "token-ada",
+          userId: "ada",
+          expiresAt: new Date(Date.now() + 3_600_000),
+        },
+      });
+      await report("grace", "post", reported.id);
+      await report("linus", "post", other.id);
+
+      as("mod");
+      const banned = await actions.moderate({
+        target: "post",
+        id: reported.id,
+        decision: "ban",
+      });
+      expect(banned.ok).toBe(true);
+      expect(
+        await db.post.findUnique({ where: { id: reported.id } }),
+      ).toBeNull();
+      expect(await hiddenAt(other.id)).not.toBeNull();
+      expect(
+        await db.comment.count({ where: { authorId: "ada", hiddenAt: null } }),
+      ).toBe(0);
+      expect(await db.session.count({ where: { userId: "ada" } })).toBe(0);
+      expect(await queries.getModQueueSize()).toBe(0);
+
+      as("ada");
+      expect((await actions.addComment(other.id, "Still here?")).ok).toBe(
+        false,
+      );
+    });
+
+    it("won't let a moderator ban themselves", async () => {
+      const p = await post("mod");
+      await report("grace", "post", p.id);
+      as("mod");
+      const result = await actions.moderate({
+        target: "post",
+        id: p.id,
+        decision: "ban",
+      });
+      expect(result.ok).toBe(false);
+      expect(
+        (await db.user.findUniqueOrThrow({ where: { id: "mod" } })).bannedAt,
+      ).toBeNull();
+    });
   });
 });

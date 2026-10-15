@@ -1,4 +1,10 @@
-import { BadgeCheck, EyeOff, ImageOff, Shuffle } from "lucide-react";
+import {
+  BadgeCheck,
+  EyeOff,
+  ImageOff,
+  ShieldCheck,
+  Shuffle,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -8,12 +14,15 @@ import {
 } from "@/components/account";
 import { Feed } from "@/components/feed";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { requireViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
 import { compactNumber } from "@/lib/utils";
 import {
   getAccountStats,
   getFeed,
+  getModQueueSize,
+  isModerator,
   MIN_MEMBERS_TO_NAME_UNIVERSITY,
 } from "@/server/queries";
 
@@ -27,9 +36,10 @@ const joined = new Intl.DateTimeFormat("en", {
 export default async function MePage() {
   const viewer = await requireViewer();
   const isTeam = viewer.university.slug === TEAM.slug;
-  const [stats, posts] = await Promise.all([
+  const [stats, posts, modQueue] = await Promise.all([
     getAccountStats(viewer),
     getFeed(viewer, { scope: { kind: "mine" } }),
+    isModerator(viewer) ? getModQueueSize() : undefined,
   ]);
 
   return (
@@ -68,6 +78,14 @@ export default async function MePage() {
               </div>
             ))}
           </dl>
+          {modQueue !== undefined && (
+            <Button asChild className="mt-5">
+              <Link href="/mod">
+                <ShieldCheck /> Moderation queue
+                {modQueue > 0 && ` · ${modQueue} waiting`}
+              </Link>
+            </Button>
+          )}
         </section>
 
         <section aria-labelledby="privacy">

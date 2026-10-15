@@ -23,6 +23,8 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - **Photos lose their metadata.** Images are re-encoded in the browser before upload, which strips EXIF data such as GPS coordinates.
 - **Staff are labeled.** Whoever runs a deployment can let their own accounts in with `TEAM_EMAILS`. Those accounts skip the university check, and everything they post says "Canteen team".
 - **Safety without surveillance.** Reports are anonymous. Content that three different students report is hidden automatically. Notifications say that someone replied or liked, never who.
+- **Moderators see content, not people.** Reports land in a queue for team accounts. It shows what was said and the alias it was said under, never an email. Moderators can keep it, remove it, or ban the account, which signs it out for good and hides everything it wrote.
+- **No contact details.** Posts and replies can't carry phone numbers or email addresses, so nobody gets doxxed in a thread.
 
 ## Features
 
@@ -32,6 +34,7 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - Search across posts and universities (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd>)
 - Notifications for replies and likes
 - Account page with sign-out and full account deletion
+- A moderation queue for team accounts, and help links on mental health threads
 - Light and dark themes, built mobile-first
 
 ## Tech stack
