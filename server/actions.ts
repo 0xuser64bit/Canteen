@@ -39,11 +39,7 @@ const ok = <T>(data: T): ActionResult<T> => ({ ok: true, data });
 
 async function postVisibleTo(viewer: Viewer, postId: string) {
   return db.post.findFirst({
-    where: {
-      id: postId,
-      hiddenAt: null,
-      OR: [{ audience: "EVERYONE" }, { universityId: viewer.university.id }],
-    },
+    where: { id: postId, ...queries.visibleTo(viewer) },
     select: { id: true, authorId: true },
   });
 }
@@ -293,20 +289,10 @@ export async function reportContent(input: {
     target === "post"
       ? await postVisibleTo(viewer, id)
       : await db.comment.findFirst({
-          where: { id, hiddenAt: null, post: { hiddenAt: null } },
-          select: {
-            authorId: true,
-            post: { select: { audience: true, universityId: true } },
-          },
+          where: { id, hiddenAt: null, post: queries.visibleTo(viewer) },
+          select: { authorId: true },
         });
   if (!item) return { ok: false, error: "That isn't available anymore." };
-  if (
-    "post" in item &&
-    item.post.audience === "CAMPUS" &&
-    item.post.universityId !== viewer.university.id
-  ) {
-    return { ok: false, error: "That isn't available anymore." };
-  }
   if (item.authorId === viewer.id)
     return { ok: false, error: "You can delete your own content instead." };
 

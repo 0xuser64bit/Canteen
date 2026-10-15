@@ -25,8 +25,8 @@ const EXCERPT_LENGTH = 420;
 // Shared rules
 // ---------------------------------------------------------------------------
 
-/** The one visibility rule every read path goes through. */
-function visibleTo(viewer: Viewer): Prisma.PostWhereInput {
+/** The one visibility rule every read and write path goes through. */
+export function visibleTo(viewer: Viewer): Prisma.PostWhereInput {
   return {
     hiddenAt: null,
     OR: [{ audience: "EVERYONE" }, { universityId: viewer.university.id }],
