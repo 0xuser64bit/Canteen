@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/empty";
 import { Feed } from "@/components/feed";
+import { InviteCard } from "@/components/invite";
 import { PageHeader, TopicChips } from "@/components/page-header";
 import { requireViewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
-import { getFeed } from "@/server/queries";
+import { TEAM } from "@/lib/universities";
+import {
+  getCampusSize,
+  getFeed,
+  MIN_MEMBERS_TO_NAME_UNIVERSITY,
+} from "@/server/queries";
 
 export const metadata: Metadata = { title: "Everyone" };
 
@@ -12,10 +18,10 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
   const viewer = await requireViewer();
   const { topic: slug } = await searchParams;
   const topic = topicBySlug(typeof slug === "string" ? slug : undefined);
-  const page = await getFeed(viewer, {
-    scope: { kind: "everyone" },
-    topic: topic?.id,
-  });
+  const [page, campusSize] = await Promise.all([
+    getFeed(viewer, { scope: { kind: "everyone" }, topic: topic?.id }),
+    viewer.university.slug === TEAM.slug ? null : getCampusSize(viewer),
+  ]);
   const opportunities = topic?.id === "OPPORTUNITIES";
 
   return (
@@ -30,6 +36,14 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
       >
         <TopicChips base="/home" active={topic?.slug} />
       </PageHeader>
+      {campusSize !== null && campusSize < MIN_MEMBERS_TO_NAME_UNIVERSITY && (
+        <InviteCard
+          compact
+          university={viewer.university.name}
+          members={campusSize}
+          goal={MIN_MEMBERS_TO_NAME_UNIVERSITY}
+        />
+      )}
       <Feed
         key={topic?.slug ?? "all"}
         initial={page}

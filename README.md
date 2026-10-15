@@ -31,6 +31,7 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - Feeds for every university, your own campus, each university, and opportunities, filterable by topic
 - Threads with per-thread aliases, OP tags, likes, unique view counts, and replies
 - Composer with topics, audience (everyone or campus-only), images, and saved drafts
+- Campus invites: until five classmates join, a share link helps bring the rest in
 - Search across posts and universities (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd>)
 - Notifications for replies and likes
 - Account page with sign-out and full account deletion

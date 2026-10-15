@@ -279,6 +279,11 @@ export const getThread = cache(
 // Universities, discovery, search
 // ---------------------------------------------------------------------------
 
+/** Students who share the viewer's university, the viewer included. */
+export function getCampusSize(viewer: Viewer) {
+  return db.user.count({ where: { universityId: viewer.university.id } });
+}
+
 export async function getUniversityPage(viewer: Viewer, slug: string) {
   const university = await db.university.findUnique({
     where: { slug },

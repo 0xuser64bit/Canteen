@@ -19,18 +19,23 @@ import { deleteComment, deletePost, reportContent } from "@/server/actions";
 
 export const POST_DELETED = "canteen:post-deleted";
 
-async function share(path: string, title: string) {
+/** The share sheet on phones; on desktops, copies the text and link instead. */
+export async function share(
+  path: string,
+  title: string,
+  { text, copied = "Link copied" }: { text?: string; copied?: string } = {},
+) {
   const url = new URL(path, window.location.origin).toString();
   if (navigator.share && matchMedia("(pointer: coarse)").matches) {
     try {
-      await navigator.share({ title, url });
+      await navigator.share({ title, text, url });
       return;
     } catch {
       // The share sheet was dismissed; fall back to copying.
     }
   }
-  await navigator.clipboard.writeText(url);
-  toast.success("Link copied");
+  await navigator.clipboard.writeText(text ? `${text} ${url}` : url);
+  toast.success(copied);
 }
 
 export function ReportDialog({
