@@ -2,7 +2,7 @@
 version: 1
 slug: "app"
 primary_target: "app"
-related_targets: ["app/(marketing)", "app/(auth)"]
+related_targets: ["app/(marketing)","app/(auth)"]
 ---
 
 # Surface brief: Canteen app (feed, threads, composer, account) + landing + sign-in
@@ -24,5 +24,7 @@ STORY: Visitors see a real-looking thread between students of different universi
 FIRST VIEWPORT: Landing: left, a huge expanded headline and the join action; right, a live phone-sized chat replaying an example thread (typing dots, aliases, university tags). App: sticky header naming where you are with topic chips; the feed of post bubbles beneath; desktop nav rail with a yellow New post action; mobile bottom tab bar with a center yellow plus.
 
 FORM: group chat, position 7 on the ordered grounded list, seed key 43eb70ec. Raises: bilateral law (you right in yellow, others left) from labanotation; live length budgets from the cassette J-card; sticky where-you-are header from the lexicon; state by shape as well as color from the emission rail. Signature interaction: sending a reply pops a yellow bubble up out of the composer into the thread.
+
+PROVENANCE: ordered grounded list was 1 exam answer booklet, 2 campus notice board, 3 student ID and university seal, 4 desk and stall graffiti, 5 ruled lecture notebook, 6 canteen token and order board, 7 the group chat. Corroborated on 2026-10-15: concept-seed --scope direction --mode operate --from 43eb70ec --candidate-count 7 reproduces ASSIGNED INDEX 7 with the same six challengers. The user confirmed the roll in chat ("I like first one (the roll)").
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

@@ -187,8 +187,11 @@ export function SignIn({
             disabled={pending}
             className="w-full bg-surface"
           >
-            <GoogleIcon /> Continue with your university Google account
+            <GoogleIcon /> Continue with Google
           </Button>
+          <p className="-mt-1 px-1 text-center text-[13px] text-muted">
+            Use the account your university gave you, not a personal Gmail.
+          </p>
           {emailEnabled && (
             <div className="flex items-center gap-3 text-[12px] font-semibold text-muted">
               <span className="h-px flex-1 bg-line" /> or use a code{" "}

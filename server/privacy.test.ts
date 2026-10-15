@@ -328,6 +328,19 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.post.count()).toBe(0);
   });
 
+  it("accepts a client reply id only when it is a fresh UUID", async () => {
+    const p = await post("ada");
+    as("grace");
+    const id = crypto.randomUUID();
+    expect((await actions.addComment(p.id, "first", id)).ok).toBe(true);
+    expect(await db.comment.findUnique({ where: { id } })).not.toBeNull();
+    expect((await actions.addComment(p.id, "again", id)).ok).toBe(false);
+    expect((await actions.addComment(p.id, "bad", "not-a-uuid")).ok).toBe(
+      false,
+    );
+    expect(await db.comment.count()).toBe(1);
+  });
+
   it("deletes everything a student wrote when they delete their account", async () => {
     const p = await post("ada");
     as("grace");

@@ -210,6 +210,7 @@ export function MobileNav({ unread: serverUnread }: { unread: number }) {
   return (
     <nav
       aria-label="Main"
+      data-mobile-nav
       className="fixed inset-x-0 bottom-0 z-40 flex h-[calc(64px+env(safe-area-inset-bottom))] items-start border-t border-line bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
     >
       {tab(feed)}

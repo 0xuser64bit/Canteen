@@ -35,6 +35,9 @@ export const postInput = z.object({
 export const commentInput = z.object({
   postId: z.string().min(1).max(64),
   body: text(LIMITS.comment.min, LIMITS.comment.max, "Reply"),
+  // Client-generated so the optimistic bubble and the saved reply share one
+  // identity (and one DOM node). A collision just fails the insert.
+  id: z.uuid().optional(),
 });
 
 export const reportInput = z.object({

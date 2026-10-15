@@ -23,6 +23,8 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
   const joinLabel = isEmailEnabled
     ? "Join with your university email"
     : "Join with your university account";
+  // Only promise what this deployment actually does.
+  const imagesEnabled = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
   return (
     <div className="overflow-x-clip">
@@ -89,14 +91,18 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
                 Prove you&apos;re a student, once.
               </h3>
               <p className="mt-3 max-w-[32rem] text-[17px] leading-relaxed text-muted">
-                Sign in with a code sent to your university email, or with your
-                university&apos;s Google account. That tells us which university
-                you&apos;re at. It never becomes your name.
+                {isEmailEnabled
+                  ? "Sign in with a code sent to your university email, or with your university's Google account."
+                  : "Sign in with the Google account your university gave you."}{" "}
+                That tells us which university you&apos;re at. It never becomes
+                your name.
               </p>
             </div>
             <div className="rounded-[28px] bg-surface p-6 shadow-soft ring-1 ring-line">
               <p className="text-[13px] font-semibold text-muted">
-                University email
+                {isEmailEnabled
+                  ? "University email"
+                  : "University Google account"}
               </p>
               <p className="mt-2 rounded-2xl bg-surface-2 px-4 py-3.5 text-[16px] ring-1 ring-line">
                 you@maplewood.edu
@@ -181,8 +187,9 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
               them. Reporters stay anonymous too.
             </li>
             <li>
-              Photos are re-encoded on your phone before upload, which removes
-              location data.
+              {imagesEnabled
+                ? "Photos are re-encoded on your phone before upload, which removes location data."
+                : "Your email never appears anywhere, not even to the students you talk with."}
             </li>
             <li>
               The whole thing is open source, so anyone can check how it works.{" "}

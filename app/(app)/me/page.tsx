@@ -87,13 +87,15 @@ export default async function MePage() {
                 students from it have joined.
               </span>
             </li>
-            <li className="flex gap-3">
-              <ImageOff className="mt-0.5 size-[18px] shrink-0 text-ink" />
-              <span>
-                Photos are re-encoded on your device before upload, which strips
-                location and camera data.
-              </span>
-            </li>
+            {process.env.BLOB_READ_WRITE_TOKEN && (
+              <li className="flex gap-3">
+                <ImageOff className="mt-0.5 size-[18px] shrink-0 text-ink" />
+                <span>
+                  Photos are re-encoded on your device before upload, which
+                  strips location and camera data.
+                </span>
+              </li>
+            )}
           </ul>
         </section>
 

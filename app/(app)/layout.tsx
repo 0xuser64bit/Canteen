@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <Suspense>
         <SideNav unread={unread} university={viewer.university.name} />
       </Suspense>
-      <main className="min-w-0 flex-1 pb-24 lg:border-x lg:border-line lg:pb-0">
+      <main className="min-w-0 flex-1 lg:border-x lg:border-line max-lg:[&:has(~[data-mobile-nav])]:pb-24">
         {children}
       </main>
       <aside className="sticky top-0 hidden h-dvh w-[320px] shrink-0 overflow-y-auto px-5 py-6 xl:block">

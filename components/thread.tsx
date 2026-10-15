@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUp, Eye, Lock, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
+  useLayoutEffect,
   useOptimistic,
   useRef,
   useState,
@@ -27,6 +28,7 @@ import type { Thread, ThreadComment } from "@/server/queries";
 type Reply = ThreadComment & { sending?: boolean };
 
 const GROUP_WINDOW_MS = 10 * 60_000;
+const REPLY_BAR_ID = "reply-bar";
 
 function BackButton() {
   const router = useRouter();
@@ -72,13 +74,42 @@ function ReplyBubble({
   lastInGroup: boolean;
 }) {
   const mine = reply.isMine;
+  const ref = useRef<HTMLDivElement>(null);
+  const risen = useRef(false);
+
+  // Signature moment: a reply you send rises out of the composer into its slot.
+  useLayoutEffect(() => {
+    const node = ref.current;
+    // Once per bubble: StrictMode re-runs effects, and a second run would
+    // measure the already-transformed node.
+    if (!reply.sending || !node || risen.current) return;
+    risen.current = true;
+    // Jump to the newest message first (chat apps do), so the bubble lands
+    // just above the composer instead of behind it.
+    window.scrollTo({ top: document.documentElement.scrollHeight });
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const composer = document
+      .getElementById(REPLY_BAR_ID)
+      ?.getBoundingClientRect();
+    const rise = composer
+      ? Math.max(composer.top - node.getBoundingClientRect().top, 24)
+      : 24;
+    node.animate(
+      [
+        { transform: `translateY(${rise}px) scale(0.9)`, opacity: 0.3 },
+        { transform: "none", opacity: 1 },
+      ],
+      { duration: 520, easing: "cubic-bezier(0.25, 1, 0.5, 1)" },
+    );
+  }, [reply.sending]);
+
   return (
     <div
+      ref={ref}
       className={cn(
-        "group/reply flex items-end gap-2",
+        "group/reply flex origin-bottom-right items-end gap-2",
         mine && "flex-row-reverse",
         grouped ? "mt-1" : "mt-4",
-        reply.sending && "animate-bubble-pop",
       )}
     >
       {!mine &&
@@ -181,6 +212,7 @@ function ReplyBar({
 
   return (
     <form
+      id={REPLY_BAR_ID}
       ref={form}
       onSubmit={submit}
       className="sticky bottom-0 z-20 border-t border-line bg-background/90 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:px-6"
@@ -206,7 +238,7 @@ function ReplyBar({
           type="submit"
           disabled={empty || body.length > LIMITS.comment.max}
           aria-label="Send reply"
-          className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full bg-you text-you-ink transition-[transform,opacity] duration-150 active:scale-90 disabled:cursor-default disabled:opacity-40"
+          className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full bg-you text-you-ink transition-[transform,background-color,color] duration-150 active:scale-90 disabled:cursor-default disabled:bg-surface-3 disabled:text-muted"
         >
           <ArrowUp className="size-5 stroke-[2.6]" />
         </button>
@@ -219,7 +251,6 @@ function ReplyBar({
 }
 
 export function ThreadView({ thread }: { thread: Thread }) {
-  const end = useRef<HTMLDivElement>(null);
   const [replies, addReply] = useOptimistic<Reply[], Reply>(
     thread.comments,
     (current, reply) => [...current, reply],
@@ -230,8 +261,11 @@ export function ThreadView({ thread }: { thread: Thread }) {
   }, [thread.id]);
 
   const send = async (body: string) => {
+    // Same id for the optimistic bubble and the saved reply: React keeps the
+    // node, so the rise animation isn't cut short when the server is fast.
+    const id = crypto.randomUUID();
     addReply({
-      id: `sending-${Date.now()}`,
+      id,
       body,
       createdAt: new Date(),
       alias: thread.viewerAlias,
@@ -241,10 +275,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
       hidden: false,
       sending: true,
     });
-    requestAnimationFrame(() =>
-      end.current?.scrollIntoView({ behavior: "smooth", block: "end" }),
-    );
-    const result = await addComment(thread.id, body);
+    const result = await addComment(thread.id, body, id);
     if (!result.ok) toast.error(result.error);
     return result.ok;
   };
@@ -315,7 +346,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
               <div className="-mx-2 mt-3 flex items-center gap-1">
                 <span
                   className={cn(
-                    "ml-2 rounded-full px-2.5 py-1 text-[12px] font-semibold",
+                    "ml-2 shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap",
                     mine
                       ? "bg-you-ink/10"
                       : "bg-surface-2 text-muted ring-1 ring-line",
@@ -380,7 +411,6 @@ export function ThreadView({ thread }: { thread: Thread }) {
             );
           })}
         </div>
-        <div ref={end} />
       </div>
 
       <ReplyBar thread={thread} onSend={send} />

@@ -231,11 +231,12 @@ export async function recordView(postId: string): Promise<void> {
 export async function addComment(
   postId: string,
   body: string,
+  id?: string,
 ): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
 
-  const parsed = commentInput.safeParse({ postId, body });
+  const parsed = commentInput.safeParse({ postId, body, id });
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]!.message };
 
@@ -248,9 +249,21 @@ export async function addComment(
     };
   }
 
-  await db.comment.create({
-    data: { postId, body: parsed.data.body, authorId: viewer.id },
-  });
+  try {
+    await db.comment.create({
+      data: {
+        id: parsed.data.id,
+        postId,
+        body: parsed.data.body,
+        authorId: viewer.id,
+      },
+    });
+  } catch (error) {
+    // P2002 is a reused client id; anything else is worth knowing about.
+    const code = (error as { code?: string }).code;
+    if (code !== "P2002") console.error("addComment failed", code ?? error);
+    return { ok: false, error: "That reply didn't go through. Try again." };
+  }
   if (post.authorId !== viewer.id)
     after(() => notify(post.authorId, postId, "COMMENT"));
   refresh();

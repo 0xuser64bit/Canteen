@@ -100,7 +100,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
     <div className="relative z-10 -mx-1.5 mt-3 flex items-center gap-1">
       <span
         className={cn(
-          "mr-1 rounded-full px-2.5 py-1 text-[12px] font-semibold",
+          "mr-1 shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap",
           onYellow
             ? "bg-you-ink/10"
             : "bg-surface-2 text-muted ring-1 ring-line",
@@ -111,7 +111,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
       {post.audience === "CAMPUS" && (
         <span
           className={cn(
-            "flex items-center gap-1 text-[12px] font-semibold",
+            "flex shrink-0 items-center gap-1 text-[12px] font-semibold whitespace-nowrap",
             quiet,
           )}
           title="Only students at this university can see this"
@@ -191,16 +191,16 @@ export function PostCard({
 }) {
   const mine = post.isMine;
   return (
-    <article
-      className={cn(
-        "flex gap-2.5",
-        mine ? "flex-row-reverse pl-8 sm:pl-14" : "pr-4 sm:pr-10",
-      )}
-    >
+    <article className={cn("flex gap-2.5", mine && "flex-row-reverse")}>
       {!mine && (
         <AliasAvatar alias={post.alias} className="mt-6 hidden sm:grid" />
       )}
-      <div className={cn("flex min-w-0 flex-1 flex-col", mine && "items-end")}>
+      <div
+        className={cn(
+          "flex w-[88%] min-w-0 flex-col sm:w-[82%]",
+          mine && "items-end",
+        )}
+      >
         <div className="mb-1.5 flex max-w-full items-center gap-1.5 px-1 text-[13px] text-muted">
           {mine ? (
             <span className="font-semibold text-ink">You</span>
@@ -259,14 +259,16 @@ export function PostCard({
 
 export function PostCardSkeleton({ mine }: { mine?: boolean }) {
   return (
-    <div
-      className={cn("flex gap-2.5", mine ? "flex-row-reverse pl-14" : "pr-10")}
-      aria-hidden
-    >
+    <div className={cn("flex gap-2.5", mine && "flex-row-reverse")} aria-hidden>
       {!mine && (
         <span className="mt-6 hidden size-9 shrink-0 rounded-full bg-surface-3 sm:block" />
       )}
-      <div className={cn("flex flex-1 flex-col gap-2", mine && "items-end")}>
+      <div
+        className={cn(
+          "flex w-[88%] flex-col gap-2 sm:w-[82%]",
+          mine && "items-end",
+        )}
+      >
         <span className="h-3.5 w-48 rounded-full bg-surface-3" />
         <div
           className={cn(

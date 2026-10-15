@@ -167,7 +167,7 @@ export function ChatDemo({ className }: { className?: string }) {
         </span>
       </figcaption>
       <div
-        className="wallpaper flex h-[420px] flex-col justify-end gap-3 overflow-hidden px-4 py-4"
+        className="wallpaper flex h-[420px] flex-col justify-end gap-3 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_64px)] px-4 py-4"
         aria-live="off"
       >
         {SCRIPT.slice(0, shown).map((line, index) => (

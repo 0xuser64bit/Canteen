@@ -9,7 +9,8 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         // Primary actions are the student's own voice: highlighter yellow.
-        primary: "bg-you text-you-ink hover:bg-you-hover",
+        primary:
+          "bg-you text-you-ink hover:bg-you-hover disabled:bg-surface-3 disabled:text-muted disabled:opacity-100",
         secondary:
           "bg-surface-2 text-ink ring-1 ring-line ring-inset hover:bg-surface-3",
         ghost: "text-muted hover:bg-surface-3 hover:text-ink",
