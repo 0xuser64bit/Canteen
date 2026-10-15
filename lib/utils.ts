@@ -17,7 +17,8 @@ const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
 
 /** "just now", "5 minutes ago", "yesterday", "3 weeks ago". */
 export function timeAgo(date: Date, now = Date.now()) {
-  const seconds = Math.round((date.getTime() - now) / 1000);
+  // A clock running slightly ahead must never print "in 2 minutes".
+  const seconds = Math.min(0, Math.round((date.getTime() - now) / 1000));
   for (const [unit, size] of STEPS) {
     if (Math.abs(seconds) >= size)
       return relative.format(Math.round(seconds / size), unit);

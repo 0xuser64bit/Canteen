@@ -315,7 +315,7 @@ export async function getTrending(viewer: Viewer) {
       { comments: { _count: "desc" } },
       { createdAt: "desc" },
     ],
-    take: 5,
+    take: 4,
     select: {
       id: true,
       title: true,
@@ -359,7 +359,7 @@ export async function getActiveUniversities() {
         !!row.university &&
         row.university._count.users >= MIN_MEMBERS_TO_NAME_UNIVERSITY,
     )
-    .slice(0, 5)
+    .slice(0, 4)
     .map(({ university, postCount }) => ({
       slug: university.slug,
       name: university.name,

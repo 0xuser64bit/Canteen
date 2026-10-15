@@ -13,7 +13,7 @@ export async function Discover() {
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-7">
       <section aria-labelledby="trending">
         <h2
           id="trending"
@@ -78,21 +78,17 @@ export async function Discover() {
         </section>
       )}
 
-      <section className="rounded-3xl bg-surface-2 p-5 ring-1 ring-line">
-        <p className="text-[14px] leading-relaxed text-muted">
-          Every name you see is an alias for one thread only. Your university is
-          the only thing that travels with you, and only once enough classmates
-          have joined.
-        </p>
+      <p className="border-t border-line pt-5 text-[13px] leading-relaxed text-muted">
+        Every name here is an alias for one thread only.{" "}
         <a
           href={repoUrl}
           target="_blank"
           rel="noreferrer"
-          className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold hover:underline"
+          className="inline-flex items-center gap-1 font-semibold text-ink hover:underline"
         >
-          <GitFork className="size-4" /> Canteen is open source
+          <GitFork className="size-3.5" /> Canteen is open source
         </a>
-      </section>
+      </p>
     </div>
   );
 }
