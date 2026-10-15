@@ -1,0 +1,3 @@
+# The Vercel CLI uploads files that .gitignore excludes. Keep local env files,
+# which can hold real secrets, out of deployments.
+.env*
