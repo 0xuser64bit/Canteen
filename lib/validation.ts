@@ -8,6 +8,28 @@ export const LIMITS = {
   imageBytes: 4 * 1024 * 1024,
 } as const;
 
+export const CONTACT_INFO_MESSAGE =
+  "Take out phone numbers and email addresses. They can identify people. Sharing an opportunity? Link to its page instead.";
+
+// Links are skipped (job and profile URLs carry long ids), and so are dates,
+// which otherwise run together with a time into a phone-length number.
+const LINKS = /\bhttps?:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+/gi;
+const DATES = /\b\d{1,4}[./-]\d{1,2}[./-]\d{1,4}\b/g;
+const EMAIL = /[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/i;
+const NUMBER_RUN = /\+?\(?\d[\d ().-]{8,}\d/g;
+
+/** True for text carrying an email address or a phone number from any country. */
+export function hasContactInfo(value: string) {
+  const prose = value.replace(LINKS, " ").replace(DATES, " ");
+  if (EMAIL.test(prose)) return true;
+  for (const [run] of prose.matchAll(NUMBER_RUN)) {
+    const digits = run.replace(/\D/g, "").length;
+    // ponytail: digit count only; an ISBN or order number trips it too.
+    if (digits >= 10 && digits <= 15) return true;
+  }
+  return false;
+}
+
 // Collapses runs of blank lines and trims, so "   " can't pass as content.
 const text = (min: number, max: number, field: string) =>
   z
@@ -22,7 +44,8 @@ const text = (min: number, max: number, field: string) =>
       z
         .string()
         .min(min, `${field} is too short.`)
-        .max(max, `${field} can be at most ${max} characters.`),
+        .max(max, `${field} can be at most ${max} characters.`)
+        .refine((value) => !hasContactInfo(value), CONTACT_INFO_MESSAGE),
     );
 
 export const postInput = z.object({

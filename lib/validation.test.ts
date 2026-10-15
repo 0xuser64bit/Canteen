@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { commentInput, postInput } from "./validation";
+import {
+  CONTACT_INFO_MESSAGE,
+  commentInput,
+  hasContactInfo,
+  postInput,
+} from "./validation";
 
 describe("postInput", () => {
   const valid = {
@@ -44,5 +49,39 @@ describe("commentInput", () => {
     expect(
       commentInput.safeParse({ postId: "p", body: "x".repeat(2001) }).success,
     ).toBe(false);
+  });
+
+  it("rejects contact details", () => {
+    const reply = commentInput.safeParse({
+      postId: "p",
+      body: "text her at 415-555-0132",
+    });
+    expect(reply.success).toBe(false);
+    expect(reply.error?.issues[0]?.message).toBe(CONTACT_INFO_MESSAGE);
+  });
+});
+
+describe("hasContactInfo", () => {
+  it.each([
+    "mail me at jane.doe@stanford.edu",
+    "his number is (415) 555-0132",
+    "call 415.555.0132",
+    "+91 98765 43210 is her number",
+    "9876543210",
+    "UK: +44 7700 900123",
+  ])("flags %s", (value) => {
+    expect(hasContactInfo(value)).toBe(true);
+  });
+
+  it.each([
+    "Is CS 106B worth taking in 2026?",
+    "Rent went from $1,200 to $1,450 a month",
+    "Deadline: 31.10.2026 23:59",
+    "Exam on 2026-10-15 10:30 in room 204",
+    "Apply here: https://www.linkedin.com/jobs/view/3912345678/",
+    "Classes run 9-5, Monday to Friday",
+    "Read https://medium.com/@someone/notes-1234567890",
+  ])("leaves %s alone", (value) => {
+    expect(hasContactInfo(value)).toBe(false);
   });
 });
