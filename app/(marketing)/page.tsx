@@ -175,13 +175,13 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
         </div>
       </section>
 
-      <section className="bg-[#16181d] py-20 text-white lg:py-28 dark:bg-surface dark:text-ink dark:ring-1 dark:ring-line">
+      <section className="bg-ink py-20 text-background lg:py-28 dark:bg-surface dark:text-ink dark:ring-1 dark:ring-line">
         <div className="mx-auto max-w-[1100px] px-5 sm:px-8">
           <p className="max-w-[52rem] text-[clamp(2rem,5vw,4rem)] leading-[1] font-display text-balance">
             No real names. No follower counts. No profile photos. Just students,
             talking.
           </p>
-          <ul className="mt-12 grid gap-8 text-[16px] leading-relaxed text-white/75 sm:grid-cols-3 dark:text-muted">
+          <ul className="mt-12 grid gap-8 text-[16px] leading-relaxed text-background/75 sm:grid-cols-3 dark:text-muted">
             <li>
               Reported posts hide automatically after several students flag
               them. Reporters stay anonymous too.
