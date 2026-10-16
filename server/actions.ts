@@ -198,28 +198,29 @@ export async function createPost(
 
   const { poll, ...fields } = parsed.data;
   let result: ActionResult<{ id: string }>;
+  let inserted = false;
   try {
     result = await db.$transaction(async (tx) => {
       const author = await lockAuthor(tx, viewer.id);
       if (!author || author.bannedAt) return SIGNED_OUT;
       if (await postingTooFast("post", viewer.id, tx))
         return { ok: false as const, error: POSTING_TOO_FAST };
-      return ok(
-        await tx.post.create({
-          data: {
-            ...fields,
-            pollOptions: poll && {
-              create: poll.map((label, position) => ({ label, position })),
-            },
-            imageUrl,
-            imageWidth,
-            imageHeight,
-            authorId: viewer.id,
-            universityId: viewer.university.id,
+      const post = await tx.post.create({
+        data: {
+          ...fields,
+          pollOptions: poll && {
+            create: poll.map((label, position) => ({ label, position })),
           },
-          select: { id: true },
-        }),
-      );
+          imageUrl,
+          imageWidth,
+          imageHeight,
+          authorId: viewer.id,
+          universityId: viewer.university.id,
+        },
+        select: { id: true },
+      });
+      inserted = true;
+      return ok(post);
     });
   } catch {
     console.error("Post creation failed");
@@ -229,7 +230,8 @@ export async function createPost(
     };
   }
   if (!result.ok) {
-    if (imageUrl) {
+    // A lost commit acknowledgement may mean the post exists; keep its image.
+    if (imageUrl && !inserted) {
       try {
         await del(imageUrl);
       } catch {

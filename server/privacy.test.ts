@@ -539,6 +539,19 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(del).toHaveBeenCalledWith(imageUrl);
       expect(await db.post.count()).toBe(0);
     });
+
+    it("preserves the image if the database commits but its acknowledgement is lost", async () => {
+      const transaction = db.$transaction.bind(db);
+      vi.spyOn(db, "$transaction").mockImplementationOnce(async (operation) => {
+        await transaction(operation);
+        throw new Error("Commit acknowledgement lost");
+      });
+      expect(await actions.createPost(null, await imageForm())).toHaveProperty(
+        "error",
+      );
+      expect(await db.post.count()).toBe(1);
+      expect(del).not.toHaveBeenCalled();
+    });
   });
 
   describe("authentication endpoints", () => {
