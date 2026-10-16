@@ -35,6 +35,7 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - Campus invites: until five classmates join, a share link helps bring the rest in
 - Search across posts and universities (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd>)
 - Notifications for replies and likes
+- Campus-first navigation, question/conversation types, questions needing help, and author-marked helpful replies
 - Account page with sign-out and full account deletion
 - A moderation queue for team accounts, and help links on mental health threads
 - Light and dark themes, built mobile-first

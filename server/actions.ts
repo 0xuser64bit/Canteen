@@ -14,6 +14,7 @@ import { topicBySlug } from "@/lib/topics";
 import { findUniversityByEmail } from "@/lib/universities";
 import {
   commentInput,
+  helpfulInput,
   DELETE_CONFIRMATION,
   feedInput,
   idInput,
@@ -121,7 +122,10 @@ async function notify(userId: string, postId: string, type: NotificationType) {
 export type ComposeState = {
   error?: string;
   fieldErrors?: Partial<
-    Record<"title" | "body" | "topic" | "audience" | "image" | "poll", string>
+    Record<
+      "title" | "body" | "topic" | "audience" | "image" | "poll" | "kind",
+      string
+    >
   >;
 } | null;
 
@@ -140,6 +144,7 @@ export async function createPost(
     body: form.get("body"),
     topic: form.get("topic"),
     audience: form.get("audience"),
+    kind: form.get("kind") ?? undefined,
     poll: choices.length > 0 ? choices : undefined,
   });
   if (!parsed.success) {
@@ -426,7 +431,12 @@ export async function reportContent(input: {
   if (reports >= HIDE_AFTER_REPORTS) {
     const hide = { where: { id }, data: { hiddenAt: new Date() } };
     if (target === "post") await db.post.update(hide);
-    else await db.comment.update(hide);
+    else {
+      await db.$transaction([
+        db.comment.update(hide),
+        db.helpfulAnswer.deleteMany({ where: { commentId: id } }),
+      ]);
+    }
   }
   return ok(null);
 }
@@ -503,6 +513,7 @@ export async function moderate(input: {
         await tx.session.deleteMany({ where: { userId: authorId } });
         await tx.post.updateMany({ where: theirs, data: { hiddenAt: now } });
         await tx.comment.updateMany({ where: theirs, data: { hiddenAt: now } });
+        await tx.helpfulAnswer.deleteMany({ where: { comment: { authorId } } });
         await tx.report.updateMany({
           where: {
             resolvedAt: null,
@@ -526,6 +537,51 @@ export async function moderate(input: {
   return ok(null);
 }
 
+export async function markHelpful(
+  postId: string,
+  commentId: string | null,
+): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  if (!helpfulInput.safeParse({ postId, commentId }).success) return NOT_FOUND;
+  const result = await db.$transaction(async (tx) => {
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return SIGNED_OUT;
+    const post = await tx.post.findFirst({
+      where: {
+        id: postId,
+        authorId: viewer.id,
+        hiddenAt: null,
+        kind: "QUESTION",
+      },
+      select: { id: true },
+    });
+    if (!post) return NOT_FOUND;
+    if (commentId === null) {
+      await tx.helpfulAnswer.deleteMany({ where: { postId } });
+    } else {
+      const comment = await tx.comment.findFirst({
+        where: {
+          id: commentId,
+          postId,
+          hiddenAt: null,
+          authorId: { not: viewer.id },
+        },
+        select: { id: true },
+      });
+      if (!comment) return NOT_FOUND;
+      await tx.helpfulAnswer.upsert({
+        where: { postId },
+        create: { postId, commentId },
+        update: { commentId, createdAt: new Date() },
+      });
+    }
+    return ok(null);
+  });
+  if (result.ok) refresh();
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Feeds, search, notifications
 // ---------------------------------------------------------------------------
@@ -533,6 +589,7 @@ export async function moderate(input: {
 export async function loadMore(input: {
   scope: "everyone" | "campus" | "mine" | `university:${string}`;
   topic?: string;
+  unanswered?: boolean;
   cursor: string;
 }): Promise<ActionResult<queries.FeedPage>> {
   const viewer = await getViewer();
@@ -557,7 +614,14 @@ export async function loadMore(input: {
     scope = { kind: requestedScope as "everyone" | "campus" | "mine" };
   }
   const topic: Topic | undefined = topicBySlug(requestedTopic)?.id;
-  return ok(await queries.getFeed(viewer, { scope, topic, cursor }));
+  return ok(
+    await queries.getFeed(viewer, {
+      scope,
+      topic,
+      cursor,
+      unanswered: parsed.data.unanswered,
+    }),
+  );
 }
 
 export async function searchCanteen(

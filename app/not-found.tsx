@@ -14,7 +14,7 @@ export default function NotFound() {
         from another university.
       </p>
       <Button asChild variant="primary" size="lg" className="mt-8">
-        <Link href="/home">Back to the feed</Link>
+        <Link href="/campus">Back to the feed</Link>
       </Button>
     </main>
   );

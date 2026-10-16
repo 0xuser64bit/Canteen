@@ -121,6 +121,11 @@ enum Topic {
   OPPORTUNITIES
 }
 
+enum PostKind {
+  DISCUSSION
+  QUESTION
+}
+
 enum Audience {
   // Visible to every verified student.
   EVERYONE
@@ -135,6 +140,8 @@ model Post {
   imageUrl    String?
   imageWidth  Int?
   imageHeight Int?
+  kind        PostKind @default(DISCUSSION)
+  helpfulAnswer HelpfulAnswer?
   topic       Topic     @default(GENERAL)
   audience    Audience  @default(EVERYONE)
   // Set when enough distinct students report it; hidden posts never reach feeds.
@@ -173,6 +180,7 @@ model Comment {
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  helpfulAnswer HelpfulAnswer?
   reports Report[]
 
   @@index([postId, createdAt])
@@ -290,4 +298,13 @@ model BlobDeletion {
   lockedUntil DateTime?
 
   @@index([dueAt])
+}
+
+// Only the question's author chooses a helpful answer; deleting it reopens the question.
+model HelpfulAnswer {
+  postId String @id
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String @unique
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

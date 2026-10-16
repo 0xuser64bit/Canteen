@@ -137,7 +137,7 @@ export function SignIn({
                 "That code didn't match. Check the email and try again."),
         );
       }
-      router.replace("/home");
+      router.replace("/campus");
       router.refresh();
     });
 
@@ -155,7 +155,7 @@ export function SignIn({
       setError(undefined);
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/home",
+        callbackURL: "/campus",
         errorCallbackURL: "/join",
       });
     });

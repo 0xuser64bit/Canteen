@@ -24,7 +24,7 @@ import { Counter } from "@/components/ui/field";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
 import { LIMITS } from "@/lib/validation";
-import { addComment, recordView } from "@/server/actions";
+import { addComment, recordView, markHelpful } from "@/server/actions";
 import type { Thread, ThreadComment } from "@/server/queries";
 
 type Reply = ThreadComment & { sending?: boolean };
@@ -43,7 +43,7 @@ function BackButton() {
           document.referrer &&
           new URL(document.referrer).origin === location.origin;
         if (cameFromHere && history.length > 1) router.back();
-        else router.push("/home");
+        else router.push("/campus");
       }}
       className="-ml-2 grid size-10 shrink-0 cursor-pointer place-items-center rounded-full transition-colors hover:bg-surface-3"
     >
@@ -174,6 +174,37 @@ function ReplyBubble({
       </div>
       {!reply.sending && <CommentMenu id={reply.id} isMine={mine} />}
     </div>
+  );
+}
+
+function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
+  const [pending, startTransition] = useTransition();
+  const selected = thread.helpfulCommentId === reply.id;
+  if (thread.kind !== "QUESTION" || reply.hidden || reply.sending) return null;
+  if (!thread.isMine || reply.isMine || thread.hidden)
+    return selected ? (
+      <p className="mt-1 text-[12px] font-semibold text-muted">
+        ✓ Marked helpful by the author
+      </p>
+    ) : null;
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      aria-pressed={selected}
+      className="mt-1 cursor-pointer rounded-full px-2 py-1 text-[12px] font-semibold text-muted hover:bg-surface-3 hover:text-ink disabled:opacity-50"
+      onClick={() =>
+        startTransition(async () => {
+          const result = await markHelpful(
+            thread.id,
+            selected ? null : reply.id,
+          );
+          if (!result.ok) toast.error(result.error);
+        })
+      }
+    >
+      {selected ? "✓ Helpful · undo" : "Mark helpful"}
+    </button>
   );
 }
 
@@ -336,6 +367,13 @@ export function ThreadView({ thread }: { thread: Thread }) {
                   you can see it.
                 </p>
               )}
+              {thread.kind === "QUESTION" && (
+                <p className="mb-2 text-[12px] font-semibold">
+                  {thread.helpfulCommentId
+                    ? "✓ A reply helped the author"
+                    : "Question · waiting for a helpful reply"}
+                </p>
+              )}
               <h1 className="text-[22px] leading-tight font-bold tracking-tight text-balance sm:text-[26px]">
                 {thread.title}
               </h1>
@@ -422,6 +460,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
                   grouped={sameAsPrevious}
                   lastInGroup={!sameAsNext}
                 />
+                <HelpfulReply thread={thread} reply={reply} />
               </div>
             );
           })}

@@ -36,18 +36,18 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    href: "/home",
-    label: "Everyone",
-    short: "Feed",
-    icon: Home,
-    active: (p, t) => p === "/home" && t !== "opportunities",
-  },
-  {
     href: "/campus",
     label: "My campus",
     short: "Campus",
     icon: School,
     active: (p) => p === "/campus",
+  },
+  {
+    href: "/home",
+    label: "Everyone",
+    short: "Feed",
+    icon: Home,
+    active: (p, t) => p === "/home" && t !== "opportunities",
   },
   {
     href: "/home?topic=opportunities",
@@ -142,7 +142,7 @@ export function SideNav({
       className="sticky top-0 hidden h-dvh w-[264px] shrink-0 flex-col px-4 py-5 lg:flex"
     >
       <Link
-        href="/home"
+        href="/campus"
         className="mb-7 rounded-xl px-3 py-1"
         aria-label="Canteen home"
       >

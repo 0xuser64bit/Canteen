@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { EmptyState } from "@/components/empty";
 import { Feed } from "@/components/feed";
 import { InviteCard } from "@/components/invite";
-import { PageHeader, TopicChips } from "@/components/page-header";
+import {
+  PageHeader,
+  TopicChips,
+  QuestionFilter,
+} from "@/components/page-header";
 import { requireViewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
 import { TEAM } from "@/lib/universities";
@@ -16,10 +20,15 @@ export const metadata: Metadata = { title: "Everyone" };
 
 export default async function HomePage({ searchParams }: PageProps<"/home">) {
   const viewer = await requireViewer();
-  const { topic: slug } = await searchParams;
+  const { topic: slug, unanswered: filter } = await searchParams;
+  const unanswered = filter === "1";
   const topic = topicBySlug(typeof slug === "string" ? slug : undefined);
   const [page, campusSize] = await Promise.all([
-    getFeed(viewer, { scope: { kind: "everyone" }, topic: topic?.id }),
+    getFeed(viewer, {
+      scope: { kind: "everyone" },
+      topic: topic?.id,
+      unanswered,
+    }),
     viewer.university.slug === TEAM.slug ? null : getCampusSize(viewer),
   ]);
   const opportunities = topic?.id === "OPPORTUNITIES";
@@ -34,7 +43,8 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
             : "Verified students from every university"
         }
       >
-        <TopicChips base="/home" active={topic?.slug} />
+        <QuestionFilter base="/home" active={unanswered} topic={topic?.slug} />
+        <TopicChips unanswered={unanswered} base="/home" active={topic?.slug} />
       </PageHeader>
       {campusSize !== null && campusSize < MIN_MEMBERS_TO_NAME_UNIVERSITY && (
         <InviteCard
@@ -45,18 +55,21 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         />
       )}
       <Feed
-        key={topic?.slug ?? "all"}
+        key={`${topic?.slug ?? "all"}:${unanswered}`}
+        unanswered={unanswered}
         initial={page}
         scope="everyone"
         topic={topic?.slug}
         empty={
           <EmptyState
             title={
-              opportunities
-                ? "No opportunities yet"
-                : topic
-                  ? `Nothing in ${topic.label} yet`
-                  : "It's quiet in here"
+              unanswered
+                ? "No questions waiting"
+                : opportunities
+                  ? "No opportunities yet"
+                  : topic
+                    ? `Nothing in ${topic.label} yet`
+                    : "It's quiet in here"
             }
             body={
               opportunities

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type {
   Audience,
+  PostKind,
   NotificationType,
   ReportReason,
   Topic,
@@ -145,6 +146,8 @@ function postSelect(viewerId: string) {
     imageUrl: true,
     imageWidth: true,
     imageHeight: true,
+    kind: true,
+    helpfulAnswer: { select: { commentId: true } },
     topic: true,
     audience: true,
     createdAt: true,
@@ -169,6 +172,8 @@ export type PostSummary = {
   title: string;
   excerpt: string;
   image: { url: string; width: number; height: number } | null;
+  kind: PostKind;
+  helpfulCommentId: string | null;
   topic: Topic;
   audience: Audience;
   createdAt: Date;
@@ -198,6 +203,8 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
           height: row.imageHeight ?? 900,
         }
       : null,
+    kind: row.kind,
+    helpfulCommentId: row.helpfulAnswer?.commentId ?? null,
     topic: row.topic,
     audience: row.audience,
     createdAt: row.createdAt,
@@ -227,7 +234,8 @@ export async function getFeed(
     scope,
     topic,
     cursor,
-  }: { scope: FeedScope; topic?: Topic; cursor?: string },
+    unanswered,
+  }: { scope: FeedScope; topic?: Topic; cursor?: string; unanswered?: boolean },
 ): Promise<FeedPage> {
   const scoped: Prisma.PostWhereInput =
     scope.kind === "mine"
@@ -245,7 +253,14 @@ export async function getFeed(
         };
 
   const rows = await db.post.findMany({
-    where: { AND: [scoped, topic ? { topic } : {}, afterCursor(cursor)] },
+    where: {
+      AND: [
+        scoped,
+        topic ? { topic } : {},
+        unanswered ? { kind: "QUESTION", helpfulAnswer: null } : {},
+        afterCursor(cursor),
+      ],
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: PAGE_SIZE + 1,
     select: postSelect(viewer.id),

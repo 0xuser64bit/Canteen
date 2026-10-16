@@ -21,7 +21,7 @@ import {
 import { HelplineNote } from "@/components/helpline";
 import { Button } from "@/components/ui/button";
 import { Counter, FieldError } from "@/components/ui/field";
-import type { Audience, Topic } from "@/lib/generated/prisma/enums";
+import type { Audience, PostKind, Topic } from "@/lib/generated/prisma/enums";
 import { TOPICS } from "@/lib/topics";
 import { cn } from "@/lib/utils";
 import { LIMITS } from "@/lib/validation";
@@ -137,8 +137,9 @@ export function Composer({
   );
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [kind, setKind] = useState<PostKind>("QUESTION");
   const [topic, setTopic] = useState<Topic>(initialTopic);
-  const [audience, setAudience] = useState<Audience>("EVERYONE");
+  const [audience, setAudience] = useState<Audience>("CAMPUS");
   const [image, setImage] = useState<PreparedImage | null>(null);
   const [poll, setPoll] = useState<string[] | null>(null);
   const [imageError, setImageError] = useState<string>();
@@ -192,6 +193,7 @@ export function Composer({
     const form = new FormData();
     form.set("title", title);
     form.set("body", body);
+    form.set("kind", topic === "OPPORTUNITIES" ? "DISCUSSION" : kind);
     form.set("topic", topic);
     form.set("audience", audience);
     poll?.forEach((choice) => form.append("pollChoice", choice));
@@ -220,7 +222,7 @@ export function Composer({
     <form onSubmit={submit} className="flex min-h-dvh flex-col lg:min-h-0">
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-background/85 px-4 py-2.5 backdrop-blur-xl lg:px-6 lg:py-4">
         <Button asChild variant="ghost" size="icon" className="-ml-2">
-          <Link href="/home" aria-label="Cancel">
+          <Link href="/campus" aria-label="Cancel">
             <X />
           </Link>
         </Button>
@@ -236,6 +238,34 @@ export function Composer({
       </header>
 
       <div className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6">
+        {topic !== "OPPORTUNITIES" && (
+          <fieldset>
+            <legend className="mb-2 text-[13px] font-semibold text-muted">
+              Start a
+            </legend>
+            <div
+              role="radiogroup"
+              aria-label="Post type"
+              className="flex gap-2"
+            >
+              <Choice
+                checked={kind === "QUESTION"}
+                onSelect={() => setKind("QUESTION")}
+              >
+                Question
+              </Choice>
+              <Choice
+                checked={kind === "DISCUSSION"}
+                onSelect={() => setKind("DISCUSSION")}
+              >
+                Conversation
+              </Choice>
+            </div>
+            <p className="mt-2 text-[12px] text-muted">
+              Questions stay open until you mark a helpful reply.
+            </p>
+          </fieldset>
+        )}
         <fieldset className="min-w-0">
           <legend className="mb-2 text-[13px] font-semibold text-muted">
             Topic

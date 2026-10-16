@@ -115,7 +115,7 @@ export default async function MePage() {
                 )}
               </span>
             </li>
-            {process.env.BLOB_READ_WRITE_TOKEN && (
+            {process.env.BLOB_PRIVATE_READ_WRITE_TOKEN && (
               <li className="flex gap-3">
                 <ImageOff className="mt-0.5 size-[18px] shrink-0 text-ink" />
                 <span>

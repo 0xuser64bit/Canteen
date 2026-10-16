@@ -18,7 +18,7 @@ function Highlight({ children }: { children: React.ReactNode }) {
 }
 
 export default async function LandingPage({ searchParams }: PageProps<"/">) {
-  if (await getViewer()) redirect("/home");
+  if (await getViewer()) redirect("/campus");
   const { deleted } = await searchParams;
   const joinLabel = isEmailEnabled
     ? "Join with your university email"

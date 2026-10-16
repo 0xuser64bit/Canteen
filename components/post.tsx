@@ -109,6 +109,11 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
       >
         {topicLabel(post.topic)}
       </span>
+      {post.kind === "QUESTION" && (
+        <span className={cn("text-[12px] font-semibold", quiet)}>
+          {post.helpfulCommentId ? "Answered" : "Question"}
+        </span>
+      )}
       {post.audience === "CAMPUS" && (
         <span
           className={cn(

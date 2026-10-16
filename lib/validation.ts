@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { Audience, ReportReason, Topic } from "@/lib/generated/prisma/enums";
+import {
+  Audience,
+  PostKind,
+  ReportReason,
+  Topic,
+} from "@/lib/generated/prisma/enums";
 
 export const LIMITS = {
   title: { min: 4, max: 140 },
@@ -66,6 +71,7 @@ export const postInput = z
   .object({
     title: text(LIMITS.title.min, LIMITS.title.max, "Title"),
     body: text(0, LIMITS.body.max, "Post"),
+    kind: z.enum(PostKind).default("DISCUSSION"),
     topic: z.enum(Topic),
     audience: z.enum(Audience),
     poll: pollChoices.optional(),
@@ -92,6 +98,7 @@ export const feedInput = z.object({
       .regex(/^university:[a-z0-9-]+$/),
   ]),
   topic: z.string().max(80).optional(),
+  unanswered: z.boolean().optional(),
   cursor: z.string().max(128),
 });
 
@@ -130,3 +137,8 @@ export const REPORT_REASONS: { id: ReportReason; label: string }[] = [
   { id: "SELF_HARM", label: "Someone may be at risk" },
   { id: "OTHER", label: "Something else" },
 ];
+
+export const helpfulInput = z.object({
+  postId: idInput,
+  commentId: idInput.nullable(),
+});

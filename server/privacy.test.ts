@@ -168,6 +168,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     overrides: Partial<{
       audience: "EVERYONE" | "CAMPUS";
       title: string;
+      kind: "QUESTION" | "DISCUSSION";
       imageUrl: string;
     }> = {},
   ) {
@@ -183,6 +184,56 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       },
     });
   }
+
+  it("lets only a question's author choose a visible helpful reply and reopens on deletion", async () => {
+    const p = await post("ada", { audience: "CAMPUS", kind: "QUESTION" });
+    const c = await db.comment.create({
+      data: { postId: p.id, authorId: "alan", body: "Here is how to do it." },
+    });
+    as("grace");
+    expect((await actions.markHelpful(p.id, c.id)).ok).toBe(false);
+    as("alan");
+    expect((await actions.markHelpful(p.id, c.id)).ok).toBe(false);
+    as("ada");
+    expect(
+      (
+        await queries.getFeed(await viewer("ada"), {
+          scope: { kind: "campus" },
+          unanswered: true,
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect((await actions.markHelpful(p.id, c.id)).ok).toBe(true);
+    expect(
+      (
+        await queries.getFeed(await viewer("ada"), {
+          scope: { kind: "campus" },
+          unanswered: true,
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (await queries.getThread(await viewer("ada"), p.id))?.helpfulCommentId,
+    ).toBe(c.id);
+    const other = await post("alan");
+    const unrelated = await db.comment.create({
+      data: { postId: other.id, authorId: "alan", body: "Another thread" },
+    });
+    expect((await actions.markHelpful(p.id, unrelated.id)).ok).toBe(false);
+    const own = await db.comment.create({
+      data: { postId: p.id, authorId: "ada", body: "My own answer" },
+    });
+    expect((await actions.markHelpful(p.id, own.id)).ok).toBe(false);
+    await db.comment.delete({ where: { id: c.id } });
+    expect(
+      (
+        await queries.getFeed(await viewer("ada"), {
+          scope: { kind: "campus" },
+          unanswered: true,
+        })
+      ).items,
+    ).toHaveLength(1);
+  });
 
   it("keeps campus-only posts inside their university", async () => {
     const campus = await post("ada", {

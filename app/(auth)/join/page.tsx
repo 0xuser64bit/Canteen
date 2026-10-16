@@ -9,7 +9,7 @@ import { getViewer } from "@/lib/session";
 export const metadata: Metadata = { title: "Join" };
 
 export default async function JoinPage({ searchParams }: PageProps<"/join">) {
-  if (await getViewer()) redirect("/home");
+  if (await getViewer()) redirect("/campus");
   const { error } = await searchParams;
 
   return (
