@@ -92,15 +92,26 @@ Integration tests exercise the privacy and permission rules against a real datab
 
 ```sh
 createdb canteen_test
-DATABASE_URL=postgresql://localhost:5432/canteen_test bunx prisma migrate deploy
-TEST_DATABASE_URL=postgresql://localhost:5432/canteen_test bun run test
+export TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/canteen_test
+DATABASE_URL="$TEST_DATABASE_URL" DATABASE_URL_UNPOOLED="$TEST_DATABASE_URL" bunx prisma migrate deploy
+bun run test
 ```
 
-CI runs all of this, plus a production build, on every push and pull request.
+Use your own Postgres credentials. The suite truncates its database. Setting both migration URLs above ensures a direct connection configured in `.env` cannot send test migrations to another database.
+
+The database suite covers authentication endpoints, campus visibility, serialized identity protection, concurrent posting limits, moderation rollback, notifications, polls, account deletion, and image metadata and cleanup failures. Email and Blob requests are mocked; tests never send mail or upload files.
+
+CI runs all of this, plus a production dependency audit and build, on every push and pull request. The remaining development dependency advisory is tracked in [SECURITY.md](SECURITY.md#dependency-review).
 
 ## Deploy
 
 Canteen deploys to [Vercel](https://vercel.com) as-is. `vercel.json` installs with Bun and runs `scripts/vercel-build.sh`, which applies pending migrations on production deploys only. Add a Postgres database (for example Neon from the Vercel Marketplace), set the variables above, and deploy. Give preview deployments their own database so pull requests never migrate production.
+
+### Current operational limits
+
+- **Image URLs are public.** Page and action permissions protect campus-only threads, but Blob files can be loaded by anyone who has their URL. Private storage with authorized image delivery is the next privacy prerequisite before treating photos as campus-private. Existing public files would also need migration.
+- **Background work has no durable retry queue.** Image deletion and notifications use Next.js `after`. A storage outage can leave a deleted post's image behind. Failed post saves attempt cleanup; an uncertain commit preserves the image to avoid breaking a post that may already exist. Durable deletion jobs and reconciliation are needed for reliable erasure during outages.
+- **Long threads need pagination.** A thread currently reads its first 1,000 replies. Add pagination before using Canteen for threads that can exceed that limit.
 
 ## Project layout
 
