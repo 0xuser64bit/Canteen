@@ -165,6 +165,7 @@ export const moderationInput = z.object({
   target: z.enum(["post", "comment"]),
   id: idInput,
   decision: z.enum(["keep", "remove", "ban"]),
+  reason: z.enum(ReportReason).default("OTHER"),
 });
 
 export const DELETE_CONFIRMATION = "delete my account";
@@ -187,4 +188,14 @@ export const collectionInput = z.object({
   postId: idInput,
   collection: z.enum(["saved", "following"]),
   enabled: z.boolean(),
+});
+
+export const appealInput = z.object({
+  id: idInput,
+  body: text(10, 2000, "Appeal"),
+});
+export const reviewAppealInput = z.object({
+  id: idInput,
+  restore: z.boolean(),
+  response: text(10, 600, "Response"),
 });

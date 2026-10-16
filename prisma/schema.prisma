@@ -24,20 +24,21 @@ model User {
 
   universityId String
   university   University @relation(fields: [universityId], references: [id])
-  // Set when moderators ban the account: no new sessions, everything it wrote hidden.
+  // Suspended accounts may authenticate only for status, appeals and deletion.
   bannedAt     DateTime?
 
-  sessions      Session[]
-  accounts      Account[]
-  posts         Post[]
-  comments      Comment[]
-  likes         Like[]
-  views         PostView[]
-  reports       Report[]
-  notifications Notification[]
-  bookmarks     Bookmark[]
-  follows       Follow[]
-  pollVotes     PollVote[]
+  sessions        Session[]
+  accounts        Account[]
+  posts           Post[]
+  comments        Comment[]
+  likes           Like[]
+  views           PostView[]
+  reports         Report[]
+  moderationCases ModerationCase[]
+  notifications   Notification[]
+  bookmarks       Bookmark[]
+  follows         Follow[]
+  pollVotes       PollVote[]
 
   @@index([universityId])
 }
@@ -136,23 +137,24 @@ enum Audience {
 }
 
 model Post {
-  id          String    @id @default(cuid())
-  title       String
-  body        String
-  imageUrl    String?
-  imageWidth  Int?
-  imageHeight Int?
+  id             String         @id @default(cuid())
+  title          String
+  body           String
+  imageUrl       String?
+  imageWidth     Int?
+  imageHeight    Int?
   applicationUrl String?
-  deadline DateTime?
-  revision Int @default(0)
-  kind        PostKind @default(DISCUSSION)
-  helpfulAnswer HelpfulAnswer?
-  topic       Topic     @default(GENERAL)
-  audience    Audience  @default(EVERYONE)
+  deadline       DateTime?
+  revision       Int            @default(0)
+  kind           PostKind       @default(DISCUSSION)
+  helpfulAnswer  HelpfulAnswer?
+  topic          Topic          @default(GENERAL)
+  audience       Audience       @default(EVERYONE)
   // Set when enough distinct students report it; hidden posts never reach feeds.
-  hiddenAt    DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  removedAt      DateTime?
+  hiddenAt       DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   authorId     String
   author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -160,15 +162,16 @@ model Post {
   universityId String
   university   University @relation(fields: [universityId], references: [id])
 
-  comments      Comment[]
-  likes         Like[]
-  views         PostView[]
-  reports       Report[]
-  notifications Notification[]
-  pollOptions   PollOption[]
-  bookmarks     Bookmark[]
-  follows       Follow[]
-  pollVotes     PollVote[]
+  comments        Comment[]
+  likes           Like[]
+  views           PostView[]
+  reports         Report[]
+  moderationCases ModerationCase[]
+  notifications   Notification[]
+  pollOptions     PollOption[]
+  bookmarks       Bookmark[]
+  follows         Follow[]
+  pollVotes       PollVote[]
 
   @@index([createdAt])
   @@index([universityId, createdAt])
@@ -179,6 +182,7 @@ model Post {
 model Comment {
   id        String    @id @default(cuid())
   body      String
+  removedAt DateTime?
   hiddenAt  DateTime?
   createdAt DateTime  @default(now())
 
@@ -187,8 +191,9 @@ model Comment {
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  helpfulAnswer HelpfulAnswer?
-  reports Report[]
+  helpfulAnswer   HelpfulAnswer?
+  moderationCases ModerationCase[]
+  reports         Report[]
 
   @@index([postId, createdAt])
   @@index([authorId, createdAt])
@@ -298,10 +303,10 @@ model Notification {
 
 // Independent of posts/users so erasure survives account deletion and storage outages.
 model BlobDeletion {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  dueAt       DateTime @default(now())
-  attempts    Int      @default(0)
+  id          String    @id @default(cuid())
+  key         String    @unique
+  dueAt       DateTime  @default(now())
+  attempts    Int       @default(0)
   lockedUntil DateTime?
 
   @@index([dueAt])
@@ -309,30 +314,60 @@ model BlobDeletion {
 
 // Only the question's author chooses a helpful answer; deleting it reopens the question.
 model HelpfulAnswer {
-  postId String @id
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  commentId String @unique
-  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  postId    String   @id
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String   @unique
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
 
 // Private collections. Only booleans for the current viewer leave the server.
 model Bookmark {
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId String
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
   @@id([userId, postId])
   @@index([postId])
 }
 
 model Follow {
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId String
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
   @@id([userId, postId])
   @@index([postId])
+}
+
+enum ModerationDecision {
+  KEEP
+  REMOVE
+  BAN
+}
+
+// Reporter identity is never part of a decision or appeal view.
+model ModerationCase {
+  id         String             @id @default(cuid())
+  authorId   String
+  author     User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postId     String?
+  post       Post?              @relation(fields: [postId], references: [id], onDelete: SetNull)
+  commentId  String?
+  comment    Comment?           @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  decision   ModerationDecision
+  reason     ReportReason
+  createdAt  DateTime           @default(now())
+  appealText String?
+  appealedAt DateTime?
+  resolvedAt DateTime?
+  restored   Boolean?
+  response   String?
+
+  @@index([authorId, createdAt])
+  @@index([appealedAt, resolvedAt])
 }

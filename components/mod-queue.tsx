@@ -27,6 +27,7 @@ function reasonsLine(item: ModItem) {
 
 function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
   const [confirm, setConfirm] = useState<"remove" | "ban" | null>(null);
+  const [reason, setReason] = useState(item.reasons[0]?.reason ?? "OTHER");
   const [pending, startTransition] = useTransition();
   const what = item.target === "post" ? "post" : "reply";
 
@@ -36,6 +37,7 @@ function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
         target: item.target,
         id: item.id,
         decision,
+        reason,
       });
       if (!result.ok) return void toast.error(result.error);
       setConfirm(null);
@@ -136,10 +138,28 @@ function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
           }
           description={
             confirm === "ban"
-              ? `The ${what} is deleted. Its author is signed out, can't sign back in, and everything else they've posted is hidden.`
-              : "It's deleted for everyone. Nobody learns who reported it."
+              ? `The ${what} is removed. Its author is signed out, and everything else they have posted is hidden. They can sign in only to appeal or delete their account.`
+              : "It is hidden from others. Its author can see the reason and appeal. Nobody learns who reported it."
           }
         >
+          <label
+            className="mb-2 block text-[13px] font-semibold"
+            htmlFor={`reason-${item.id}`}
+          >
+            Reason shown to the author
+          </label>
+          <select
+            id={`reason-${item.id}`}
+            value={reason}
+            onChange={(e) => setReason(e.target.value as typeof reason)}
+            className="mb-5 w-full rounded-xl bg-surface px-3 py-2 ring-1 ring-line"
+          >
+            {REPORT_REASONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           <div className="flex justify-end gap-2">
             <DialogClose asChild>
               <Button variant="ghost">Cancel</Button>

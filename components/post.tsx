@@ -234,7 +234,7 @@ export function PostCard({
         >
           {post.hidden && (
             <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold">
-              <ShieldAlert className="size-4" /> Hidden after reports. Only you
+              <ShieldAlert className="size-4" /> Hidden from others. Only you
               can see it.
             </p>
           )}

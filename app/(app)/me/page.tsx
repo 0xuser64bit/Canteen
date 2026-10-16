@@ -91,6 +91,9 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
           )}
         </section>
 
+        <Button asChild>
+          <Link href="/account-status">Moderation decisions and appeals</Link>
+        </Button>
         <section aria-labelledby="privacy">
           <h2 id="privacy" className="mb-3 text-[15px] font-bold">
             How you stay anonymous

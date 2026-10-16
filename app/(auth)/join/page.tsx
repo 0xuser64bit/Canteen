@@ -4,12 +4,13 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { SignIn } from "@/components/sign-in";
 import { isEmailEnabled, isGoogleEnabled } from "@/lib/auth";
-import { getViewer } from "@/lib/session";
+import { getAccountViewer } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Join" };
 
 export default async function JoinPage({ searchParams }: PageProps<"/join">) {
-  if (await getViewer()) redirect("/campus");
+  const account = await getAccountViewer();
+  if (account) redirect(account.bannedAt ? "/account-status" : "/campus");
   const { error } = await searchParams;
 
   return (

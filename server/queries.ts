@@ -609,6 +609,7 @@ function tally(reports: { reason: ReportReason }[]) {
 }
 
 export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
+  if (!isModerator(viewer)) return [];
   const openable = (post: {
     hiddenAt: Date | null;
     audience: Audience;
@@ -765,4 +766,50 @@ export async function getAccountStats(viewer: Viewer) {
     db.like.count({ where: { post: { authorId: viewer.id } } }),
   ]);
   return { posts, comments, likesReceived };
+}
+
+const decisionSelect = {
+  id: true,
+  decision: true,
+  reason: true,
+  createdAt: true,
+  appealText: true,
+  appealedAt: true,
+  resolvedAt: true,
+  restored: true,
+  response: true,
+  post: { select: { title: true, body: true } },
+  comment: { select: { body: true, post: { select: { title: true } } } },
+} satisfies Prisma.ModerationCaseSelect;
+
+export async function getModerationHistory(viewer: Viewer) {
+  const rows = await db.moderationCase.findMany({
+    where: { authorId: viewer.id },
+    select: decisionSelect,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 100,
+  });
+  return rows.map(({ post, comment, ...item }) => ({
+    ...item,
+    title: post?.title ?? comment?.post.title ?? "Deleted content",
+    body: post?.body ?? comment?.body ?? "",
+  }));
+}
+export type ModerationHistory = Awaited<
+  ReturnType<typeof getModerationHistory>
+>;
+
+export async function getAppeals(viewer: Viewer) {
+  if (!isModerator(viewer)) return [];
+  const rows = await db.moderationCase.findMany({
+    where: { appealedAt: { not: null }, resolvedAt: null },
+    select: decisionSelect,
+    orderBy: [{ appealedAt: "asc" }, { id: "asc" }],
+    take: 100,
+  });
+  return rows.map(({ post, comment, ...item }) => ({
+    ...item,
+    title: post?.title ?? comment?.post.title ?? "Deleted content",
+    body: post?.body ?? comment?.body ?? "",
+  }));
 }

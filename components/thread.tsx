@@ -163,8 +163,8 @@ function ReplyBubble({
         >
           {reply.hidden && (
             <span className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold">
-              <ShieldAlert className="size-3.5" /> Hidden after reports. Only
-              you can see it.
+              <ShieldAlert className="size-3.5" /> Hidden from others. Only you
+              can see it.
             </span>
           )}
           <Linkified text={reply.body} />
@@ -431,7 +431,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
             >
               {thread.hidden && (
                 <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold">
-                  <ShieldAlert className="size-4" /> Hidden after reports. Only
+                  <ShieldAlert className="size-4" /> Hidden from others. Only
                   you can see it.
                 </p>
               )}

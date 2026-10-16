@@ -33,6 +33,20 @@ const state = vi.hoisted(() => ({
 vi.mock("@/lib/session", async () => {
   const { db } = await import("@/lib/db");
   return {
+    getAccountViewer: vi.fn(async () =>
+      state.viewerId
+        ? db.user.findUnique({
+            where: { id: state.viewerId },
+            select: {
+              id: true,
+              email: true,
+              bannedAt: true,
+              createdAt: true,
+              university: { select: { id: true, slug: true, name: true } },
+            },
+          })
+        : null,
+    ),
     getViewer: vi.fn(async () =>
       state.viewerId
         ? db.user.findUnique({
@@ -48,7 +62,16 @@ vi.mock("@/lib/session", async () => {
     ),
   };
 });
-vi.mock("@/lib/auth", () => ({ auth: { api: { signOut: vi.fn() } } }));
+vi.mock("@/lib/auth", () => ({
+  auth: {
+    api: {
+      signOut: vi.fn(),
+      getSession: vi.fn(async () =>
+        state.viewerId ? { user: { id: state.viewerId } } : null,
+      ),
+    },
+  },
+}));
 vi.mock("@/lib/email", () => ({ sendSignInCode: vi.fn() }));
 vi.mock("next/cache", () => ({ refresh: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
@@ -95,7 +118,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
+      'TRUNCATE "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -984,7 +1007,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(sendSignInCode).toHaveBeenCalledTimes(1);
     });
 
-    it("doesn't issue a session to a banned account", async () => {
+    it("allows verified suspended students a restricted session for appeals", async () => {
       await db.user.update({
         where: { id: "ada" },
         data: { bannedAt: new Date() },
@@ -992,11 +1015,11 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       const email = "ada@stanford.edu";
       const otp = await codeFor(email);
       const response = await request("/sign-in/email-otp", { email, otp });
-      expect(response.status).toBe(403);
-      expect(await response.json()).toMatchObject({
-        code: "ACCOUNT_SUSPENDED",
-      });
-      expect(await db.session.count()).toBe(0);
+      expect(response.status).toBe(200);
+      expect(await db.session.count()).toBe(1);
+      as("ada");
+      expect(await getViewer()).toBeNull();
+      expect((await actions.setLike("anything", true)).ok).toBe(false);
     });
 
     it.each(["former-staff@gmail.com", "former-staff@stanford.edu"])(
@@ -1145,7 +1168,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
       as("mod");
       expect((await actions.moderate(decision)).ok).toBe(true);
-      expect(await db.post.count()).toBe(0);
+      expect(await db.post.count({ where: { hiddenAt: null } })).toBe(0);
     });
 
     it("keeps content and makes it take new reporters to hide it again", async () => {
@@ -1198,8 +1221,9 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       });
       expect(banned.ok).toBe(true);
       expect(
-        await db.post.findUnique({ where: { id: reported.id } }),
-      ).toBeNull();
+        (await db.post.findUniqueOrThrow({ where: { id: reported.id } }))
+          .removedAt,
+      ).not.toBeNull();
       expect(await hiddenAt(other.id)).not.toBeNull();
       expect(
         await db.comment.count({ where: { authorId: "ada", hiddenAt: null } }),
@@ -1223,6 +1247,137 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect((await actions.addComment(other.id, "Still here?")).ok).toBe(
         false,
       );
+    });
+
+    it("supports private appeals and restores only the appealed suspension", async () => {
+      const target = await post("ada");
+      const independent = await post("ada");
+      const other = await post("ada");
+      await db.post.update({
+        where: { id: independent.id },
+        data: { hiddenAt: new Date("2020-01-01") },
+      });
+      as("mod");
+      expect(
+        (
+          await actions.moderate({
+            target: "post",
+            id: target.id,
+            decision: "ban",
+            reason: "HARASSMENT",
+          })
+        ).ok,
+      ).toBe(true);
+      const decision = await db.moderationCase.findFirstOrThrow();
+      as("alan");
+      expect(
+        (
+          await actions.submitAppeal(
+            decision.id,
+            "This was taken out of context.",
+          )
+        ).ok,
+      ).toBe(false);
+      expect(
+        await queries.getModerationHistory(await viewer("alan")),
+      ).toHaveLength(0);
+      expect(await queries.getAppeals(await viewer("alan"))).toHaveLength(0);
+      as("ada");
+      const realSession =
+        await vi.importActual<typeof import("@/lib/session")>("@/lib/session");
+      expect(await realSession.getViewer()).toBeNull();
+      expect((await realSession.getAccountViewer())?.bannedAt).not.toBeNull();
+      expect(
+        (
+          await actions.submitAppeal(
+            decision.id,
+            "This was taken out of context.",
+          )
+        ).ok,
+      ).toBe(true);
+      expect(
+        (await actions.submitAppeal(decision.id, "This is a duplicate appeal."))
+          .ok,
+      ).toBe(false);
+      expect((await actions.addComment(other.id, "Still suspended")).ok).toBe(
+        false,
+      );
+      as("mod");
+      const queue = await queries.getAppeals(await viewer("mod"));
+      expect(queue).toHaveLength(1);
+      for (const secret of ["ada@", '"authorId"', '"reporterId"', '"userId"'])
+        expect(JSON.stringify(queue)).not.toContain(secret);
+      expect(
+        (
+          await actions.reviewAppeal(
+            decision.id,
+            true,
+            "The context supports restoring this content.",
+          )
+        ).ok,
+      ).toBe(true);
+      expect(await hiddenAt(target.id)).toBeNull();
+      expect(await hiddenAt(other.id)).toBeNull();
+      expect(await hiddenAt(independent.id)).not.toBeNull();
+      expect(
+        (await db.user.findUniqueOrThrow({ where: { id: "ada" } })).bannedAt,
+      ).toBeNull();
+      expect(
+        (
+          await actions.reviewAppeal(
+            decision.id,
+            true,
+            "Cannot review it twice.",
+          )
+        ).ok,
+      ).toBe(false);
+      as("ada");
+      expect(await realSession.getViewer()).not.toBeNull();
+    });
+
+    it("keeps a suspension appealable when a thread owner deletes its reported reply", async () => {
+      const thread = await post("alan");
+      const comment = await db.comment.create({
+        data: { postId: thread.id, authorId: "ada", body: "Reported reply" },
+      });
+      as("mod");
+      await actions.moderate({
+        target: "comment",
+        id: comment.id,
+        decision: "ban",
+      });
+      const decision = await db.moderationCase.findFirstOrThrow();
+      as("alan");
+      await actions.deletePost(thread.id);
+      expect(
+        (
+          await db.moderationCase.findUniqueOrThrow({
+            where: { id: decision.id },
+          })
+        ).commentId,
+      ).toBeNull();
+      as("ada");
+      expect(
+        (
+          await actions.submitAppeal(
+            decision.id,
+            "Please reconsider my suspension.",
+          )
+        ).ok,
+      ).toBe(true);
+      as("mod");
+      expect(
+        (
+          await actions.reviewAppeal(
+            decision.id,
+            true,
+            "The suspension is overturned after review.",
+          )
+        ).ok,
+      ).toBe(true);
+      expect(
+        (await db.user.findUniqueOrThrow({ where: { id: "ada" } })).bannedAt,
+      ).toBeNull();
     });
 
     it("rolls back content removal when banning the author fails", async () => {
@@ -1275,7 +1430,8 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         actions.moderate(decision),
       ]);
       expect(results.filter((result) => result.ok)).toHaveLength(1);
-      expect(await db.post.count()).toBe(0);
+      expect(await db.post.count({ where: { hiddenAt: null } })).toBe(0);
+      expect(await db.moderationCase.count()).toBe(1);
     });
 
     it("bans a reported reply's author without removing the thread", async () => {
@@ -1289,7 +1445,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(
         (await actions.moderate({ target: "comment", id, decision: "ban" })).ok,
       ).toBe(true);
-      expect(await db.comment.count()).toBe(0);
+      expect(await db.comment.count({ where: { hiddenAt: null } })).toBe(0);
       expect(
         await db.post.findUnique({ where: { id: thread.id } }),
       ).not.toBeNull();

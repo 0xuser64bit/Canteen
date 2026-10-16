@@ -6,7 +6,7 @@ import { ChatDemo } from "@/components/chat-demo";
 import { Logo, LogoMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { isEmailEnabled } from "@/lib/auth";
-import { getViewer } from "@/lib/session";
+import { getAccountViewer } from "@/lib/session";
 import { repoUrl } from "@/lib/site";
 
 function Highlight({ children }: { children: React.ReactNode }) {
@@ -18,7 +18,8 @@ function Highlight({ children }: { children: React.ReactNode }) {
 }
 
 export default async function LandingPage({ searchParams }: PageProps<"/">) {
-  if (await getViewer()) redirect("/campus");
+  const account = await getAccountViewer();
+  if (account) redirect(account.bannedAt ? "/account-status" : "/campus");
   const { deleted } = await searchParams;
   const joinLabel = isEmailEnabled
     ? "Join with your university email"

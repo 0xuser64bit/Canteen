@@ -9,10 +9,12 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { NotificationType, Topic } from "@/lib/generated/prisma/enums";
 import { preparePostImage } from "@/lib/images";
-import { getViewer, type Viewer } from "@/lib/session";
+import { getViewer, getAccountViewer, type Viewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
 import { findUniversityByEmail } from "@/lib/universities";
 import {
+  appealInput,
+  reviewAppealInput,
   collectionInput,
   commentInput,
   helpfulInput,
@@ -492,99 +494,115 @@ export async function reportContent(input: {
   return ok(null);
 }
 
-/**
- * Team only. Keep restores the content and closes its reports; remove deletes
- * it; ban also signs the author out for good and hides everything they wrote.
- */
+/** Decisions preserve the content for its author's appeal; author deletion still erases it. */
 export async function moderate(input: {
   target: "post" | "comment";
   id: string;
   decision: "keep" | "remove" | "ban";
+  reason?: string;
 }): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
   if (!queries.isModerator(viewer))
     return { ok: false, error: "Only the Canteen team can do that." };
   const parsed = moderationInput.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Pick an action." };
-  const { target, id, decision } = parsed.data;
-
-  let result: ActionResult<string | null>;
+  if (!parsed.success)
+    return { ok: false, error: "Pick an action and reason." };
+  const { target, id, decision, reason } = parsed.data;
   try {
-    result = await db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
+      const found =
+        target === "post"
+          ? await tx.post.findUnique({
+              where: { id },
+              select: { authorId: true },
+            })
+          : await tx.comment.findUnique({
+              where: { id },
+              select: { authorId: true },
+            });
+      if (!found) return NOT_FOUND;
+      if (decision === "ban" && found.authorId === viewer.id)
+        return { ok: false as const, error: "You can't ban your own account." };
+      const author = await lockAuthor(tx, found.authorId);
+      if (!author) return NOT_FOUND;
+      if (author.bannedAt && decision !== "remove")
+        return {
+          ok: false as const,
+          error: "Review the suspension appeal before restoring this account.",
+        };
       const item =
         target === "post"
           ? await tx.post.findUnique({
               where: { id },
-              select: { authorId: true, imageUrl: true },
+              select: { removedAt: true },
             })
-          : await tx.comment
-              .findUnique({
-                where: { id },
-                select: { authorId: true, postId: true },
-              })
-              .then((comment) => comment && { ...comment, imageUrl: null });
-      if (!item) return NOT_FOUND;
-      if (decision === "ban" && item.authorId === viewer.id)
-        return { ok: false as const, error: "You can't ban your own account." };
-
-      const author = await lockAuthor(tx, item.authorId);
-      if (!author) return NOT_FOUND;
-      if (decision === "keep" && author.bannedAt)
-        return {
-          ok: false as const,
-          error: "Content from a banned account can't be restored.",
-        };
-
+          : await tx.comment.findUnique({
+              where: { id },
+              select: { removedAt: true },
+            });
+      if (!item || (item.removedAt && decision !== "keep")) return NOT_FOUND;
       const now = new Date();
       const key = target === "post" ? { postId: id } : { commentId: id };
-      if (decision === "keep") {
-        const restore = { where: { id }, data: { hiddenAt: null } };
-        const { count } =
-          target === "post"
-            ? await tx.post.updateMany(restore)
-            : await tx.comment.updateMany(restore);
-        if (count === 0) return NOT_FOUND;
-        await tx.report.updateMany({
-          where: { ...key, resolvedAt: null },
-          data: { resolvedAt: now },
-        });
-      } else {
-        const { count } =
-          target === "post"
-            ? await tx.post.deleteMany({ where: { id } })
-            : await tx.comment.deleteMany({ where: { id } });
-        if (count === 0) return NOT_FOUND;
-      }
-
-      if (
-        target === "comment" &&
-        "postId" in item &&
-        typeof item.postId === "string"
-      )
-        await tx.post.update({
-          where: { id: item.postId },
-          data: { revision: { increment: 1 } },
-        });
-      if (target === "post" && decision === "keep")
+      const data = {
+        hiddenAt: decision === "keep" ? null : now,
+        removedAt: decision === "keep" ? null : now,
+      };
+      if (target === "post")
         await tx.post.update({
           where: { id },
+          data: { ...data, revision: { increment: 1 } },
+        });
+      else {
+        const comment = await tx.comment.update({
+          where: { id },
+          data,
+          select: { postId: true },
+        });
+        if (decision !== "keep")
+          await tx.helpfulAnswer.deleteMany({ where: { commentId: id } });
+        await tx.post.update({
+          where: { id: comment.postId },
           data: { revision: { increment: 1 } },
         });
+      }
+      await tx.report.updateMany({
+        where: { ...key, resolvedAt: null },
+        data: { resolvedAt: now },
+      });
+      await tx.moderationCase.create({
+        data: {
+          ...key,
+          authorId: found.authorId,
+          decision:
+            decision === "keep"
+              ? "KEEP"
+              : decision === "remove"
+                ? "REMOVE"
+                : "BAN",
+          reason,
+          createdAt: now,
+        },
+      });
       if (decision === "ban") {
-        const authorId = item.authorId;
-        const theirs = { authorId, hiddenAt: null };
+        const authorId = found.authorId;
         await tx.user.update({
           where: { id: authorId },
           data: { bannedAt: now },
         });
         await tx.session.deleteMany({ where: { userId: authorId } });
-        await tx.post.updateMany({ where: theirs, data: { hiddenAt: now } });
+        await tx.post.updateMany({
+          where: { authorId, hiddenAt: null },
+          data: { hiddenAt: now, revision: { increment: 1 } },
+        });
         await tx.post.updateMany({
           where: { comments: { some: { authorId } } },
           data: { revision: { increment: 1 } },
         });
-        await tx.comment.updateMany({ where: theirs, data: { hiddenAt: now } });
+        await tx.comment.updateMany({
+          where: { authorId, hiddenAt: null },
+          data: { hiddenAt: now },
+        });
         await tx.helpfulAnswer.deleteMany({ where: { comment: { authorId } } });
         await tx.report.updateMany({
           where: {
@@ -594,19 +612,152 @@ export async function moderate(input: {
           data: { resolvedAt: now },
         });
       }
-      if (decision !== "keep" && item.imageUrl)
-        await queueImageDeletion(tx, item.imageUrl);
-      return ok(decision === "keep" ? null : item.imageUrl);
+      return ok(null);
     });
+    if (result.ok) refresh();
+    return result;
   } catch {
     console.error("Moderation decision failed");
     return { ok: false, error: "That decision couldn't be saved. Try again." };
   }
-  if (!result.ok) return result;
-  const imageUrl = result.data;
-  if (imageUrl) after(processImageDeletions);
+}
+
+export async function submitAppeal(
+  id: string,
+  body: string,
+): Promise<ActionResult> {
+  const viewer = await getAccountViewer();
+  if (!viewer) return SIGNED_OUT;
+  const parsed = appealInput.safeParse({ id, body });
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]!.message };
+  const { count } = await db.moderationCase.updateMany({
+    where: {
+      id,
+      authorId: viewer.id,
+      decision: { not: "KEEP" },
+      appealedAt: null,
+    },
+    data: { appealText: parsed.data.body, appealedAt: new Date() },
+  });
+  if (!count)
+    return {
+      ok: false,
+      error: "That decision is unavailable or already appealed.",
+    };
   refresh();
   return ok(null);
+}
+
+export async function reviewAppeal(
+  id: string,
+  restore: boolean,
+  response: string,
+): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  if (!queries.isModerator(viewer))
+    return { ok: false, error: "Only the Canteen team can do that." };
+  const parsed = reviewAppealInput.safeParse({ id, restore, response });
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]!.message };
+  const result = await db.$transaction(async (tx) => {
+    const found = await tx.moderationCase.findUnique({
+      where: { id },
+      select: { authorId: true },
+    });
+    if (!found) return NOT_FOUND;
+    if (found.authorId === viewer.id)
+      return {
+        ok: false as const,
+        error: "Another team member must review your appeal.",
+      };
+    const author = await lockAuthor(tx, found.authorId);
+    const item = await tx.moderationCase.findFirst({
+      where: { id, appealedAt: { not: null }, resolvedAt: null },
+    });
+    if (!item || !author) return NOT_FOUND;
+    if (restore) {
+      if (
+        author.bannedAt &&
+        (item.decision !== "BAN" ||
+          author.bannedAt.getTime() !== item.createdAt.getTime())
+      )
+        return {
+          ok: false as const,
+          error: "A newer suspension must be reviewed first.",
+        };
+      const target = item.postId
+        ? await tx.post.findUnique({
+            where: { id: item.postId },
+            select: { removedAt: true },
+          })
+        : item.commentId
+          ? await tx.comment.findUnique({
+              where: { id: item.commentId },
+              select: { removedAt: true },
+            })
+          : null;
+      if (
+        target &&
+        (!target.removedAt ||
+          target.removedAt.getTime() !== item.createdAt.getTime())
+      )
+        return {
+          ok: false as const,
+          error:
+            "This content has a newer decision. Uphold this appeal and review the latest one.",
+        };
+      if (item.decision === "BAN") {
+        await tx.user.update({
+          where: { id: found.authorId },
+          data: { bannedAt: null },
+        });
+        // Restore only content hidden by this suspension, preserving independent reports/decisions.
+        await tx.post.updateMany({
+          where: {
+            authorId: found.authorId,
+            hiddenAt: item.createdAt,
+            removedAt: null,
+          },
+          data: { hiddenAt: null, revision: { increment: 1 } },
+        });
+        await tx.comment.updateMany({
+          where: {
+            authorId: found.authorId,
+            hiddenAt: item.createdAt,
+            removedAt: null,
+          },
+          data: { hiddenAt: null },
+        });
+      }
+      if (item.postId)
+        await tx.post.update({
+          where: { id: item.postId },
+          data: { hiddenAt: null, removedAt: null, revision: { increment: 1 } },
+        });
+      else if (item.commentId)
+        await tx.comment.update({
+          where: { id: item.commentId },
+          data: { hiddenAt: null, removedAt: null },
+        });
+      await tx.post.updateMany({
+        where: { comments: { some: { authorId: found.authorId } } },
+        data: { revision: { increment: 1 } },
+      });
+    }
+    await tx.moderationCase.update({
+      where: { id },
+      data: {
+        resolvedAt: new Date(),
+        restored: restore,
+        response: parsed.data.response,
+      },
+    });
+    return ok(null);
+  });
+  if (result.ok) refresh();
+  return result;
 }
 
 export async function markHelpful(
@@ -747,7 +898,7 @@ export async function lookupUniversity(
 export async function deleteAccount(
   confirmation: string,
 ): Promise<ActionResult> {
-  const viewer = await getViewer();
+  const viewer = await getAccountViewer();
   if (!viewer) return SIGNED_OUT;
   if (
     typeof confirmation !== "string" ||
