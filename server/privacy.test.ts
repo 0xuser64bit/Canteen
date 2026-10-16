@@ -25,7 +25,10 @@ const TEST_DATABASE_URL = vi.hoisted(() => {
   return url;
 });
 
-const state = vi.hoisted(() => ({ viewerId: null as string | null }));
+const state = vi.hoisted(() => ({
+  viewerId: null as string | null,
+  background: [] as Promise<unknown>[],
+}));
 
 vi.mock("@/lib/session", async () => {
   const { db } = await import("@/lib/db");
@@ -55,8 +58,13 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("next/server", () => ({
-  after: (task: Promise<unknown> | (() => unknown)) =>
-    typeof task === "function" ? task() : task,
+  after: (task: Promise<unknown> | (() => unknown)) => {
+    const pending = Promise.resolve().then(() =>
+      typeof task === "function" ? task() : task,
+    );
+    state.background.push(pending);
+    void pending.catch(() => {}); // The test awaits and surfaces failures below.
+  },
 }));
 vi.mock("@vercel/blob", () => ({ put: vi.fn(), del: vi.fn() }));
 
@@ -149,6 +157,11 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
   afterAll(async () => {
     await db?.$disconnect();
   });
+
+  const finishBackground = async () => {
+    await Promise.all(state.background.splice(0));
+  };
+  afterEach(finishBackground);
 
   async function post(
     author: string,
@@ -314,11 +327,42 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
     as("linus");
     await actions.setLike(p.id, true);
+    await finishBackground();
     const notifications = await db.notification.findMany({
       where: { userId: "ada" },
     });
     expect(notifications).toHaveLength(1);
     expect(Object.keys(notifications[0]!)).not.toContain("actorId");
+  });
+
+  it("coalesces simultaneous likes into one unread notification", async () => {
+    const p = await post("ada");
+    const results = await Promise.all(
+      ["grace", "linus", "margaret"].map((id) => {
+        as(id);
+        return actions.setLike(p.id, true);
+      }),
+    );
+    expect(results.every((result) => result.ok)).toBe(true);
+    await finishBackground();
+    expect(await db.like.count()).toBe(3);
+    expect(
+      await db.notification.count({
+        where: { userId: "ada", postId: p.id, readAt: null },
+      }),
+    ).toBe(1);
+
+    as("ada");
+    await actions.markNotificationsRead();
+    as("alan");
+    await actions.setLike(p.id, true);
+    await finishBackground();
+    expect(
+      await db.notification.count({
+        where: { userId: "ada", postId: p.id, readAt: null },
+      }),
+    ).toBe(1);
+    expect(await db.notification.count()).toBe(2);
   });
 
   it("rejects invalid posts and signed-out writes", async () => {

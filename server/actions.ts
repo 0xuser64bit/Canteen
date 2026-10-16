@@ -87,17 +87,25 @@ async function postingTooFast(
 
 // One unread notification per post and kind; repeat events bump it to the top.
 async function notify(userId: string, postId: string, type: NotificationType) {
-  const unread = await db.notification.findFirst({
-    where: { userId, postId, type, readAt: null },
-    select: { id: true },
-  });
-  if (unread) {
-    await db.notification.update({
-      where: { id: unread.id },
-      data: { createdAt: new Date() },
+  try {
+    await db.$transaction(async (tx) => {
+      const author = await lockAuthor(tx, userId);
+      if (!author || author.bannedAt) return;
+      const unread = await tx.notification.findFirst({
+        where: { userId, postId, type, readAt: null },
+        select: { id: true },
+      });
+      if (unread) {
+        await tx.notification.update({
+          where: { id: unread.id },
+          data: { createdAt: new Date() },
+        });
+      } else {
+        await tx.notification.create({ data: { userId, postId, type } });
+      }
     });
-  } else {
-    await db.notification.create({ data: { userId, postId, type } });
+  } catch {
+    console.error("Notification delivery failed");
   }
 }
 
@@ -571,9 +579,13 @@ export async function searchCanteen(
 export async function markNotificationsRead(): Promise<void> {
   const viewer = await getViewer();
   if (!viewer) return;
-  await db.notification.updateMany({
-    where: { userId: viewer.id, readAt: null },
-    data: { readAt: new Date() },
+  await db.$transaction(async (tx) => {
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return;
+    await tx.notification.updateMany({
+      where: { userId: viewer.id, readAt: null },
+      data: { readAt: new Date() },
+    });
   });
 }
 
