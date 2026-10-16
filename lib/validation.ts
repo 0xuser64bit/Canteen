@@ -91,7 +91,7 @@ export const likeInput = z.object({
 
 export const feedInput = z.object({
   scope: z.union([
-    z.enum(["everyone", "campus", "mine"]),
+    z.enum(["everyone", "campus", "mine", "saved", "following"]),
     z
       .string()
       .max(256)
@@ -141,4 +141,10 @@ export const REPORT_REASONS: { id: ReportReason; label: string }[] = [
 export const helpfulInput = z.object({
   postId: idInput,
   commentId: idInput.nullable(),
+});
+
+export const collectionInput = z.object({
+  postId: idInput,
+  collection: z.enum(["saved", "following"]),
+  enabled: z.boolean(),
 });

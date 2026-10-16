@@ -95,7 +95,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
+      'TRUNCATE "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -233,6 +233,106 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         })
       ).items,
     ).toHaveLength(1);
+  });
+
+  it("keeps collections private and sends anonymous reply alerts to eligible followers", async () => {
+    const p = await post("ada", { audience: "CAMPUS" });
+    as("alan");
+    expect((await actions.setCollection(p.id, "saved", true)).ok).toBe(true);
+    expect((await actions.setCollection(p.id, "following", true)).ok).toBe(
+      true,
+    );
+    await actions.setCollection(p.id, "following", true);
+    expect(await db.follow.count()).toBe(1);
+    expect(
+      (
+        await queries.getFeed(await viewer("alan"), {
+          scope: { kind: "saved" },
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (await queries.getFeed(await viewer("ada"), { scope: { kind: "saved" } }))
+        .items,
+    ).toHaveLength(0);
+    as("grace");
+    expect((await actions.setCollection(p.id, "saved", true)).ok).toBe(false);
+    // A stale following relationship must not grant cross-campus access or alerts.
+    await db.follow.create({ data: { userId: "grace", postId: p.id } });
+    as("ada");
+    await actions.addComment(p.id, "An update for classmates");
+    expect(
+      await db.notification.findMany({ select: { userId: true, type: true } }),
+    ).toEqual([{ userId: "alan", type: "COMMENT" }]);
+    as("alan");
+    await actions.setCollection(p.id, "following", false);
+    as("ada");
+    await actions.addComment(p.id, "A second update");
+    expect(await db.notification.count()).toBe(1);
+    await db.post.update({
+      where: { id: p.id },
+      data: { hiddenAt: new Date() },
+    });
+    expect(
+      (
+        await queries.getFeed(await viewer("alan"), {
+          scope: { kind: "saved" },
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(await queries.getNotifications(await viewer("alan"))).toHaveLength(
+      0,
+    );
+    expect(await queries.getUnreadCount(await viewer("alan"))).toBe(0);
+  });
+
+  it("paginates replies without gaps and protects update and earlier-reply reads", async () => {
+    const p = await post("ada", { audience: "CAMPUS" });
+    await db.comment.createMany({
+      data: Array.from({ length: 105 }, (_, i) => ({
+        id: `reply-${String(i).padStart(3, "0")}`,
+        postId: p.id,
+        authorId: "alan",
+        body: `Reply ${i}`,
+        createdAt: new Date("2026-01-01"),
+      })),
+    });
+    const thread = await queries.getThread(await viewer("ada"), p.id);
+    expect(thread?.comments).toHaveLength(50);
+    as("ada");
+    const second = await actions.loadEarlierReplies(
+      p.id,
+      thread!.earlierCursor!,
+    );
+    if (!second.ok) throw new Error("Missing page");
+    const third = await actions.loadEarlierReplies(
+      p.id,
+      second.data.nextCursor!,
+    );
+    if (!third.ok) throw new Error("Missing page");
+    const ids = [
+      ...third.data.items,
+      ...second.data.items,
+      ...thread!.comments,
+    ].map((c) => c.id);
+    expect(ids).toHaveLength(105);
+    expect(new Set(ids).size).toBe(105);
+    expect(third.data.nextCursor).toBeNull();
+    const { GET } = await import("@/app/api/threads/[id]/updates/route");
+    const read = () =>
+      GET(new Request("http://localhost/api/threads/x/updates"), {
+        params: Promise.resolve({ id: p.id }),
+      });
+    expect(await (await read()).json()).toEqual({ revision: 0 });
+    await actions.addComment(p.id, "A new reply");
+    expect(await (await read()).json()).toEqual({ revision: 1 });
+    as("grace");
+    expect((await read()).status).toBe(404);
+    expect(
+      (await actions.loadEarlierReplies(p.id, thread!.earlierCursor!)).ok,
+    ).toBe(false);
+    as(null);
+    expect((await read()).status).toBe(401);
   });
 
   it("keeps campus-only posts inside their university", async () => {

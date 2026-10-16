@@ -73,7 +73,7 @@ function encodeCursor(row: { createdAt: Date; id: string }) {
   return `${row.createdAt.toISOString()}_${row.id}`;
 }
 
-function afterCursor(cursor: string | undefined): Prisma.PostWhereInput {
+function afterCursor(cursor: string | undefined) {
   if (!cursor) return {};
   const [iso, id] = cursor.split("_");
   const createdAt = new Date(iso ?? "");
@@ -152,6 +152,9 @@ function postSelect(viewerId: string) {
     audience: true,
     createdAt: true,
     hiddenAt: true,
+    revision: true,
+    bookmarks: { where: { userId: viewerId }, select: { userId: true } },
+    follows: { where: { userId: viewerId }, select: { userId: true } },
     ...pollSelect(viewerId),
     university: { select: universitySelect },
     likes: { where: { userId: viewerId }, select: { userId: true } },
@@ -185,6 +188,9 @@ export type PostSummary = {
   commentCount: number;
   viewCount: number;
   hidden: boolean;
+  revision: number;
+  saved: boolean;
+  following: boolean;
   poll: Poll | null;
 };
 
@@ -216,6 +222,9 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
     commentCount: row._count.comments,
     viewCount: row._count.views,
     hidden: row.hiddenAt !== null,
+    revision: row.revision,
+    saved: row.bookmarks.length > 0,
+    following: row.follows.length > 0,
     poll: toPoll(row, viewer),
   };
 }
@@ -224,7 +233,9 @@ export type FeedScope =
   | { kind: "everyone" }
   | { kind: "campus" }
   | { kind: "university"; universityId: string }
-  | { kind: "mine" };
+  | { kind: "mine" }
+  | { kind: "saved" }
+  | { kind: "following" };
 
 export type FeedPage = { items: PostSummary[]; nextCursor: string | null };
 
@@ -243,6 +254,12 @@ export async function getFeed(
       : {
           AND: [
             visibleTo(viewer),
+            scope.kind === "saved"
+              ? { bookmarks: { some: { userId: viewer.id } } }
+              : {},
+            scope.kind === "following"
+              ? { follows: { some: { userId: viewer.id } } }
+              : {},
             scope.kind === "campus"
               ? { universityId: viewer.university.id }
               : {},
@@ -291,54 +308,84 @@ export type ThreadComment = {
 export type Thread = PostSummary & {
   body: string;
   comments: ThreadComment[];
+  earlierCursor: string | null;
   participantCount: number;
   /** How the viewer appears if they reply. */
   viewerAlias: Pseudonym;
 };
+
+export type CommentPage = { items: ThreadComment[]; nextCursor: string | null };
+const COMMENT_PAGE_SIZE = 50;
+
+export async function getComments(
+  viewer: Viewer,
+  postId: string,
+  cursor?: string,
+): Promise<CommentPage | null> {
+  const post = await db.post.findFirst({
+    where: { id: postId, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
+    select: { authorId: true },
+  });
+  if (!post) return null;
+  const rows = await db.comment.findMany({
+    where: {
+      AND: [
+        { postId, OR: [{ hiddenAt: null }, { authorId: viewer.id }] },
+        afterCursor(cursor),
+      ],
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: COMMENT_PAGE_SIZE + 1,
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      hiddenAt: true,
+      authorId: true,
+      author: { select: { university: { select: universitySelect } } },
+    },
+  });
+  const page = rows.slice(0, COMMENT_PAGE_SIZE);
+  return {
+    items: page.toReversed().map((comment) => ({
+      id: comment.id,
+      body: comment.body,
+      createdAt: comment.createdAt,
+      alias: pseudonym(comment.authorId, postId),
+      university: publicUniversity(comment.author.university, viewer),
+      isMine: comment.authorId === viewer.id,
+      isAuthor: comment.authorId === post.authorId,
+      hidden: comment.hiddenAt !== null,
+    })),
+    nextCursor:
+      rows.length > COMMENT_PAGE_SIZE ? encodeCursor(page.at(-1)!) : null,
+  };
+}
 
 // Cached per request: the page and its metadata both read the thread.
 export const getThread = cache(
   async (viewer: Viewer, postId: string): Promise<Thread | null> => {
     const post = await db.post.findFirst({
       where: { id: postId, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
-      select: {
-        ...postSelect(viewer.id),
-        comments: {
-          where: { OR: [{ hiddenAt: null }, { authorId: viewer.id }] },
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          // ponytail: whole thread in one read; paginate once threads get long.
-          take: 1000,
-          select: {
-            id: true,
-            body: true,
-            createdAt: true,
-            hiddenAt: true,
-            authorId: true,
-            author: { select: { university: { select: universitySelect } } },
-          },
-        },
-      },
+      select: postSelect(viewer.id),
     });
     if (!post) return null;
-
+    const [comments, participants] = await Promise.all([
+      getComments(viewer, postId),
+      db.$queryRaw<
+        { count: bigint }[]
+      >`SELECT COUNT(DISTINCT "authorId") AS count FROM (
+      SELECT "authorId" FROM "Comment" WHERE "postId" = ${postId} AND ("hiddenAt" IS NULL OR "authorId" = ${viewer.id})
+      UNION SELECT ${post.authorId} AS "authorId"
+    ) AS participants`,
+    ]);
     return {
       ...toSummary(post, viewer),
       body: post.body,
       viewerAlias: pseudonym(viewer.id, post.id),
-      participantCount: new Set([
-        post.authorId,
-        ...post.comments.map((c) => c.authorId),
-      ]).size,
-      comments: post.comments.map((comment) => ({
-        id: comment.id,
-        body: comment.body,
-        createdAt: comment.createdAt,
-        alias: pseudonym(comment.authorId, post.id),
-        university: publicUniversity(comment.author.university, viewer),
-        isMine: comment.authorId === viewer.id,
-        isAuthor: comment.authorId === post.authorId,
-        hidden: comment.hiddenAt !== null,
-      })),
+      participantCount: Number(participants[0]?.count ?? 1),
+      comments: comments?.items ?? [],
+      earlierCursor: comments?.nextCursor ?? null,
     };
   },
 );
@@ -664,7 +711,7 @@ export async function getNotifications(
   viewer: Viewer,
 ): Promise<NotificationItem[]> {
   const rows = await db.notification.findMany({
-    where: { userId: viewer.id },
+    where: { userId: viewer.id, post: visibleTo(viewer) },
     orderBy: { createdAt: "desc" },
     take: 50,
     select: {
@@ -685,7 +732,9 @@ export async function getNotifications(
 }
 
 export function getUnreadCount(viewer: Viewer) {
-  return db.notification.count({ where: { userId: viewer.id, readAt: null } });
+  return db.notification.count({
+    where: { userId: viewer.id, readAt: null, post: visibleTo(viewer) },
+  });
 }
 
 export async function getAccountStats(viewer: Viewer) {

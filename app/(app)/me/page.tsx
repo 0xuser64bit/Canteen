@@ -33,12 +33,15 @@ const joined = new Intl.DateTimeFormat("en", {
   year: "numeric",
 });
 
-export default async function MePage() {
+export default async function MePage({ searchParams }: PageProps<"/me">) {
+  const requested = (await searchParams).collection;
+  const collection =
+    requested === "saved" || requested === "following" ? requested : "mine";
   const viewer = await requireViewer();
   const isTeam = viewer.university.slug === TEAM.slug;
   const [stats, posts, modQueue] = await Promise.all([
     getAccountStats(viewer),
-    getFeed(viewer, { scope: { kind: "mine" } }),
+    getFeed(viewer, { scope: { kind: collection } }),
     isModerator(viewer) ? getModQueueSize() : undefined,
   ]);
 
@@ -139,16 +142,41 @@ export default async function MePage() {
 
         <section aria-labelledby="your-posts">
           <h2 id="your-posts" className="text-[15px] font-bold">
-            Your posts
+            {collection === "saved"
+              ? "Saved privately"
+              : collection === "following"
+                ? "Following replies"
+                : "Your posts"}
           </h2>
+          <nav
+            aria-label="Your collections"
+            className="my-3 flex gap-4 text-[13px]"
+          >
+            {(["mine", "saved", "following"] as const).map((item) => (
+              <Link
+                key={item}
+                href={`/me?collection=${item}`}
+                aria-current={collection === item ? "page" : undefined}
+                className={collection === item ? "font-bold" : "text-muted"}
+              >
+                {item === "mine"
+                  ? "Posts"
+                  : item === "saved"
+                    ? "Saved"
+                    : "Following"}
+              </Link>
+            ))}
+          </nav>
           <div className="-mx-4 lg:-mx-6">
             <Feed
+              key={collection}
               initial={posts}
-              scope="mine"
+              scope={collection}
               empty={
                 <p className="px-4 py-6 text-[14px] text-muted lg:px-6">
-                  You haven&apos;t posted yet. Your posts show up here, and only
-                  you can see that they&apos;re yours.
+                  {collection === "mine"
+                    ? "Your posts show up here. Only you can see that they’re yours."
+                    : "Use a post’s menu to save it or follow its replies. Only posts you can still access appear here."}
                 </p>
               }
             />

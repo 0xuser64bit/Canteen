@@ -114,7 +114,7 @@ Canteen deploys to [Vercel](https://vercel.com) as-is. `vercel.json` installs wi
 
 - **Private images require configuration.** Create a private Blob store and set `BLOB_PRIVATE_READ_WRITE_TOKEN` and `CRON_SECRET`. Images are streamed through authenticated, uncached routes. Keep the old public-store token while legacy files migrate: maintenance copies one image, atomically swaps its reference, and queues erasure of the public original. Already-shared public URLs remain accessible until erasure completes.
 - **Cleanup is durable but asynchronous.** Upload intents exist before storage writes; deletion jobs commit with post/account removal. Workers lease jobs and retry failures with backoff. `vercel.json` runs maintenance daily ([Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)); deletion actions also attempt immediate cleanup. On other hosts, schedule `GET /api/maintenance` with `Authorization: Bearer <CRON_SECRET>`. Invoke repeatedly to clear migration/deletion backlogs; monitor `BlobDeletion` oldest due date and attempts. No credentials or files are migrated by installing code alone.
-- **Long threads need pagination.** A thread currently reads its first 1,000 replies. Add pagination before using Canteen for threads that can exceed that limit.
+- **Live threads use polling.** Visible, online threads check their revision every ten seconds and back off on failure. Replies load in pages of 50. Move to push delivery if concurrent open threads make polling costly. Notifications commit with the reply or like; saves and follows are private account data.
 
 ## Project layout
 

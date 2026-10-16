@@ -35,6 +35,8 @@ model User {
   views         PostView[]
   reports       Report[]
   notifications Notification[]
+  bookmarks     Bookmark[]
+  follows       Follow[]
   pollVotes     PollVote[]
 
   @@index([universityId])
@@ -140,6 +142,7 @@ model Post {
   imageUrl    String?
   imageWidth  Int?
   imageHeight Int?
+  revision Int @default(0)
   kind        PostKind @default(DISCUSSION)
   helpfulAnswer HelpfulAnswer?
   topic       Topic     @default(GENERAL)
@@ -161,6 +164,8 @@ model Post {
   reports       Report[]
   notifications Notification[]
   pollOptions   PollOption[]
+  bookmarks     Bookmark[]
+  follows       Follow[]
   pollVotes     PollVote[]
 
   @@index([createdAt])
@@ -307,4 +312,25 @@ model HelpfulAnswer {
   commentId String @unique
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// Private collections. Only booleans for the current viewer leave the server.
+model Bookmark {
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model Follow {
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@id([userId, postId])
+  @@index([postId])
 }

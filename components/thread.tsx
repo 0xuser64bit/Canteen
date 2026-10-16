@@ -20,11 +20,17 @@ import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
 import { TimeAgo } from "@/components/time";
+import { Button } from "@/components/ui/button";
 import { Counter } from "@/components/ui/field";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
 import { LIMITS } from "@/lib/validation";
-import { addComment, recordView, markHelpful } from "@/server/actions";
+import {
+  addComment,
+  recordView,
+  markHelpful,
+  loadEarlierReplies,
+} from "@/server/actions";
 import type { Thread, ThreadComment } from "@/server/queries";
 
 type Reply = ThreadComment & { sending?: boolean };
@@ -284,14 +290,73 @@ function ReplyBar({
 }
 
 export function ThreadView({ thread }: { thread: Thread }) {
+  const router = useRouter();
+  const [older, setOlder] = useState<ThreadComment[]>([]);
+  const [earlierCursor, setEarlierCursor] = useState(thread.earlierCursor);
+  const [loadingEarlier, startEarlier] = useTransition();
   const [replies, addReply] = useOptimistic<Reply[], Reply>(
-    thread.comments,
+    [...older, ...thread.comments].filter(
+      (reply, index, all) =>
+        all.findIndex((item) => item.id === reply.id) === index,
+    ),
     (current, reply) => [...current, reply],
   );
 
   useEffect(() => {
     recordView(thread.id);
   }, [thread.id]);
+
+  // shortcut: ten-second polling; use push delivery when concurrent open threads make it costly.
+  useEffect(() => {
+    let disposed = false;
+    let controller: AbortController | undefined;
+    let delay = 10_000;
+    let timer: ReturnType<typeof setTimeout>;
+    async function check() {
+      if (disposed) return;
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        controller = new AbortController();
+        try {
+          const response = await fetch(`/api/threads/${thread.id}/updates`, {
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          if (response.status === 401 || response.status === 404) {
+            router.refresh();
+            return;
+          }
+          if (!response.ok) throw new Error("Unavailable");
+          const { revision } = await response.json();
+          if (!disposed && revision !== thread.revision) {
+            setOlder([]); // Re-read older pages after moderation rather than retaining hidden replies.
+            setEarlierCursor(null);
+            router.refresh();
+          }
+          delay = 10_000;
+        } catch {
+          delay = Math.min(delay * 2, 60_000);
+        }
+      }
+      if (!disposed) timer = setTimeout(check, delay);
+    }
+    timer = setTimeout(check, delay);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      controller?.abort();
+    };
+  }, [thread.id, thread.revision, router]);
+
+  const fetchEarlier = () =>
+    startEarlier(async () => {
+      const cursor =
+        earlierCursor ?? (older.length ? null : thread.earlierCursor);
+      if (!cursor) return;
+      const result = await loadEarlierReplies(thread.id, cursor);
+      if (!result.ok) return void toast.error(result.error);
+      setOlder((current) => [...result.data.items, ...current]);
+      setEarlierCursor(result.data.nextCursor);
+    });
 
   const send = async (body: string) => {
     // Same id for the optimistic bubble and the saved reply: React keeps the
@@ -405,6 +470,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
                 </span>
                 <span className="flex-1" />
                 <LikeButton
+                  key={`${thread.liked}:${thread.likeCount}`}
                   postId={thread.id}
                   liked={thread.liked}
                   count={thread.likeCount}
@@ -433,10 +499,21 @@ export function ThreadView({ thread }: { thread: Thread }) {
           <span className="h-px flex-1 bg-line" />
           {replies.length === 0
             ? "No replies yet. Say something kind."
-            : `${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}
+            : `${thread.commentCount} ${thread.commentCount === 1 ? "reply" : "replies"}`}
           <span className="h-px flex-1 bg-line" />
         </div>
 
+        {(earlierCursor ?? (older.length ? null : thread.earlierCursor)) && (
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              disabled={loadingEarlier}
+              onClick={fetchEarlier}
+            >
+              {loadingEarlier ? "Loading…" : "Load earlier replies"}
+            </Button>
+          </div>
+        )}
         <div role="list" aria-label="Replies">
           {replies.map((reply, index) => {
             const previous = replies[index - 1];

@@ -13,6 +13,7 @@ import { getViewer, type Viewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
 import { findUniversityByEmail } from "@/lib/universities";
 import {
+  collectionInput,
   commentInput,
   helpfulInput,
   DELETE_CONFIRMATION,
@@ -59,7 +60,7 @@ async function postVisibleTo(
 ) {
   return client.post.findFirst({
     where: { id: postId, ...queries.visibleTo(viewer) },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, audience: true, universityId: true },
   });
 }
 
@@ -91,28 +92,29 @@ async function postingTooFast(
   return recent >= window.max;
 }
 
-// One unread notification per post and kind; repeat events bump it to the top.
-async function notify(userId: string, postId: string, type: NotificationType) {
-  try {
-    await db.$transaction(async (tx) => {
-      const author = await lockAuthor(tx, userId);
-      if (!author || author.bannedAt) return;
-      const unread = await tx.notification.findFirst({
-        where: { userId, postId, type, readAt: null },
-        select: { id: true },
-      });
-      if (unread) {
-        await tx.notification.update({
-          where: { id: unread.id },
-          data: { createdAt: new Date() },
-        });
-      } else {
-        await tx.notification.create({ data: { userId, postId, type } });
-      }
+// Transactional and coalesced; advisory locks avoid locking another student's account.
+async function notify(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  postId: string,
+  type: NotificationType,
+) {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`notification:${userId}`}, 0))::text`;
+  const user = await tx.user.findUnique({
+    where: { id: userId, bannedAt: null },
+    select: { id: true },
+  });
+  if (!user) return;
+  const unread = await tx.notification.findFirst({
+    where: { userId, postId, type, readAt: null },
+    select: { id: true },
+  });
+  if (unread)
+    await tx.notification.update({
+      where: { id: unread.id },
+      data: { createdAt: new Date() },
     });
-  } catch {
-    console.error("Notification delivery failed");
-  }
+  else await tx.notification.create({ data: { userId, postId, type } });
 }
 
 // ---------------------------------------------------------------------------
@@ -273,22 +275,25 @@ export async function setLike(
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
   if (!likeInput.safeParse({ postId, liked }).success) return NOT_FOUND;
-  const post = await postVisibleTo(viewer, postId);
-  if (!post) return NOT_FOUND;
-
-  // Idempotent: double taps and retries can't double count.
-  if (liked) {
-    const { count } = await db.like.createMany({
-      data: [{ userId: viewer.id, postId }],
-      skipDuplicates: true,
+  return db.$transaction(async (tx) => {
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return SIGNED_OUT;
+    const post = await postVisibleTo(viewer, postId, tx);
+    if (!post) return NOT_FOUND;
+    await tx.post.update({
+      where: { id: postId },
+      data: { revision: { increment: 1 } },
     });
-    if (count > 0 && post.authorId !== viewer.id) {
-      after(() => notify(post.authorId, postId, "LIKE"));
-    }
-  } else {
-    await db.like.deleteMany({ where: { userId: viewer.id, postId } });
-  }
-  return ok({ liked, likeCount: await db.like.count({ where: { postId } }) });
+    if (liked) {
+      const { count } = await tx.like.createMany({
+        data: [{ userId: viewer.id, postId }],
+        skipDuplicates: true,
+      });
+      if (count && post.authorId !== viewer.id)
+        await notify(tx, post.authorId, postId, "LIKE");
+    } else await tx.like.deleteMany({ where: { userId: viewer.id, postId } });
+    return ok({ liked, likeCount: await tx.like.count({ where: { postId } }) });
+  });
 }
 
 export async function votePoll(
@@ -307,10 +312,16 @@ export async function votePoll(
   if (!option) return { ok: false, error: "That choice isn't in this poll." };
 
   // One vote per student; voting again moves it.
-  await db.pollVote.upsert({
-    where: { userId_postId: { userId: viewer.id, postId } },
-    create: { userId: viewer.id, postId, optionId },
-    update: { optionId },
+  await db.$transaction(async (tx) => {
+    await tx.pollVote.upsert({
+      where: { userId_postId: { userId: viewer.id, postId } },
+      create: { userId: viewer.id, postId, optionId },
+      update: { optionId },
+    });
+    await tx.post.update({
+      where: { id: postId },
+      data: { revision: { increment: 1 } },
+    });
   });
   const poll = await queries.getPoll(viewer, postId);
   return poll ? ok(poll) : NOT_FOUND;
@@ -363,6 +374,24 @@ export async function addComment(
           authorId: viewer.id,
         },
       });
+      await tx.post.update({
+        where: { id: postId },
+        data: { revision: { increment: 1 } },
+      });
+      const recipients = await tx.user.findMany({
+        where: {
+          id: { not: viewer.id },
+          bannedAt: null,
+          OR: [{ id: post.authorId }, { follows: { some: { postId } } }],
+          ...(post.audience === "CAMPUS"
+            ? { universityId: post.universityId }
+            : {}),
+        },
+        select: { id: true },
+        orderBy: { id: "asc" },
+      });
+      for (const recipient of recipients)
+        await notify(tx, recipient.id, postId, "COMMENT");
       return ok(post);
     });
   } catch (error) {
@@ -372,8 +401,6 @@ export async function addComment(
     return { ok: false, error: "That reply didn't go through. Try again." };
   }
   if (!result.ok) return result;
-  if (result.data.authorId !== viewer.id)
-    after(() => notify(result.data.authorId, postId, "COMMENT"));
   refresh();
   return ok(null);
 }
@@ -382,11 +409,20 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
   if (!idInput.safeParse(commentId).success) return NOT_FOUND;
-  const { count } = await db.comment.deleteMany({
-    where: { id: commentId, authorId: viewer.id },
+  const result = await db.$transaction(async (tx) => {
+    const comment = await tx.comment.findFirst({
+      where: { id: commentId, authorId: viewer.id },
+      select: { postId: true },
+    });
+    if (!comment) return NOT_FOUND;
+    await tx.comment.delete({ where: { id: commentId } });
+    await tx.post.update({
+      where: { id: comment.postId },
+      data: { revision: { increment: 1 } },
+    });
+    return ok(null);
   });
-  if (count === 0)
-    return { ok: false, error: "That reply isn't available anymore." };
+  if (!result.ok) return result;
   refresh();
   return ok(null);
 }
@@ -412,7 +448,7 @@ export async function reportContent(input: {
       ? await postVisibleTo(viewer, id)
       : await db.comment.findFirst({
           where: { id, hiddenAt: null, post: queries.visibleTo(viewer) },
-          select: { authorId: true },
+          select: { authorId: true, postId: true },
         });
   if (!item) return { ok: false, error: "That isn't available anymore." };
   if (item.authorId === viewer.id)
@@ -435,6 +471,10 @@ export async function reportContent(input: {
       await db.$transaction([
         db.comment.update(hide),
         db.helpfulAnswer.deleteMany({ where: { commentId: id } }),
+        db.post.update({
+          where: { id: "postId" in item ? item.postId : id },
+          data: { revision: { increment: 1 } },
+        }),
       ]);
     }
   }
@@ -468,7 +508,10 @@ export async function moderate(input: {
               select: { authorId: true, imageUrl: true },
             })
           : await tx.comment
-              .findUnique({ where: { id }, select: { authorId: true } })
+              .findUnique({
+                where: { id },
+                select: { authorId: true, postId: true },
+              })
               .then((comment) => comment && { ...comment, imageUrl: null });
       if (!item) return NOT_FOUND;
       if (decision === "ban" && item.authorId === viewer.id)
@@ -503,6 +546,20 @@ export async function moderate(input: {
         if (count === 0) return NOT_FOUND;
       }
 
+      if (
+        target === "comment" &&
+        "postId" in item &&
+        typeof item.postId === "string"
+      )
+        await tx.post.update({
+          where: { id: item.postId },
+          data: { revision: { increment: 1 } },
+        });
+      if (target === "post" && decision === "keep")
+        await tx.post.update({
+          where: { id },
+          data: { revision: { increment: 1 } },
+        });
       if (decision === "ban") {
         const authorId = item.authorId;
         const theirs = { authorId, hiddenAt: null };
@@ -512,6 +569,10 @@ export async function moderate(input: {
         });
         await tx.session.deleteMany({ where: { userId: authorId } });
         await tx.post.updateMany({ where: theirs, data: { hiddenAt: now } });
+        await tx.post.updateMany({
+          where: { comments: { some: { authorId } } },
+          data: { revision: { increment: 1 } },
+        });
         await tx.comment.updateMany({ where: theirs, data: { hiddenAt: now } });
         await tx.helpfulAnswer.deleteMany({ where: { comment: { authorId } } });
         await tx.report.updateMany({
@@ -576,6 +637,10 @@ export async function markHelpful(
         update: { commentId, createdAt: new Date() },
       });
     }
+    await tx.post.update({
+      where: { id: postId },
+      data: { revision: { increment: 1 } },
+    });
     return ok(null);
   });
   if (result.ok) refresh();
@@ -587,7 +652,13 @@ export async function markHelpful(
 // ---------------------------------------------------------------------------
 
 export async function loadMore(input: {
-  scope: "everyone" | "campus" | "mine" | `university:${string}`;
+  scope:
+    | "everyone"
+    | "campus"
+    | "mine"
+    | "saved"
+    | "following"
+    | `university:${string}`;
   topic?: string;
   unanswered?: boolean;
   cursor: string;
@@ -611,7 +682,10 @@ export async function loadMore(input: {
     if (!page) return ok({ items: [], nextCursor: null });
     scope = { kind: "university", universityId: page.id };
   } else {
-    scope = { kind: requestedScope as "everyone" | "campus" | "mine" };
+    scope = {
+      kind: requestedScope as
+        "everyone" | "campus" | "mine" | "saved" | "following",
+    };
   }
   const topic: Topic | undefined = topicBySlug(requestedTopic)?.id;
   return ok(
@@ -683,4 +757,50 @@ export async function deleteAccount(
   });
   after(processImageDeletions);
   redirect("/?deleted=1");
+}
+
+export async function setCollection(
+  postId: string,
+  collection: "saved" | "following",
+  enabled: boolean,
+): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  if (!collectionInput.safeParse({ postId, collection, enabled }).success)
+    return NOT_FOUND;
+  const result = await db.$transaction(async (tx) => {
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return SIGNED_OUT;
+    // Removing a private reference still works after its post becomes inaccessible.
+    if (enabled && !(await postVisibleTo(viewer, postId, tx))) return NOT_FOUND;
+    const data = { userId: viewer.id, postId };
+    if (collection === "saved") {
+      if (enabled)
+        await tx.bookmark.createMany({ data: [data], skipDuplicates: true });
+      else await tx.bookmark.deleteMany({ where: data });
+    } else {
+      if (enabled)
+        await tx.follow.createMany({ data: [data], skipDuplicates: true });
+      else await tx.follow.deleteMany({ where: data });
+    }
+    return ok(null);
+  });
+  if (result.ok) refresh();
+  return result;
+}
+
+export async function loadEarlierReplies(
+  postId: string,
+  cursor: string,
+): Promise<ActionResult<queries.CommentPage>> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  if (
+    !idInput.safeParse(postId).success ||
+    typeof cursor !== "string" ||
+    cursor.length > 128
+  )
+    return NOT_FOUND;
+  const page = await queries.getComments(viewer, postId, cursor);
+  return page ? ok(page) : NOT_FOUND;
 }

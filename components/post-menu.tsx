@@ -1,6 +1,14 @@
 "use client";
 
-import { Flag, Link2, MoreHorizontal, Share, Trash2 } from "lucide-react";
+import {
+  Bookmark,
+  Bell,
+  Flag,
+  Link2,
+  MoreHorizontal,
+  Share,
+  Trash2,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -15,7 +23,12 @@ import {
 } from "@/components/ui/menu";
 import { cn } from "@/lib/utils";
 import { REPORT_REASONS } from "@/lib/validation";
-import { deleteComment, deletePost, reportContent } from "@/server/actions";
+import {
+  deleteComment,
+  deletePost,
+  reportContent,
+  setCollection,
+} from "@/server/actions";
 
 export const POST_DELETED = "canteen:post-deleted";
 
@@ -175,11 +188,18 @@ export function PostMenu({
   post,
   onYellow,
 }: {
-  post: { id: string; title: string; isMine: boolean };
+  post: {
+    id: string;
+    title: string;
+    isMine: boolean;
+    saved: boolean;
+    following: boolean;
+  };
   onYellow?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [pending, startTransition] = useTransition();
   const [dialog, setDialog] = useState<"report" | "delete" | null>(null);
 
   const remove = async () => {
@@ -188,7 +208,7 @@ export function PostMenu({
     setDialog(null);
     toast.success("Post deleted");
     window.dispatchEvent(new CustomEvent(POST_DELETED, { detail: post.id }));
-    if (pathname === `/p/${post.id}`) router.replace("/home");
+    if (pathname === `/p/${post.id}`) router.replace("/campus");
     else router.refresh();
   };
 
@@ -223,6 +243,41 @@ export function PostMenu({
           >
             <Link2 /> Copy link
           </DropdownMenuItem>
+          {(["saved", "following"] as const).map((collection) => (
+            <DropdownMenuItem
+              key={collection}
+              disabled={pending}
+              onSelect={() =>
+                startTransition(async () => {
+                  const result = await setCollection(
+                    post.id,
+                    collection,
+                    !post[collection],
+                  );
+                  if (!result.ok) toast.error(result.error);
+                  else
+                    toast.success(
+                      collection === "saved"
+                        ? post.saved
+                          ? "Removed from saved"
+                          : "Saved privately"
+                        : post.following
+                          ? "Reply alerts off"
+                          : "You'll get reply alerts",
+                    );
+                })
+              }
+            >
+              {collection === "saved" ? <Bookmark /> : <Bell />}
+              {collection === "saved"
+                ? post.saved
+                  ? "Unsave"
+                  : "Save privately"
+                : post.following
+                  ? "Unfollow replies"
+                  : "Follow replies"}
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuSeparator />
           {post.isMine ? (
             <DropdownMenuItem destructive onSelect={() => setDialog("delete")}>
