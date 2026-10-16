@@ -193,7 +193,7 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
         : row.body,
     image: row.imageUrl
       ? {
-          url: row.imageUrl,
+          url: `/api/images/${row.id}`,
           width: row.imageWidth ?? 1200,
           height: row.imageHeight ?? 900,
         }
@@ -588,7 +588,7 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
       body: post.body,
       image: post.imageUrl
         ? {
-            url: post.imageUrl,
+            url: `/api/images/${post.id}`,
             width: post.imageWidth ?? 1200,
             height: post.imageHeight ?? 900,
           }

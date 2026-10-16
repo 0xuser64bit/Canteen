@@ -13,7 +13,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { del, put } from "@vercel/blob";
+import { del, get, put } from "@vercel/blob";
 import sharp from "sharp";
 import { sendSignInCode } from "@/lib/email";
 import { getViewer } from "@/lib/session";
@@ -66,7 +66,7 @@ vi.mock("next/server", () => ({
     void pending.catch(() => {}); // The test awaits and surfaces failures below.
   },
 }));
-vi.mock("@vercel/blob", () => ({ put: vi.fn(), del: vi.fn() }));
+vi.mock("@vercel/blob", () => ({ put: vi.fn(), del: vi.fn(), get: vi.fn() }));
 
 describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
   let db: typeof import("@/lib/db").db;
@@ -95,7 +95,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
+      'TRUNCATE "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -165,11 +165,16 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   async function post(
     author: string,
-    overrides: Partial<{ audience: "EVERYONE" | "CAMPUS"; title: string }> = {},
+    overrides: Partial<{
+      audience: "EVERYONE" | "CAMPUS";
+      title: string;
+      imageUrl: string;
+    }> = {},
   ) {
     const user = await db.user.findUniqueOrThrow({ where: { id: author } });
     return db.post.create({
       data: {
+        ...overrides,
         title: overrides.title ?? "A question for everyone",
         body: "Body text",
         audience: overrides.audience ?? "EVERYONE",
@@ -498,10 +503,10 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   describe("images", () => {
     const imageUrl =
-      "https://test.public.blob.vercel-storage.com/posts/photo.webp";
+      "https://test.private.blob.vercel-storage.com/posts/photo.webp";
 
     beforeEach(() => {
-      vi.stubEnv("BLOB_READ_WRITE_TOKEN", "test-token");
+      vi.stubEnv("BLOB_PRIVATE_READ_WRITE_TOKEN", "test-token");
       vi.mocked(put).mockResolvedValue({
         url: imageUrl,
         downloadUrl: imageUrl,
@@ -567,6 +572,91 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       });
     });
 
+    it("serves image bytes only to authorized viewers and never caches them", async () => {
+      const p = await post("ada", { audience: "CAMPUS", imageUrl });
+      const { GET } = await import("@/app/api/images/[id]/route");
+      const read = () =>
+        GET(new Request("http://localhost/api/images/" + p.id), {
+          params: Promise.resolve({ id: p.id }),
+        });
+      as(null);
+      expect((await read()).status).toBe(401);
+      as("grace");
+      expect((await read()).status).toBe(404);
+      expect(get).not.toHaveBeenCalled();
+      as("alan");
+      vi.mocked(get).mockResolvedValueOnce({
+        statusCode: 200,
+        stream: new Response("image").body,
+        blob: { contentType: "image/webp" },
+      } as never);
+      const response = await read();
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toContain("no-store");
+      expect(await response.text()).toBe("image");
+      expect(
+        JSON.stringify(await queries.getThread(await viewer("alan"), p.id)),
+      ).not.toContain("blob.vercel-storage.com");
+      await db.post.update({
+        where: { id: p.id },
+        data: { hiddenAt: new Date() },
+      });
+      expect((await read()).status).toBe(404);
+    });
+
+    it("retains deletion work across storage failures, leases and account deletion", async () => {
+      const { processImageDeletions } = await import("@/server/media");
+      const p = await post("ada", { imageUrl });
+      vi.mocked(del).mockRejectedValue(new Error("Offline"));
+      await actions.deletePost(p.id);
+      await Promise.all(state.background.splice(0));
+      const job = await db.blobDeletion.findFirstOrThrow();
+      expect(job.attempts).toBe(1);
+      expect(job.dueAt.getTime()).toBeGreaterThan(Date.now());
+      vi.mocked(del).mockClear();
+      await processImageDeletions();
+      expect(del).not.toHaveBeenCalled();
+      await db.blobDeletion.update({
+        where: { id: job.id },
+        data: { dueAt: new Date(0), lockedUntil: new Date(Date.now() + 10000) },
+      });
+      await processImageDeletions();
+      expect(del).not.toHaveBeenCalled();
+      await db.blobDeletion.update({
+        where: { id: job.id },
+        data: { lockedUntil: new Date(0) },
+      });
+      vi.mocked(del).mockResolvedValue(undefined);
+      await Promise.all([processImageDeletions(), processImageDeletions()]);
+      expect(del).toHaveBeenCalledTimes(1);
+      expect(await db.blobDeletion.count()).toBe(0);
+      await post("ada", { imageUrl });
+      vi.mocked(del).mockRejectedValue(new Error("Offline"));
+      await expect(
+        actions.deleteAccount("delete my account"),
+      ).rejects.toHaveProperty("url");
+      await Promise.all(state.background.splice(0));
+      expect(await db.blobDeletion.count()).toBe(1);
+      expect(await db.user.findUnique({ where: { id: "ada" } })).toBeNull();
+    });
+
+    it("rejects unauthenticated maintenance requests", async () => {
+      const { GET } = await import("@/app/api/maintenance/route");
+      vi.stubEnv("CRON_SECRET", "a-test-secret");
+      expect(
+        (await GET(new Request("http://localhost/api/maintenance"))).status,
+      ).toBe(401);
+      expect(
+        (
+          await GET(
+            new Request("http://localhost/api/maintenance", {
+              headers: { authorization: "Bearer wrong" },
+            }),
+          )
+        ).status,
+      ).toBe(401);
+    });
+
     it("returns an image error when storage is unavailable", async () => {
       vi.mocked(put).mockRejectedValueOnce(new Error("Storage unavailable"));
       const result = await actions.createPost(null, await imageForm());
@@ -574,13 +664,23 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(await db.post.count()).toBe(0);
     });
 
-    it("removes the uploaded file when saving the post fails", async () => {
+    it("durably cleans the upload when saving the post fails", async () => {
       vi.spyOn(db, "$transaction").mockRejectedValueOnce(
         new Error("Database unavailable"),
       );
       const result = await actions.createPost(null, await imageForm());
       expect(result?.error).toBeDefined();
-      expect(del).toHaveBeenCalledWith(imageUrl);
+      const job = await db.blobDeletion.findFirstOrThrow();
+      await db.blobDeletion.update({
+        where: { id: job.id },
+        data: { dueAt: new Date(0) },
+      });
+      await (await import("@/server/media")).processImageDeletions();
+      expect(del).toHaveBeenCalledWith(
+        job.key,
+        expect.objectContaining({ token: "test-token" }),
+      );
+      expect(await db.blobDeletion.count()).toBe(0);
       expect(await db.post.count()).toBe(0);
     });
 
@@ -595,6 +695,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       );
       expect(await db.post.count()).toBe(1);
       expect(del).not.toHaveBeenCalled();
+      expect(await db.blobDeletion.count()).toBe(0);
     });
   });
 

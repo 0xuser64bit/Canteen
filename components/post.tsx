@@ -168,6 +168,7 @@ export function PostImage({
 }) {
   return (
     <Image
+      unoptimized
       src={image.url}
       width={image.width}
       height={image.height}

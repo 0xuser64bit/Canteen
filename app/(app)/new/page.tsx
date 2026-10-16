@@ -15,7 +15,7 @@ export default async function NewPostPage({ searchParams }: PageProps<"/new">) {
         topicBySlug(typeof topic === "string" ? topic : undefined)?.id ??
         "GENERAL"
       }
-      imagesEnabled={Boolean(process.env.BLOB_READ_WRITE_TOKEN)}
+      imagesEnabled={Boolean(process.env.BLOB_PRIVATE_READ_WRITE_TOKEN)}
     />
   );
 }

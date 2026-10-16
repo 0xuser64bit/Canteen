@@ -280,3 +280,14 @@ model Notification {
 
   @@index([userId, readAt, createdAt])
 }
+
+// Independent of posts/users so erasure survives account deletion and storage outages.
+model BlobDeletion {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  dueAt       DateTime @default(now())
+  attempts    Int      @default(0)
+  lockedUntil DateTime?
+
+  @@index([dueAt])
+}

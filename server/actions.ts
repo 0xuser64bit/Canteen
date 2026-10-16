@@ -1,6 +1,5 @@
 "use server";
 
-import { del, put } from "@vercel/blob";
 import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -26,6 +25,12 @@ import {
   reportInput,
 } from "@/lib/validation";
 import * as queries from "@/server/queries";
+import {
+  attachImage,
+  stageImage,
+  queueImageDeletion,
+  processImageDeletions,
+} from "@/server/media";
 
 export type ActionResult<T = null> =
   { ok: true; data: T } | { ok: false; error: string };
@@ -151,11 +156,12 @@ export async function createPost(
   }
 
   let imageUrl: string | null = null;
+  let imageIntent: string | null = null;
   let imageWidth: number | null = null;
   let imageHeight: number | null = null;
   const image = form.get("image");
   if (image instanceof File && image.size > 0) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    if (!process.env.BLOB_PRIVATE_READ_WRITE_TOKEN) {
       return {
         fieldErrors: { image: "Image uploads aren't enabled on this server." },
       };
@@ -183,15 +189,9 @@ export async function createPost(
         },
       };
     try {
-      const blob = await put(
-        `posts/${crypto.randomUUID()}.webp`,
-        prepared.data,
-        {
-          access: "public",
-          contentType: "image/webp",
-        },
-      );
+      const blob = await stageImage(prepared.data);
       imageUrl = blob.url;
+      imageIntent = blob.intentId;
       imageWidth = prepared.info.width;
       imageHeight = prepared.info.height;
     } catch {
@@ -206,7 +206,6 @@ export async function createPost(
 
   const { poll, ...fields } = parsed.data;
   let result: ActionResult<{ id: string }>;
-  let inserted = false;
   try {
     result = await db.$transaction(async (tx) => {
       const author = await lockAuthor(tx, viewer.id);
@@ -227,7 +226,7 @@ export async function createPost(
         },
         select: { id: true },
       });
-      inserted = true;
+      if (imageIntent) await attachImage(tx, imageIntent);
       return ok(post);
     });
   } catch {
@@ -238,15 +237,7 @@ export async function createPost(
     };
   }
   if (!result.ok) {
-    // A lost commit acknowledgement may mean the post exists; keep its image.
-    if (imageUrl && !inserted) {
-      try {
-        await del(imageUrl);
-      } catch {
-        // shortcut: cleanup failures are logged; add durable retries before scaling uploads.
-        console.error("Unused post image cleanup failed");
-      }
-    }
+    // The upload intent survives rollback; a committed post removes it atomically.
     return { error: result.error };
   }
   redirect(`/p/${result.data.id}`);
@@ -262,11 +253,11 @@ export async function deletePost(postId: string): Promise<ActionResult> {
   });
   if (!post || post.authorId !== viewer.id) return NOT_FOUND;
 
-  await db.post.delete({ where: { id: postId } });
-  if (post.imageUrl) {
-    const url = post.imageUrl;
-    after(() => del(url));
-  }
+  await db.$transaction(async (tx) => {
+    await tx.post.delete({ where: { id: postId } });
+    if (post.imageUrl) await queueImageDeletion(tx, post.imageUrl);
+  });
+  if (post.imageUrl) after(processImageDeletions);
   return ok(null);
 }
 
@@ -520,6 +511,8 @@ export async function moderate(input: {
           data: { resolvedAt: now },
         });
       }
+      if (decision !== "keep" && item.imageUrl)
+        await queueImageDeletion(tx, item.imageUrl);
       return ok(decision === "keep" ? null : item.imageUrl);
     });
   } catch {
@@ -528,7 +521,7 @@ export async function moderate(input: {
   }
   if (!result.ok) return result;
   const imageUrl = result.data;
-  if (imageUrl) after(() => del(imageUrl));
+  if (imageUrl) after(processImageDeletions);
   refresh();
   return ok(null);
 }
@@ -614,14 +607,16 @@ export async function deleteAccount(
     return { ok: false, error: `Type "${DELETE_CONFIRMATION}" to confirm.` };
   }
 
-  const images = await db.post.findMany({
-    where: { authorId: viewer.id, imageUrl: { not: null } },
-    select: { imageUrl: true },
-  });
   await auth.api.signOut({ headers: await headers() });
-  // Sessions, posts, replies, likes, views, reports, and notifications cascade.
-  await db.user.delete({ where: { id: viewer.id } });
-  const urls = images.map((row) => row.imageUrl!);
-  if (urls.length > 0) after(() => del(urls));
+  await db.$transaction(async (tx) => {
+    await lockAuthor(tx, viewer.id);
+    const images = await tx.post.findMany({
+      where: { authorId: viewer.id, imageUrl: { not: null } },
+      select: { imageUrl: true },
+    });
+    for (const image of images) await queueImageDeletion(tx, image.imageUrl!);
+    await tx.user.delete({ where: { id: viewer.id } });
+  });
+  after(processImageDeletions);
   redirect("/?deleted=1");
 }
