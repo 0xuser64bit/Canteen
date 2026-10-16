@@ -13,6 +13,8 @@ import {
   it,
   vi,
 } from "vitest";
+import { del, put } from "@vercel/blob";
+import sharp from "sharp";
 import { TEAM } from "@/lib/universities";
 
 const TEST_DATABASE_URL = vi.hoisted(() => {
@@ -385,6 +387,95 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.comment.count()).toBe(0);
     expect(await db.like.count()).toBe(0);
     expect(await db.post.count()).toBe(1);
+  });
+
+  describe("images", () => {
+    const imageUrl =
+      "https://test.public.blob.vercel-storage.com/posts/photo.webp";
+
+    beforeEach(() => {
+      vi.stubEnv("BLOB_READ_WRITE_TOKEN", "test-token");
+      vi.mocked(put).mockResolvedValue({
+        url: imageUrl,
+        downloadUrl: imageUrl,
+        pathname: "posts/photo.webp",
+        contentType: "image/webp",
+        contentDisposition: "inline",
+        etag: "test-etag",
+      });
+      vi.mocked(del).mockResolvedValue(undefined);
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      as("ada");
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.restoreAllMocks();
+      vi.mocked(put).mockReset();
+      vi.mocked(del).mockReset();
+    });
+
+    async function imageForm() {
+      const bytes = await sharp({
+        create: { width: 3, height: 2, channels: 3, background: "red" },
+      })
+        .withMetadata({
+          orientation: 6,
+          exif: { IFD0: { Artist: "Private name" } },
+        })
+        .jpeg()
+        .toBuffer();
+      expect((await sharp(bytes).metadata()).exif).toBeDefined();
+      const form = new FormData();
+      form.set("title", "A photo from campus");
+      form.set("body", "A place to study.");
+      form.set("topic", "GENERAL");
+      form.set("audience", "EVERYONE");
+      form.set(
+        "image",
+        new File([new Uint8Array(bytes)], "photo.jpg", { type: "image/jpeg" }),
+      );
+      // These are untrusted, even when a genuine client normally sends them.
+      form.set("imageWidth", "9999");
+      form.set("imageHeight", "9999");
+      return form;
+    }
+
+    it("strips metadata on the server and derives the dimensions from the image", async () => {
+      await expect(
+        actions.createPost(null, await imageForm()),
+      ).rejects.toMatchObject({
+        url: expect.stringMatching(/^\/p\//),
+      });
+      const uploaded = vi.mocked(put).mock.calls[0]![1];
+      if (!Buffer.isBuffer(uploaded)) throw new Error("Expected image bytes");
+      const metadata = await sharp(uploaded).metadata();
+      expect(metadata).toMatchObject({ format: "webp", width: 2, height: 3 });
+      expect(metadata.exif).toBeUndefined();
+      expect(metadata.icc).toBeUndefined();
+      expect(await db.post.findFirst()).toMatchObject({
+        imageUrl,
+        imageWidth: 2,
+        imageHeight: 3,
+      });
+    });
+
+    it("returns an image error when storage is unavailable", async () => {
+      vi.mocked(put).mockRejectedValueOnce(new Error("Storage unavailable"));
+      const result = await actions.createPost(null, await imageForm());
+      expect(result?.fieldErrors?.image).toBeDefined();
+      expect(await db.post.count()).toBe(0);
+    });
+
+    it("removes the uploaded file when saving the post fails", async () => {
+      vi.spyOn(db.post, "create").mockRejectedValueOnce(
+        new Error("Database unavailable"),
+      );
+      const result = await actions.createPost(null, await imageForm());
+      expect(result?.error).toBeDefined();
+      expect(del).toHaveBeenCalledWith(imageUrl);
+      expect(await db.post.count()).toBe(0);
+    });
   });
 
   describe("moderation", () => {

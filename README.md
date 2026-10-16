@@ -20,7 +20,7 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - **Small campuses stay unnamed.** Other universities see your university's name only once at least 5 of its students have joined. Below that, your posts read "A university in India".
 - **Campus-only posts.** Posts can be limited to students of your own university. Other universities can't load them at all.
 - **No identity on the wire.** Server code turns database rows into view models before anything is rendered; author ids and emails never leave the server. Integration tests check the serialized payloads.
-- **Photos lose their metadata.** Images are re-encoded in the browser before upload, which strips EXIF data such as GPS coordinates.
+- **Photos lose their metadata.** Images are re-encoded in the browser before upload, which strips EXIF data such as GPS coordinates. The server also decodes and re-encodes every upload, so bypassing the composer cannot preserve metadata or spoof image dimensions.
 - **Staff are labeled.** Whoever runs a deployment can let their own accounts in with `TEAM_EMAILS`. Those accounts skip the university check, and everything they post says "Canteen team".
 - **Safety without surveillance.** Reports are anonymous. Content that three different students report is hidden automatically. Notifications say that someone replied or liked, never who.
 - **Moderators see content, not people.** Reports land in a queue for team accounts. It shows what was said and the alias it was said under, never an email. Moderators can keep it, remove it, or ban the account, which signs it out for good and hides everything it wrote.

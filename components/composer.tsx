@@ -28,13 +28,10 @@ import { LIMITS } from "@/lib/validation";
 import { createPost, type ComposeState } from "@/server/actions";
 
 const DRAFT_KEY = "canteen:draft";
-const MAX_IMAGE_EDGE = 2048;
 
 type Draft = { title: string; body: string };
 type PreparedImage = {
   file: File;
-  width: number;
-  height: number;
   preview: string;
 };
 
@@ -68,7 +65,7 @@ async function prepareImage(file: File): Promise<PreparedImage> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(
     1,
-    MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height),
+    LIMITS.imageEdge / Math.max(bitmap.width, bitmap.height),
   );
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);
@@ -91,8 +88,6 @@ async function prepareImage(file: File): Promise<PreparedImage> {
   const extension = blob.type === "image/webp" ? "webp" : "jpg";
   return {
     file: new File([blob], `image.${extension}`, { type: blob.type }),
-    width,
-    height,
     preview: URL.createObjectURL(blob),
   };
 }
@@ -179,9 +174,10 @@ export function Composer({
     setPreparing(true);
     try {
       const prepared = await prepareImage(file);
-      if (prepared.file.size > LIMITS.imageBytes)
+      if (prepared.file.size > LIMITS.imageBytes) {
+        URL.revokeObjectURL(prepared.preview);
         setImageError("That image is too large even after compressing.");
-      else setImage(prepared);
+      } else setImage(prepared);
     } catch {
       setImageError("We couldn't read that image. Try a JPEG or PNG.");
     } finally {
@@ -201,8 +197,6 @@ export function Composer({
     poll?.forEach((choice) => form.append("pollChoice", choice));
     if (image) {
       form.set("image", image.file);
-      form.set("imageWidth", String(image.width));
-      form.set("imageHeight", String(image.height));
     }
     startTransition(() => dispatch(form));
   };
@@ -404,6 +398,7 @@ export function Composer({
                     ref={fileInput}
                     type="file"
                     accept="image/*"
+                    disabled={preparing || pending}
                     className="sr-only"
                     id="image"
                     onChange={(event) => pickImage(event.target.files?.[0])}

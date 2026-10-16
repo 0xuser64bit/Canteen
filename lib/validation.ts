@@ -8,6 +8,7 @@ export const LIMITS = {
   pollChoice: { max: 80 },
   pollChoices: { min: 2, max: 4 },
   imageBytes: 4 * 1024 * 1024,
+  imageEdge: 2048,
 } as const;
 
 export const CONTACT_INFO_MESSAGE =

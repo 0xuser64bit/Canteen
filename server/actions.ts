@@ -8,6 +8,7 @@ import { after } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { NotificationType, Topic } from "@/lib/generated/prisma/enums";
+import { preparePostImage } from "@/lib/images";
 import { getViewer, type Viewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
 import { findUniversityByEmail } from "@/lib/universities";
@@ -81,17 +82,6 @@ async function notify(userId: string, postId: string, type: NotificationType) {
   }
 }
 
-function sniffImage(bytes: Buffer) {
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return { type: "image/jpeg", ext: "jpg" };
-  }
-  const ascii = (from: number, to: number) =>
-    bytes.toString("latin1", from, to);
-  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP")
-    return { type: "image/webp", ext: "webp" };
-  return null;
-}
-
 // ---------------------------------------------------------------------------
 // Posts
 // ---------------------------------------------------------------------------
@@ -137,12 +127,8 @@ export async function createPost(
   }
 
   let imageUrl: string | null = null;
-  const dimension = (key: string) => {
-    const value = Number(form.get(key));
-    return Number.isInteger(value) && value > 0 && value <= 10_000
-      ? value
-      : null;
-  };
+  let imageWidth: number | null = null;
+  let imageHeight: number | null = null;
   const image = form.get("image");
   if (image instanceof File && image.size > 0) {
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
@@ -155,34 +141,74 @@ export async function createPost(
         fieldErrors: { image: "That image is over 4 MB. Try a smaller one." },
       };
     }
-    const bytes = Buffer.from(await image.arrayBuffer());
-    // The composer re-encodes every image in the browser (stripping location
-    // data) to JPEG or WebP; anything else did not come from our client.
-    const kind = sniffImage(bytes);
-    if (!kind)
-      return { fieldErrors: { image: "Use a JPEG, PNG, or WebP image." } };
-    const blob = await put(`posts/${crypto.randomUUID()}.${kind.ext}`, bytes, {
-      access: "public",
-      contentType: kind.type,
-    });
-    imageUrl = blob.url;
+    let prepared: Awaited<ReturnType<typeof preparePostImage>>;
+    try {
+      prepared = await preparePostImage(Buffer.from(await image.arrayBuffer()));
+    } catch {
+      return {
+        fieldErrors: {
+          image:
+            "We couldn't read that image. Use a JPEG, PNG, or WebP under 25 megapixels.",
+        },
+      };
+    }
+    if (prepared.data.length > LIMITS.imageBytes)
+      return {
+        fieldErrors: {
+          image: "That image is too large even after compressing.",
+        },
+      };
+    try {
+      const blob = await put(
+        `posts/${crypto.randomUUID()}.webp`,
+        prepared.data,
+        {
+          access: "public",
+          contentType: "image/webp",
+        },
+      );
+      imageUrl = blob.url;
+      imageWidth = prepared.info.width;
+      imageHeight = prepared.info.height;
+    } catch {
+      console.error("Post image upload failed");
+      return {
+        fieldErrors: {
+          image: "We couldn't upload that image. Try again in a minute.",
+        },
+      };
+    }
   }
 
   const { poll, ...fields } = parsed.data;
-  const post = await db.post.create({
-    data: {
-      ...fields,
-      pollOptions: poll && {
-        create: poll.map((label, position) => ({ label, position })),
+  let post: { id: string };
+  try {
+    post = await db.post.create({
+      data: {
+        ...fields,
+        pollOptions: poll && {
+          create: poll.map((label, position) => ({ label, position })),
+        },
+        imageUrl,
+        imageWidth,
+        imageHeight,
+        authorId: viewer.id,
+        universityId: viewer.university.id,
       },
-      imageUrl,
-      imageWidth: imageUrl ? dimension("imageWidth") : null,
-      imageHeight: imageUrl ? dimension("imageHeight") : null,
-      authorId: viewer.id,
-      universityId: viewer.university.id,
-    },
-    select: { id: true },
-  });
+      select: { id: true },
+    });
+  } catch {
+    console.error("Post creation failed");
+    if (imageUrl) {
+      try {
+        await del(imageUrl);
+      } catch {
+        // shortcut: cleanup failures are logged; add durable retries before scaling uploads.
+        console.error("Unused post image cleanup failed");
+      }
+    }
+    return { error: "We couldn't save your post. Try again in a minute." };
+  }
   redirect(`/p/${post.id}`);
 }
 
