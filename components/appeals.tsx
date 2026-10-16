@@ -110,6 +110,7 @@ function Decision({
             ) : (
               <Button
                 type="submit"
+                variant="primary"
                 disabled={pending || body.trim().length < 10}
               >
                 {pending ? "Sending…" : "Submit appeal"}

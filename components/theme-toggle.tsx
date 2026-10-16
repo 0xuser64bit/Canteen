@@ -12,8 +12,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon-sm"
       onClick={() => setTheme(next)}
-      aria-label={`Switch to ${next} theme`}
-      suppressHydrationWarning
+      aria-label="Switch color theme"
     >
       <Sun className="hidden dark:block" />
       <Moon className="dark:hidden" />

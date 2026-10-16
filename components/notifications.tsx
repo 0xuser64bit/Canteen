@@ -45,7 +45,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] text-muted">
                   {comment
-                    ? "New replies in a thread you follow"
+                    ? "New replies in a thread"
                     : "Students liked your post"}
                 </span>
                 <span

@@ -13,5 +13,5 @@ export default async function ThreadPage({ params }: PageProps<"/p/[id]">) {
   const viewer = await requireViewer();
   const thread = await getThread(viewer, (await params).id);
   if (!thread) notFound();
-  return <ThreadView thread={thread} />;
+  return <ThreadView key={thread.id} thread={thread} />;
 }

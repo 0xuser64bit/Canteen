@@ -243,7 +243,10 @@ export function PostMenu({
           >
             <Link2 /> Copy link
           </DropdownMenuItem>
-          {(["saved", "following"] as const).map((collection) => (
+          {(post.isMine
+            ? (["saved"] as const)
+            : (["saved", "following"] as const)
+          ).map((collection) => (
             <DropdownMenuItem
               key={collection}
               disabled={pending}

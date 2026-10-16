@@ -1,6 +1,14 @@
 "use client";
 
-import { ArrowLeft, ArrowUp, Eye, Lock, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUp,
+  ArrowUpRight,
+  Check,
+  Eye,
+  Lock,
+  ShieldAlert,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -190,7 +198,8 @@ function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
   if (!thread.isMine || reply.isMine || thread.hidden)
     return selected ? (
       <p className="mt-1 text-[12px] font-semibold text-muted">
-        ✓ Marked helpful by the author
+        <Check aria-hidden className="inline size-3.5" /> Marked helpful by the
+        author
       </p>
     ) : null;
   return (
@@ -209,7 +218,13 @@ function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
         })
       }
     >
-      {selected ? "✓ Helpful · undo" : "Mark helpful"}
+      {selected ? (
+        <>
+          <Check aria-hidden className="inline size-3.5" /> Helpful · undo
+        </>
+      ) : (
+        "Mark helpful"
+      )}
     </button>
   );
 }
@@ -291,8 +306,16 @@ function ReplyBar({
 
 export function ThreadView({ thread }: { thread: Thread }) {
   const router = useRouter();
-  const [older, setOlder] = useState<ThreadComment[]>([]);
-  const [earlierCursor, setEarlierCursor] = useState(thread.earlierCursor);
+  const [history, setHistory] = useState<{
+    revision: number;
+    items: ThreadComment[];
+    cursor: string | null;
+  }>({ revision: thread.revision, items: [], cursor: thread.earlierCursor });
+  const older = history.revision === thread.revision ? history.items : [];
+  const earlierCursor =
+    history.revision === thread.revision
+      ? history.cursor
+      : thread.earlierCursor;
   const [loadingEarlier, startEarlier] = useTransition();
   const [replies, addReply] = useOptimistic<Reply[], Reply>(
     [...older, ...thread.comments].filter(
@@ -331,8 +354,6 @@ export function ThreadView({ thread }: { thread: Thread }) {
             !disposed &&
             (revision !== thread.revision || closed !== thread.closed)
           ) {
-            setOlder([]); // Re-read older pages after moderation rather than retaining hidden replies.
-            setEarlierCursor(null);
             router.refresh();
           }
           delay = 10_000;
@@ -352,13 +373,14 @@ export function ThreadView({ thread }: { thread: Thread }) {
 
   const fetchEarlier = () =>
     startEarlier(async () => {
-      const cursor =
-        earlierCursor ?? (older.length ? null : thread.earlierCursor);
-      if (!cursor) return;
-      const result = await loadEarlierReplies(thread.id, cursor);
+      if (!earlierCursor) return;
+      const result = await loadEarlierReplies(thread.id, earlierCursor);
       if (!result.ok) return void toast.error(result.error);
-      setOlder((current) => [...result.data.items, ...current]);
-      setEarlierCursor(result.data.nextCursor);
+      setHistory({
+        revision: thread.revision,
+        items: [...result.data.items, ...older],
+        cursor: result.data.nextCursor,
+      });
     });
 
   const send = async (body: string) => {
@@ -437,9 +459,14 @@ export function ThreadView({ thread }: { thread: Thread }) {
               )}
               {thread.kind === "QUESTION" && (
                 <p className="mb-2 text-[12px] font-semibold">
-                  {thread.helpfulCommentId
-                    ? "✓ A reply helped the author"
-                    : "Question · waiting for a helpful reply"}
+                  {thread.helpfulCommentId ? (
+                    <>
+                      <Check aria-hidden className="inline size-3.5" /> A reply
+                      helped the author
+                    </>
+                  ) : (
+                    "Question · waiting for a helpful reply"
+                  )}
                 </p>
               )}
               <h1 className="text-[22px] leading-tight font-bold tracking-tight text-balance sm:text-[26px]">
@@ -465,11 +492,12 @@ export function ThreadView({ thread }: { thread: Thread }) {
                     href={thread.applicationUrl}
                     target="_blank"
                     rel="noreferrer nofollow"
-                    className="mt-2 inline-block rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-background"
+                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-background"
                   >
                     {thread.closed
-                      ? "View original opportunity ↗"
-                      : "Open application ↗"}
+                      ? "View original opportunity"
+                      : "Open application"}
+                    <ArrowUpRight aria-hidden className="size-4" />
                   </a>
                   <p className="mt-2 text-[12px]">
                     Shared by a student. Check details with the organizer.
@@ -532,7 +560,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
           <span className="h-px flex-1 bg-line" />
         </div>
 
-        {(earlierCursor ?? (older.length ? null : thread.earlierCursor)) && (
+        {earlierCursor && (
           <div className="flex justify-center">
             <Button
               variant="ghost"

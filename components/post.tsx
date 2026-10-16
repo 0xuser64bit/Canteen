@@ -98,69 +98,72 @@ export function LikeButton({
 function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
   const quiet = onYellow ? "text-you-muted" : "text-muted";
   return (
-    <div className="relative z-10 -mx-1.5 mt-3 flex items-center gap-1">
-      <span
-        className={cn(
-          "mr-1 shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap",
-          onYellow
-            ? "bg-you-ink/10"
-            : "bg-surface-2 text-muted ring-1 ring-line",
-        )}
-      >
-        {topicLabel(post.topic)}
-      </span>
-      {post.deadline && (
-        <span className={cn("text-[12px] font-semibold", quiet)}>
-          {post.closed ? "Closed" : "Open"}
-        </span>
-      )}
-      {post.kind === "QUESTION" && (
-        <span className={cn("text-[12px] font-semibold", quiet)}>
-          {post.helpfulCommentId ? "Answered" : "Question"}
-        </span>
-      )}
-      {post.audience === "CAMPUS" && (
+    <div className="relative z-10 mt-3">
+      <div className="flex flex-wrap items-center gap-2">
         <span
           className={cn(
-            "flex shrink-0 items-center gap-1 text-[12px] font-semibold whitespace-nowrap",
+            "mr-1 shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap",
+            onYellow
+              ? "bg-you-ink/10"
+              : "bg-surface-2 text-muted ring-1 ring-line",
+          )}
+        >
+          {topicLabel(post.topic)}
+        </span>
+        {post.deadline && (
+          <span className={cn("text-[12px] font-semibold", quiet)}>
+            {post.closed ? "Closed" : "Open"}
+          </span>
+        )}
+        {post.kind === "QUESTION" && (
+          <span className={cn("text-[12px] font-semibold", quiet)}>
+            {post.helpfulCommentId ? "Answered" : "Question"}
+          </span>
+        )}
+        {post.audience === "CAMPUS" && (
+          <span
+            className={cn(
+              "flex shrink-0 items-center gap-1 text-[12px] font-semibold whitespace-nowrap",
+              quiet,
+            )}
+            title="Only students at this university can see this"
+          >
+            <Lock className="size-3.5" /> Campus
+          </span>
+        )}
+      </div>
+      <div className="-mx-1.5 mt-1 flex items-center justify-end gap-1">
+        <LikeButton
+          postId={post.id}
+          liked={post.liked}
+          count={post.likeCount}
+          onYellow={onYellow}
+        />
+        <Link
+          href={`/p/${post.id}`}
+          className={cn(
+            "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors",
+            onYellow
+              ? "hover:bg-you-ink/10"
+              : "text-muted hover:bg-surface-3 hover:text-ink",
+          )}
+          aria-label={`${post.commentCount} ${post.commentCount === 1 ? "reply" : "replies"}`}
+        >
+          <MessageCircle className="size-[18px]" />
+          {post.commentCount > 0 && compactNumber(post.commentCount)}
+        </Link>
+        <span
+          className={cn(
+            "hidden items-center gap-1.5 px-2 text-[13px] font-semibold tabular sm:flex",
             quiet,
           )}
-          title="Only students at this university can see this"
+          aria-label={`${post.viewCount} views`}
         >
-          <Lock className="size-3.5" /> Campus
+          <Eye className="size-[18px]" />
+          {compactNumber(post.viewCount)}
         </span>
-      )}
-      <span className="flex-1" />
-      <LikeButton
-        postId={post.id}
-        liked={post.liked}
-        count={post.likeCount}
-        onYellow={onYellow}
-      />
-      <Link
-        href={`/p/${post.id}`}
-        className={cn(
-          "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors",
-          onYellow
-            ? "hover:bg-you-ink/10"
-            : "text-muted hover:bg-surface-3 hover:text-ink",
-        )}
-        aria-label={`${post.commentCount} replies`}
-      >
-        <MessageCircle className="size-[18px]" />
-        {post.commentCount > 0 && compactNumber(post.commentCount)}
-      </Link>
-      <span
-        className={cn(
-          "hidden items-center gap-1.5 px-2 text-[13px] font-semibold tabular sm:flex",
-          quiet,
-        )}
-        aria-label={`${post.viewCount} views`}
-      >
-        <Eye className="size-[18px]" />
-        {compactNumber(post.viewCount)}
-      </span>
-      <PostMenu post={post} onYellow={onYellow} />
+        <PostMenu post={post} onYellow={onYellow} />
+      </div>
     </div>
   );
 }

@@ -191,8 +191,8 @@ export function ModQueue({ items }: { items: ModItem[] }) {
   if (left.length === 0)
     return (
       <EmptyState
-        title="All clear"
-        body="Nothing is waiting for review. When students report a post or a reply, it shows up here."
+        title="No reports waiting"
+        body="Reported posts and replies show up here. Appeals are reviewed separately above."
         action={false}
       />
     );

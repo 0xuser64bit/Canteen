@@ -12,7 +12,7 @@ const mona = Mona_Sans({
 });
 
 const description =
-  "Anonymous conversations between verified university students. Your university email proves you're a student; nobody ever sees who you are.";
+  "Conversations behind per-thread aliases. Sign in with a university email; other students see your alias, not your email.";
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
