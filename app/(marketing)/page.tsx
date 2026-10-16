@@ -230,6 +230,9 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 px-5 py-8 text-[13px] text-muted sm:px-8">
           <Logo className="opacity-80" />
+          <Link href="/community" className="font-semibold hover:text-ink">
+            Community and privacy
+          </Link>
           <a
             href={repoUrl}
             target="_blank"

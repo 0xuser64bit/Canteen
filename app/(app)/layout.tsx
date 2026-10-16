@@ -2,12 +2,14 @@ import { Suspense } from "react";
 import { Discover } from "@/components/discover";
 import { MobileNav, SideNav } from "@/components/nav";
 import { SearchPalette } from "@/components/search";
+import { recordActivity } from "@/server/metrics";
 import { requireViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
 import { getModQueueSize, getUnreadCount, isModerator } from "@/server/queries";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const viewer = await requireViewer();
+  await recordActivity(viewer);
   const [unread, modQueue] = await Promise.all([
     getUnreadCount(viewer),
     isModerator(viewer) ? getModQueueSize() : undefined,

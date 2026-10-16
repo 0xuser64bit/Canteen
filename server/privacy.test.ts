@@ -118,7 +118,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
+      'TRUNCATE "DailyActivity", "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -1378,6 +1378,80 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(
         (await db.user.findUniqueOrThrow({ where: { id: "ada" } })).bannedAt,
       ).toBeNull();
+    });
+
+    it("reports useful help and return rates only as protected aggregates", async () => {
+      const { getLaunchMetrics, recordActivity } =
+        await import("@/server/metrics");
+      expect(await getLaunchMetrics(await viewer("ada"))).toBeNull();
+      expect(await getLaunchMetrics(await viewer("mod"))).toEqual([]);
+      const today = new Date(new Date().toISOString().slice(0, 10));
+      const day = (offset: number) =>
+        new Date(today.getTime() - offset * 86400000);
+      const ids = Array.from({ length: 5 }, (_, i) => `cohort-${i}`);
+      await db.user.createMany({
+        data: ids.map((id) => ({
+          id,
+          email: `${id}@stanford.edu`,
+          emailVerified: true,
+          universityId: "u-stanford",
+          createdAt: day(20),
+        })),
+      });
+      await db.dailyActivity.create({ data: { userId: "alan", day: day(30) } });
+      for (const id of ids.slice(0, 3))
+        await db.dailyActivity.create({ data: { userId: id, day: day(10) } });
+      await recordActivity(await viewer(ids[0]!));
+      await recordActivity(await viewer(ids[0]!));
+      expect(
+        await db.dailyActivity.count({ where: { userId: ids[0], day: today } }),
+      ).toBe(1);
+      expect((await getLaunchMetrics(await viewer("mod")))![0]).toMatchObject({
+        name: "Stanford University",
+        members: 7,
+        active: null,
+        helped: null,
+        returnRate: null,
+      });
+      for (const id of ids.slice(1)) await recordActivity(await viewer(id));
+      for (const id of ids.slice(3))
+        await db.dailyActivity.create({ data: { userId: id, day: day(10) } });
+      for (const id of ids) {
+        const question = await post(id, { kind: "QUESTION" });
+        const answer = await db.comment.create({
+          data: {
+            postId: question.id,
+            authorId: "alan",
+            body: "A useful answer",
+          },
+        });
+        await db.helpfulAnswer.create({
+          data: { postId: question.id, commentId: answer.id },
+        });
+      }
+      const metrics = (await getLaunchMetrics(await viewer("mod")))!;
+      expect(metrics[0]).toMatchObject({
+        active: 5,
+        helped: 5,
+        returnRate: 100,
+      });
+      for (const secret of [
+        ...ids,
+        "ada@",
+        '"userId"',
+        '"authorId"',
+        '"email"',
+      ])
+        expect(JSON.stringify(metrics)).not.toContain(secret);
+      await db.user.delete({ where: { id: ids[0] } });
+      expect(await db.dailyActivity.count({ where: { userId: ids[0] } })).toBe(
+        0,
+      );
+      expect((await getLaunchMetrics(await viewer("mod")))![0]).toMatchObject({
+        active: null,
+        helped: null,
+        returnRate: null,
+      });
     });
 
     it("rolls back content removal when banning the author fails", async () => {

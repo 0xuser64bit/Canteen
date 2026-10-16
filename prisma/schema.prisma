@@ -36,6 +36,7 @@ model User {
   reports         Report[]
   moderationCases ModerationCase[]
   notifications   Notification[]
+  dailyActivity DailyActivity[]
   bookmarks       Bookmark[]
   follows         Follow[]
   pollVotes       PollVote[]
@@ -370,4 +371,13 @@ model ModerationCase {
 
   @@index([authorId, createdAt])
   @@index([appealedAt, resolvedAt])
+}
+
+// One first-party activity mark per student and UTC day, erased with the account.
+model DailyActivity {
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day DateTime @db.Date
+  @@id([userId, day])
+  @@index([day])
 }

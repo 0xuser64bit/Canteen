@@ -74,17 +74,17 @@ Open http://localhost:3000 and sign in with any address at a real university dom
 
 ### Configuration
 
-| Variable                                   | Required   | Purpose                                                                                                                |
-| ------------------------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                             | yes        | PostgreSQL connection string. Use a pooled URL in production.                                                          |
-| `BETTER_AUTH_SECRET`                       | yes        | Signs sessions and derives aliases. `openssl rand -base64 32`.                                                         |
-| `BETTER_AUTH_URL`                          | no         | Public site URL. Derived automatically on Vercel and in development.                                                   |
-| `RESEND_API_KEY`, `EMAIL_FROM`             | no         | Sends sign-in codes by email. Without them, production offers Google sign-in only.                                     |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no         | "Continue with Google" for accounts with a verified university email. Redirect URI: `<site>/api/auth/callback/google`. |
-| `BLOB_PRIVATE_READ_WRITE_TOKEN`            | no         | Private Blob store for new uploads.                                                                                    |
-| `BLOB_READ_WRITE_TOKEN`                    | no         | Legacy public store, retained until migration and erasure finish.                                                      |
-| `CRON_SECRET`                              | for images | Secret for scheduled image migration and deletion retries.                                                             |
-| `TEAM_EMAILS`                              | no         | Comma-separated staff emails that can join without a university email. They post as "Canteen team".                    |
+| Variable                                   | Required        | Purpose                                                                                                                |
+| ------------------------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                             | yes             | PostgreSQL connection string. Use a pooled URL in production.                                                          |
+| `BETTER_AUTH_SECRET`                       | yes             | Signs sessions and derives aliases. `openssl rand -base64 32`.                                                         |
+| `BETTER_AUTH_URL`                          | no              | Public site URL. Derived automatically on Vercel and in development.                                                   |
+| `RESEND_API_KEY`, `EMAIL_FROM`             | no              | Sends sign-in codes by email. Without them, production offers Google sign-in only.                                     |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no              | "Continue with Google" for accounts with a verified university email. Redirect URI: `<site>/api/auth/callback/google`. |
+| `BLOB_PRIVATE_READ_WRITE_TOKEN`            | no              | Private Blob store for new uploads.                                                                                    |
+| `BLOB_READ_WRITE_TOKEN`                    | no              | Legacy public store, retained until migration and erasure finish.                                                      |
+| `CRON_SECRET`                              | for maintenance | Protects scheduled image cleanup, migration and activity retention.                                                    |
+| `TEAM_EMAILS`                              | no              | Comma-separated staff emails that can join without a university email. They post as "Canteen team".                    |
 
 ## Checks and tests
 
@@ -116,6 +116,12 @@ Canteen deploys to [Vercel](https://vercel.com) as-is. `vercel.json` installs wi
 - **Private images require configuration.** Create a private Blob store and set `BLOB_PRIVATE_READ_WRITE_TOKEN` and `CRON_SECRET`. Images are streamed through authenticated, uncached routes. Keep the old public-store token while legacy files migrate: maintenance copies one image, atomically swaps its reference, and queues erasure of the public original. Already-shared public URLs remain accessible until erasure completes.
 - **Cleanup is durable but asynchronous.** Upload intents exist before storage writes; deletion jobs commit with post/account removal. Workers lease jobs and retry failures with backoff. `vercel.json` runs maintenance daily ([Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)); deletion actions also attempt immediate cleanup. On other hosts, schedule `GET /api/maintenance` with `Authorization: Bearer <CRON_SECRET>`. Invoke repeatedly to clear migration/deletion backlogs; monitor `BlobDeletion` oldest due date and attempts. No credentials or files are migrated by installing code alone.
 - **Live threads use polling.** Visible, online threads check their revision every ten seconds and back off on failure. Replies load in pages of 50. Move to push delivery if concurrent open threads make polling costly. Notifications commit with the reply or like; saves and follows are private account data.
+
+## Campus launch
+
+Start with one or two campuses using [the launch playbook](LAUNCH.md). The team-only `/launch` page measures weekly active students, students who received author-marked helpful answers, and observed week-two return. Counts under five and small rate groups are suppressed. A single UTC daily activity mark is stored internally, expires after 90 days through maintenance, and cascades on account deletion. No page history, text, or email is sent to external analytics. Keep scheduled maintenance enabled even for text-only deployments.
+
+The public `/community` page explains verification limits, internal account linkage, photo risks, moderation, appeals, retention and erasure. This is product guidance; review hosting/backups and organizational policies for the actual deployment.
 
 ## Project layout
 

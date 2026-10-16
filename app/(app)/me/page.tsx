@@ -109,7 +109,7 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
             <li className="flex gap-3">
               <EyeOff className="mt-0.5 size-[18px] shrink-0 text-ink" />
               <span>
-                Your email never appears anywhere.{" "}
+                Other students never see your email.{" "}
                 {isTeam ? (
                   "Everything you post is labeled Canteen team, so students know it's staff."
                 ) : (
@@ -133,6 +133,9 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
           </ul>
         </section>
 
+        <Link href="/community" className="text-[14px] font-semibold underline">
+          Community rules and how your data is used
+        </Link>
         <section
           aria-labelledby="appearance"
           className="flex flex-wrap items-center justify-between gap-3"

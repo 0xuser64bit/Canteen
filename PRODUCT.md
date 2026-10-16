@@ -8,7 +8,7 @@ web
 
 ## Users
 
-University students anywhere in the world. Every member is verified as a current student through their university email domain (or their university's Google Workspace account). They mostly arrive on phones, in short sessions between classes or late at night, to ask something they would not ask under their own name, or to read what students at their own and other universities honestly think.
+University students anywhere in the world. Sign-in verifies control of a recognized university email address; it does not independently establish current enrollment. They mostly arrive on phones, in short sessions between classes or late at night, to ask something they would not ask under their own name, or to read what students at their own and other universities honestly think.
 
 ## Product Purpose
 

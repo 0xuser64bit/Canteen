@@ -1,3 +1,4 @@
+import { db } from "@/lib/db";
 import { timingSafeEqual } from "node:crypto";
 import { migrateLegacyImages, processImageDeletions } from "@/server/media";
 
@@ -14,6 +15,9 @@ export async function GET(request: Request) {
   ) {
     return new Response(null, { status: 401 });
   }
+  await db.dailyActivity.deleteMany({
+    where: { day: { lt: new Date(Date.now() - 90 * 86400000) } },
+  });
   const deleted = await processImageDeletions();
   const migrated = await migrateLegacyImages();
   return Response.json(
