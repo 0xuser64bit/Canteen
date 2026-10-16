@@ -15,6 +15,7 @@ import {
 } from "vitest";
 import { del, put } from "@vercel/blob";
 import sharp from "sharp";
+import { getViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
 
 const TEST_DATABASE_URL = vi.hoisted(() => {
@@ -28,7 +29,7 @@ const state = vi.hoisted(() => ({ viewerId: null as string | null }));
 vi.mock("@/lib/session", async () => {
   const { db } = await import("@/lib/db");
   return {
-    getViewer: async () =>
+    getViewer: vi.fn(async () =>
       state.viewerId
         ? db.user.findUnique({
             where: { id: state.viewerId, bannedAt: null },
@@ -40,6 +41,7 @@ vi.mock("@/lib/session", async () => {
             },
           })
         : null,
+    ),
   };
 });
 vi.mock("@/lib/auth", () => ({ auth: { api: { signOut: vi.fn() } } }));
@@ -373,6 +375,65 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.comment.count()).toBe(1);
   });
 
+  it("enforces the reply limit across simultaneous requests", async () => {
+    const p = await post("ada");
+    as("ada");
+    const results = await Promise.all(
+      Array.from({ length: 21 }, () => actions.addComment(p.id, "A reply")),
+    );
+    expect(results.filter((result) => result.ok)).toHaveLength(20);
+    expect(await db.comment.count()).toBe(20);
+  });
+
+  it("enforces the post limit across simultaneous requests", async () => {
+    as("ada");
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, () => {
+        const form = new FormData();
+        form.set("title", "A question for everyone");
+        form.set("body", "Body text");
+        form.set("topic", "GENERAL");
+        form.set("audience", "EVERYONE");
+        return actions.createPost(null, form);
+      }),
+    );
+    const redirects = results.filter((result) => result.status === "rejected");
+    expect(redirects).toHaveLength(5);
+    for (const result of redirects)
+      expect(result.reason).toMatchObject({
+        url: expect.stringMatching(/^\/p\//),
+      });
+    expect(await db.post.count()).toBe(5);
+    expect(results.filter((result) => result.status === "fulfilled")).toEqual([
+      {
+        status: "fulfilled",
+        value: { error: expect.stringContaining("quickly") },
+      },
+    ]);
+  });
+
+  it("rejects publishing with a viewer captured before a ban", async () => {
+    const p = await post("ada");
+    const beforeBan = await viewer("ada");
+    await db.user.update({
+      where: { id: "ada" },
+      data: { bannedAt: new Date() },
+    });
+    as("ada");
+
+    vi.mocked(getViewer).mockResolvedValueOnce(beforeBan);
+    expect((await actions.addComment(p.id, "Still here?")).ok).toBe(false);
+    vi.mocked(getViewer).mockResolvedValueOnce(beforeBan);
+    const form = new FormData();
+    form.set("title", "Trying to post after a ban");
+    form.set("body", "Body text");
+    form.set("topic", "GENERAL");
+    form.set("audience", "EVERYONE");
+    expect(await actions.createPost(null, form)).toHaveProperty("error");
+    expect(await db.comment.count()).toBe(0);
+    expect(await db.post.count()).toBe(1);
+  });
+
   it("deletes everything a student wrote when they delete their account", async () => {
     const p = await post("ada");
     as("grace");
@@ -468,7 +529,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     });
 
     it("removes the uploaded file when saving the post fails", async () => {
-      vi.spyOn(db.post, "create").mockRejectedValueOnce(
+      vi.spyOn(db, "$transaction").mockRejectedValueOnce(
         new Error("Database unavailable"),
       );
       const result = await actions.createPost(null, await imageForm());
@@ -603,10 +664,102 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(await db.session.count({ where: { userId: "ada" } })).toBe(0);
       expect(await queries.getModQueueSize()).toBe(0);
 
+      // A stale queue item must never restore a banned author's other content.
+      expect(
+        (
+          await actions.moderate({
+            target: "post",
+            id: other.id,
+            decision: "keep",
+          })
+        ).ok,
+      ).toBe(false);
+      expect(await hiddenAt(other.id)).not.toBeNull();
+
       as("ada");
       expect((await actions.addComment(other.id, "Still here?")).ok).toBe(
         false,
       );
+    });
+
+    it("rolls back content removal when banning the author fails", async () => {
+      const p = await post("ada");
+      await db.post.update({
+        where: { id: p.id },
+        data: {
+          imageUrl: "https://test.public.blob.vercel-storage.com/kept.webp",
+        },
+      });
+      vi.mocked(del).mockClear();
+      await report("grace", "post", p.id);
+      as("mod");
+      await db.$executeRaw`ALTER TABLE "User" ADD CONSTRAINT test_ban_rejected CHECK ("bannedAt" IS NULL)`;
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        expect(
+          (
+            await actions.moderate({
+              target: "post",
+              id: p.id,
+              decision: "ban",
+            })
+          ).ok,
+        ).toBe(false);
+        expect(
+          await db.post.findUnique({ where: { id: p.id } }),
+        ).not.toBeNull();
+        expect(await db.report.count()).toBe(1);
+        expect(del).not.toHaveBeenCalled();
+        expect(
+          (await db.user.findUniqueOrThrow({ where: { id: "ada" } })).bannedAt,
+        ).toBeNull();
+      } finally {
+        await db.$executeRaw`ALTER TABLE "User" DROP CONSTRAINT test_ban_rejected`;
+        log.mockRestore();
+      }
+    });
+
+    it("handles two moderators removing the same post", async () => {
+      const p = await post("ada");
+      as("mod");
+      const decision = {
+        target: "post",
+        id: p.id,
+        decision: "remove",
+      } as const;
+      const results = await Promise.all([
+        actions.moderate(decision),
+        actions.moderate(decision),
+      ]);
+      expect(results.filter((result) => result.ok)).toHaveLength(1);
+      expect(await db.post.count()).toBe(0);
+    });
+
+    it("bans a reported reply's author without removing the thread", async () => {
+      const thread = await post("grace");
+      const other = await post("ada");
+      as("ada");
+      const id = crypto.randomUUID();
+      await actions.addComment(thread.id, "A reported reply", id);
+      await report("linus", "comment", id);
+      as("mod");
+      expect(
+        (await actions.moderate({ target: "comment", id, decision: "ban" })).ok,
+      ).toBe(true);
+      expect(await db.comment.count()).toBe(0);
+      expect(
+        await db.post.findUnique({ where: { id: thread.id } }),
+      ).not.toBeNull();
+      expect(await hiddenAt(other.id)).not.toBeNull();
+      expect(
+        (
+          await actions.moderate({
+            target: "post",
+            id: other.id,
+            decision: "keep",
+          })
+        ).ok,
+      ).toBe(false);
     });
 
     it("won't let a moderator ban themselves", async () => {

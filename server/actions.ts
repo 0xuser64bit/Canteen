@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import type { NotificationType, Topic } from "@/lib/generated/prisma/enums";
 import { preparePostImage } from "@/lib/images";
 import { getViewer, type Viewer } from "@/lib/session";
@@ -40,17 +41,35 @@ const NOT_FOUND = {
 
 /** Distinct reports after which content disappears pending review. */
 const HIDE_AFTER_REPORTS = 3;
+const POSTING_TOO_FAST =
+  "You're posting quickly. Take a breather and try again in a few minutes.";
 
 const ok = <T>(data: T): ActionResult<T> => ({ ok: true, data });
 
-async function postVisibleTo(viewer: Viewer, postId: string) {
-  return db.post.findFirst({
+async function postVisibleTo(
+  viewer: Viewer,
+  postId: string,
+  client: Prisma.TransactionClient = db,
+) {
+  return client.post.findFirst({
     where: { id: postId, ...queries.visibleTo(viewer) },
     select: { id: true, authorId: true },
   });
 }
 
-async function postingTooFast(kind: "post" | "comment", authorId: string) {
+// Publishing and moderation take the same lock, so limits and bans hold in flight.
+async function lockAuthor(tx: Prisma.TransactionClient, authorId: string) {
+  const [author] = await tx.$queryRaw<{ bannedAt: Date | null }[]>`
+    SELECT "bannedAt" FROM "User" WHERE "id" = ${authorId} FOR UPDATE
+  `;
+  return author;
+}
+
+async function postingTooFast(
+  kind: "post" | "comment",
+  authorId: string,
+  client: Prisma.TransactionClient = db,
+) {
   const window = {
     post: { max: 5, ms: 15 * 60_000 },
     comment: { max: 20, ms: 10 * 60_000 },
@@ -61,8 +80,8 @@ async function postingTooFast(kind: "post" | "comment", authorId: string) {
   };
   const recent =
     kind === "post"
-      ? await db.post.count({ where })
-      : await db.comment.count({ where });
+      ? await client.post.count({ where })
+      : await client.comment.count({ where });
   return recent >= window.max;
 }
 
@@ -120,10 +139,7 @@ export async function createPost(
   }
 
   if (await postingTooFast("post", viewer.id)) {
-    return {
-      error:
-        "You're posting quickly. Take a breather and try again in a few minutes.",
-    };
+    return { error: POSTING_TOO_FAST };
   }
 
   let imageUrl: string | null = null;
@@ -181,24 +197,38 @@ export async function createPost(
   }
 
   const { poll, ...fields } = parsed.data;
-  let post: { id: string };
+  let result: ActionResult<{ id: string }>;
   try {
-    post = await db.post.create({
-      data: {
-        ...fields,
-        pollOptions: poll && {
-          create: poll.map((label, position) => ({ label, position })),
-        },
-        imageUrl,
-        imageWidth,
-        imageHeight,
-        authorId: viewer.id,
-        universityId: viewer.university.id,
-      },
-      select: { id: true },
+    result = await db.$transaction(async (tx) => {
+      const author = await lockAuthor(tx, viewer.id);
+      if (!author || author.bannedAt) return SIGNED_OUT;
+      if (await postingTooFast("post", viewer.id, tx))
+        return { ok: false as const, error: POSTING_TOO_FAST };
+      return ok(
+        await tx.post.create({
+          data: {
+            ...fields,
+            pollOptions: poll && {
+              create: poll.map((label, position) => ({ label, position })),
+            },
+            imageUrl,
+            imageWidth,
+            imageHeight,
+            authorId: viewer.id,
+            universityId: viewer.university.id,
+          },
+          select: { id: true },
+        }),
+      );
     });
   } catch {
     console.error("Post creation failed");
+    result = {
+      ok: false,
+      error: "We couldn't save your post. Try again in a minute.",
+    };
+  }
+  if (!result.ok) {
     if (imageUrl) {
       try {
         await del(imageUrl);
@@ -207,9 +237,9 @@ export async function createPost(
         console.error("Unused post image cleanup failed");
       }
     }
-    return { error: "We couldn't save your post. Try again in a minute." };
+    return { error: result.error };
   }
-  redirect(`/p/${post.id}`);
+  redirect(`/p/${result.data.id}`);
 }
 
 export async function deletePost(postId: string): Promise<ActionResult> {
@@ -307,32 +337,37 @@ export async function addComment(
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]!.message };
 
-  const post = await postVisibleTo(viewer, postId);
-  if (!post) return NOT_FOUND;
-  if (await postingTooFast("comment", viewer.id)) {
-    return {
-      ok: false,
-      error: "You're replying very quickly. Give it a minute.",
-    };
-  }
-
+  let result: ActionResult<{ authorId: string }>;
   try {
-    await db.comment.create({
-      data: {
-        id: parsed.data.id,
-        postId,
-        body: parsed.data.body,
-        authorId: viewer.id,
-      },
+    result = await db.$transaction(async (tx) => {
+      const author = await lockAuthor(tx, viewer.id);
+      if (!author || author.bannedAt) return SIGNED_OUT;
+      const post = await postVisibleTo(viewer, postId, tx);
+      if (!post) return NOT_FOUND;
+      if (await postingTooFast("comment", viewer.id, tx))
+        return {
+          ok: false as const,
+          error: "You're replying very quickly. Give it a minute.",
+        };
+      await tx.comment.create({
+        data: {
+          id: parsed.data.id,
+          postId,
+          body: parsed.data.body,
+          authorId: viewer.id,
+        },
+      });
+      return ok(post);
     });
   } catch (error) {
     // P2002 is a reused client id; anything else is worth knowing about.
-    const code = (error as { code?: string }).code;
-    if (code !== "P2002") console.error("addComment failed", code ?? error);
+    const code = (error as { code?: string } | null)?.code;
+    if (code !== "P2002") console.error("addComment failed", code ?? "unknown");
     return { ok: false, error: "That reply didn't go through. Try again." };
   }
-  if (post.authorId !== viewer.id)
-    after(() => notify(post.authorId, postId, "COMMENT"));
+  if (!result.ok) return result;
+  if (result.data.authorId !== viewer.id)
+    after(() => notify(result.data.authorId, postId, "COMMENT"));
   refresh();
   return ok(null);
 }
@@ -412,61 +447,78 @@ export async function moderate(input: {
   if (!parsed.success) return { ok: false, error: "Pick an action." };
   const { target, id, decision } = parsed.data;
 
-  const item =
-    target === "post"
-      ? await db.post.findUnique({
-          where: { id },
-          select: { authorId: true, imageUrl: true },
-        })
-      : await db.comment
-          .findUnique({ where: { id }, select: { authorId: true } })
-          .then((comment) => comment && { ...comment, imageUrl: null });
-  if (!item) return { ok: false, error: "That isn't available anymore." };
-  if (decision === "ban" && item.authorId === viewer.id)
-    return { ok: false, error: "You can't ban your own account." };
+  let result: ActionResult<string | null>;
+  try {
+    result = await db.$transaction(async (tx) => {
+      const item =
+        target === "post"
+          ? await tx.post.findUnique({
+              where: { id },
+              select: { authorId: true, imageUrl: true },
+            })
+          : await tx.comment
+              .findUnique({ where: { id }, select: { authorId: true } })
+              .then((comment) => comment && { ...comment, imageUrl: null });
+      if (!item) return NOT_FOUND;
+      if (decision === "ban" && item.authorId === viewer.id)
+        return { ok: false as const, error: "You can't ban your own account." };
 
-  const now = new Date();
-  const key = target === "post" ? { postId: id } : { commentId: id };
-  if (decision === "keep") {
-    const restore = { where: { id }, data: { hiddenAt: null } };
-    await db.$transaction([
-      target === "post" ? db.post.update(restore) : db.comment.update(restore),
-      db.report.updateMany({
-        where: { ...key, resolvedAt: null },
-        data: { resolvedAt: now },
-      }),
-    ]);
-  } else {
-    // Its reports cascade with it.
-    if (target === "post") await db.post.delete({ where: { id } });
-    else await db.comment.delete({ where: { id } });
-    if (item.imageUrl) {
-      const url = item.imageUrl;
-      after(() => del(url));
-    }
-  }
+      const author = await lockAuthor(tx, item.authorId);
+      if (!author) return NOT_FOUND;
+      if (decision === "keep" && author.bannedAt)
+        return {
+          ok: false as const,
+          error: "Content from a banned account can't be restored.",
+        };
 
-  if (decision === "ban") {
-    const author = item.authorId;
-    const theirs = { authorId: author, hiddenAt: null };
-    await db.$transaction([
-      db.user.update({ where: { id: author }, data: { bannedAt: now } }),
-      db.session.deleteMany({ where: { userId: author } }),
-      db.post.updateMany({ where: theirs, data: { hiddenAt: now } }),
-      db.comment.updateMany({ where: theirs, data: { hiddenAt: now } }),
-      // The ban settles every open report against them.
-      db.report.updateMany({
-        where: {
-          resolvedAt: null,
-          OR: [
-            { post: { authorId: author } },
-            { comment: { authorId: author } },
-          ],
-        },
-        data: { resolvedAt: now },
-      }),
-    ]);
+      const now = new Date();
+      const key = target === "post" ? { postId: id } : { commentId: id };
+      if (decision === "keep") {
+        const restore = { where: { id }, data: { hiddenAt: null } };
+        const { count } =
+          target === "post"
+            ? await tx.post.updateMany(restore)
+            : await tx.comment.updateMany(restore);
+        if (count === 0) return NOT_FOUND;
+        await tx.report.updateMany({
+          where: { ...key, resolvedAt: null },
+          data: { resolvedAt: now },
+        });
+      } else {
+        const { count } =
+          target === "post"
+            ? await tx.post.deleteMany({ where: { id } })
+            : await tx.comment.deleteMany({ where: { id } });
+        if (count === 0) return NOT_FOUND;
+      }
+
+      if (decision === "ban") {
+        const authorId = item.authorId;
+        const theirs = { authorId, hiddenAt: null };
+        await tx.user.update({
+          where: { id: authorId },
+          data: { bannedAt: now },
+        });
+        await tx.session.deleteMany({ where: { userId: authorId } });
+        await tx.post.updateMany({ where: theirs, data: { hiddenAt: now } });
+        await tx.comment.updateMany({ where: theirs, data: { hiddenAt: now } });
+        await tx.report.updateMany({
+          where: {
+            resolvedAt: null,
+            OR: [{ post: { authorId } }, { comment: { authorId } }],
+          },
+          data: { resolvedAt: now },
+        });
+      }
+      return ok(decision === "keep" ? null : item.imageUrl);
+    });
+  } catch {
+    console.error("Moderation decision failed");
+    return { ok: false, error: "That decision couldn't be saved. Try again." };
   }
+  if (!result.ok) return result;
+  const imageUrl = result.data;
+  if (imageUrl) after(() => del(imageUrl));
   refresh();
   return ok(null);
 }
