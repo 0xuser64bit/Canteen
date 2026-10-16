@@ -31,6 +31,7 @@ describe("postInput", () => {
     };
     expect(postInput.safeParse(opportunity).success).toBe(true);
     for (const applicationUrl of [
+      "invalid-link",
       "javascript:alert(1)",
       "http://example.org",
       "https://user:secret@example.org",

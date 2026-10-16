@@ -103,6 +103,7 @@ export async function migrateLegacyImages() {
     where: { imageUrl: { contains: ".public.blob.vercel-storage.com/" } },
     select: { id: true, imageUrl: true },
     take: 1,
+    orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
   });
   let migrated = 0;
   for (const post of posts) {
@@ -113,7 +114,8 @@ export async function migrateLegacyImages() {
         useCache: false,
         abortSignal: AbortSignal.timeout(10_000),
       });
-      if (!source || source.statusCode !== 200) continue;
+      if (!source || source.statusCode !== 200)
+        throw new Error("Legacy image unavailable");
       const bytes = Buffer.from(
         await new Response(source.stream).arrayBuffer(),
       );
@@ -134,6 +136,11 @@ export async function migrateLegacyImages() {
         return 1;
       });
     } catch {
+      // Rotate failed files so one damaged legacy upload cannot block the migration.
+      await db.post.updateMany({
+        where: { id: post.id, imageUrl: oldUrl },
+        data: { updatedAt: new Date() },
+      });
       console.error("Legacy image migration will be retried");
     }
   }

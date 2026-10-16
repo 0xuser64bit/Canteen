@@ -38,9 +38,9 @@ export async function getLaunchMetrics(viewer: Viewer) {
     SELECT u."name", COUNT(m."id") AS members,
       (SELECT COUNT(DISTINCT d."userId") FROM "DailyActivity" d JOIN members a ON a."id" = d."userId"
         WHERE a."universityId" = u."id" AND d."day" >= ${week}) AS active,
-      (SELECT COUNT(DISTINCT p."authorId") FROM "HelpfulAnswer" h JOIN "Post" p ON p."id" = h."postId"
+      (SELECT COUNT(DISTINCT p."authorId") FROM "HelpfulAnswer" h JOIN "Comment" c ON c."id" = h."commentId" JOIN "Post" p ON p."id" = h."postId"
         JOIN members a ON a."id" = p."authorId" WHERE p."universityId" = u."id"
-        AND p."hiddenAt" IS NULL AND h."createdAt" >= ${week}) AS helped,
+        AND p."hiddenAt" IS NULL AND c."hiddenAt" IS NULL AND h."createdAt" >= ${week}) AS helped,
       (SELECT COUNT(*) FROM members a CROSS JOIN tracking t WHERE a."universityId" = u."id"
         AND (a."createdAt" AT TIME ZONE 'UTC')::date >= t.started
         AND (a."createdAt" AT TIME ZONE 'UTC')::date >= ${today}::date - 42

@@ -18,10 +18,10 @@ export async function GET(request: Request) {
   await db.dailyActivity.deleteMany({
     where: { day: { lt: new Date(Date.now() - 90 * 86400000) } },
   });
-  const deleted = await processImageDeletions();
+  const processed = await processImageDeletions();
   const migrated = await migrateLegacyImages();
   return Response.json(
-    { deleted, migrated },
+    { processed, migrated },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

@@ -66,10 +66,10 @@ async function postVisibleTo(
   });
 }
 
-// Publishing and moderation take the same lock, so limits and bans hold in flight.
+// Serialize publishing and bans without blocking foreign-key checks from reply alerts.
 async function lockAuthor(tx: Prisma.TransactionClient, authorId: string) {
   const [author] = await tx.$queryRaw<{ bannedAt: Date | null }[]>`
-    SELECT "bannedAt" FROM "User" WHERE "id" = ${authorId} FOR UPDATE
+    SELECT "bannedAt" FROM "User" WHERE "id" = ${authorId} FOR NO KEY UPDATE
   `;
   return author;
 }
@@ -479,7 +479,11 @@ export async function reportContent(input: {
   });
   if (reports >= HIDE_AFTER_REPORTS) {
     const hide = { where: { id }, data: { hiddenAt: new Date() } };
-    if (target === "post") await db.post.update(hide);
+    if (target === "post")
+      await db.post.update({
+        where: { id },
+        data: { hiddenAt: new Date(), revision: { increment: 1 } },
+      });
     else {
       await db.$transaction([
         db.comment.update(hide),
@@ -915,6 +919,10 @@ export async function deleteAccount(
       select: { imageUrl: true },
     });
     for (const image of images) await queueImageDeletion(tx, image.imageUrl!);
+    await tx.post.updateMany({
+      where: { comments: { some: { authorId: viewer.id } } },
+      data: { revision: { increment: 1 } },
+    });
     await tx.user.delete({ where: { id: viewer.id } });
   });
   after(processImageDeletions);

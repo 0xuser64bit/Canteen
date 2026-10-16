@@ -159,7 +159,10 @@ function postSelect(viewerId: string) {
     applicationUrl: true,
     deadline: true,
     kind: true,
-    helpfulAnswer: { select: { commentId: true } },
+    helpfulAnswer: {
+      where: { comment: { hiddenAt: null } },
+      select: { commentId: true },
+    },
     topic: true,
     audience: true,
     createdAt: true,
@@ -294,7 +297,15 @@ export async function getFeed(
       AND: [
         scoped,
         topic ? { topic } : {},
-        unanswered ? { kind: "QUESTION", helpfulAnswer: null } : {},
+        unanswered
+          ? {
+              kind: "QUESTION",
+              OR: [
+                { helpfulAnswer: null },
+                { helpfulAnswer: { comment: { hiddenAt: { not: null } } } },
+              ],
+            }
+          : {},
         afterCursor(cursor),
       ],
     },
@@ -445,14 +456,16 @@ const WEEK_MS = 7 * 24 * 3600 * 1000;
 export async function getTrending(viewer: Viewer) {
   const rows = await db.post.findMany({
     where: {
-      ...discoverableTo(viewer),
       createdAt: { gte: new Date(Date.now() - WEEK_MS) },
-      AND: {
-        OR: [
-          { likes: { some: {} } },
-          { comments: { some: { hiddenAt: null } } },
-        ],
-      },
+      AND: [
+        discoverableTo(viewer),
+        {
+          OR: [
+            { likes: { some: {} } },
+            { comments: { some: { hiddenAt: null } } },
+          ],
+        },
+      ],
     },
     orderBy: [
       { likes: { _count: "desc" } },

@@ -83,7 +83,7 @@ export const postInput = z
       }, "Use a complete HTTPS application link without login details.")
       .optional(),
     deadline: z.iso
-      .datetime()
+      .datetime({ error: "Choose a valid application deadline." })
       .refine(
         (value) => new Date(value).getTime() > Date.now(),
         "Choose a future deadline.",

@@ -238,6 +238,22 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(
       (await queries.getThread(await viewer("ada"), p.id))?.helpfulCommentId,
     ).toBe(c.id);
+    // A concurrent hide can outlive the write-time check; reads still treat it as unanswered.
+    await db.comment.update({
+      where: { id: c.id },
+      data: { hiddenAt: new Date() },
+    });
+    expect(
+      (await queries.getThread(await viewer("ada"), p.id))?.helpfulCommentId,
+    ).toBeNull();
+    expect(
+      (
+        await queries.getFeed(await viewer("ada"), {
+          scope: { kind: "campus" },
+          unanswered: true,
+        })
+      ).items,
+    ).toHaveLength(1);
     const other = await post("alan");
     const unrelated = await db.comment.create({
       data: { postId: other.id, authorId: "alan", body: "Another thread" },
@@ -307,6 +323,33 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       0,
     );
     expect(await queries.getUnreadCount(await viewer("alan"))).toBe(0);
+  });
+
+  it("saves simultaneous replies and alerts when two students reply to each other", async () => {
+    const a = await post("ada");
+    const b = await post("alan");
+    const [ada, alan] = await Promise.all([viewer("ada"), viewer("alan")]);
+    await db.$executeRawUnsafe(
+      `CREATE FUNCTION test_slow_reply() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.1); RETURN NEW; END $$`,
+    );
+    await db.$executeRawUnsafe(
+      `CREATE TRIGGER test_slow_reply BEFORE INSERT ON "Comment" FOR EACH ROW EXECUTE FUNCTION test_slow_reply()`,
+    );
+    try {
+      vi.mocked(getViewer)
+        .mockResolvedValueOnce(ada)
+        .mockResolvedValueOnce(alan);
+      const results = await Promise.all([
+        actions.addComment(b.id, "A reply to your question"),
+        actions.addComment(a.id, "A reply to your question"),
+      ]);
+      expect(results.every((result) => result.ok)).toBe(true);
+      expect(await db.comment.count()).toBe(2);
+      expect(await db.notification.count()).toBe(2);
+    } finally {
+      await db.$executeRawUnsafe('DROP TRIGGER test_slow_reply ON "Comment"');
+      await db.$executeRawUnsafe("DROP FUNCTION test_slow_reply()");
+    }
   });
 
   it("paginates replies without gaps and protects update and earlier-reply reads", async () => {
@@ -398,6 +441,35 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(
       (await queries.getThread(await viewer("alan"), p.id))?.applicationUrl,
     ).toBe("https://example.org/apply");
+  });
+
+  it("keeps campus-only, hidden and expired posts out of trending discovery", async () => {
+    const campus = await post("ada", { audience: "CAMPUS" });
+    const hidden = await post("ada");
+    const expired = await post("ada");
+    const visible = await post("ada");
+    await db.post.update({
+      where: { id: hidden.id },
+      data: { hiddenAt: new Date() },
+    });
+    await db.post.update({
+      where: { id: expired.id },
+      data: { deadline: new Date(0), topic: "OPPORTUNITIES" },
+    });
+    await db.like.createMany({
+      data: [campus, hidden, expired, visible].map((p) => ({
+        postId: p.id,
+        userId: "alan",
+      })),
+    });
+    expect(
+      (await queries.getTrending(await viewer("grace"))).map((p) => p.id),
+    ).toEqual([visible.id]);
+    expect(
+      new Set(
+        (await queries.getTrending(await viewer("alan"))).map((p) => p.id),
+      ),
+    ).toEqual(new Set([campus.id, visible.id]));
   });
 
   it("keeps campus-only posts inside their university", async () => {
@@ -707,6 +779,8 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     await actions.addComment(p.id, "nice");
     await actions.setLike(p.id, true);
 
+    const revision = (await db.post.findUniqueOrThrow({ where: { id: p.id } }))
+      .revision;
     as("grace");
     await expect(
       actions.deleteAccount("delete my account"),
@@ -715,6 +789,9 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.comment.count()).toBe(0);
     expect(await db.like.count()).toBe(0);
     expect(await db.post.count()).toBe(1);
+    expect(
+      (await db.post.findUniqueOrThrow({ where: { id: p.id } })).revision,
+    ).toBeGreaterThan(revision);
   });
 
   describe("images", () => {
@@ -741,6 +818,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       vi.restoreAllMocks();
       vi.mocked(put).mockReset();
       vi.mocked(del).mockReset();
+      vi.mocked(get).mockReset();
     });
 
     async function imageForm() {
@@ -854,6 +932,55 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       await Promise.all(state.background.splice(0));
       expect(await db.blobDeletion.count()).toBe(1);
       expect(await db.user.findUnique({ where: { id: "ada" } })).toBeNull();
+    });
+
+    it("migrates legacy images before erasing their public originals", async () => {
+      const { migrateLegacyImages, processImageDeletions } =
+        await import("@/server/media");
+      vi.stubEnv("BLOB_READ_WRITE_TOKEN", "legacy-token");
+      const legacy = "https://test.public.blob.vercel-storage.com/old.webp";
+      const broken = await post("ada", {
+        imageUrl: "https://test.public.blob.vercel-storage.com/broken.webp",
+      });
+      await db.post.update({
+        where: { id: broken.id },
+        data: { updatedAt: new Date("2000-01-01") },
+      });
+      const p = await post("ada", { imageUrl: legacy });
+      await db.post.update({
+        where: { id: p.id },
+        data: { updatedAt: new Date("2001-01-01") },
+      });
+      vi.mocked(get).mockRejectedValueOnce(new Error("Damaged legacy file"));
+      expect(await migrateLegacyImages()).toBe(0);
+      const bytes = await sharp({
+        create: { width: 2, height: 3, channels: 3, background: "red" },
+      })
+        .webp()
+        .toBuffer();
+      vi.mocked(get).mockResolvedValueOnce({
+        statusCode: 200,
+        stream: new Response(new Uint8Array(bytes)).body,
+      } as never);
+      expect(await migrateLegacyImages()).toBe(1);
+      expect(await db.post.findUnique({ where: { id: p.id } })).toMatchObject({
+        imageUrl,
+        imageWidth: 2,
+        imageHeight: 3,
+      });
+      expect(put).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Buffer),
+        expect.objectContaining({ access: "private", token: "test-token" }),
+      );
+      expect(await db.blobDeletion.findMany({ select: { key: true } })).toEqual(
+        [{ key: legacy }],
+      );
+      await processImageDeletions();
+      expect(del).toHaveBeenCalledWith(
+        legacy,
+        expect.objectContaining({ token: "legacy-token" }),
+      );
     });
 
     it("rejects unauthenticated maintenance requests", async () => {
