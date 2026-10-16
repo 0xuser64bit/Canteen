@@ -33,9 +33,8 @@ export async function sendSignInCode(email: string, code: string) {
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
-    throw new Error(
-      `Resend responded ${response.status}: ${await response.text()}`,
-    );
+    // Provider error bodies can contain the recipient's address.
+    throw new Error(`Resend responded ${response.status}`);
   }
 }
 

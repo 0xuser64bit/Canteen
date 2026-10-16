@@ -15,6 +15,7 @@ import {
 } from "vitest";
 import { del, put } from "@vercel/blob";
 import sharp from "sharp";
+import { sendSignInCode } from "@/lib/email";
 import { getViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
 
@@ -45,6 +46,7 @@ vi.mock("@/lib/session", async () => {
   };
 });
 vi.mock("@/lib/auth", () => ({ auth: { api: { signOut: vi.fn() } } }));
+vi.mock("@/lib/email", () => ({ sendSignInCode: vi.fn() }));
 vi.mock("next/cache", () => ({ refresh: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({
@@ -85,7 +87,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "User", "University" CASCADE',
+      'TRUNCATE "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -536,6 +538,196 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(result?.error).toBeDefined();
       expect(del).toHaveBeenCalledWith(imageUrl);
       expect(await db.post.count()).toBe(0);
+    });
+  });
+
+  describe("authentication endpoints", () => {
+    let realAuth: typeof import("@/lib/auth").auth;
+
+    beforeAll(async () => {
+      vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3000");
+      ({ auth: realAuth } =
+        await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth"));
+    });
+
+    beforeEach(() => {
+      vi.mocked(sendSignInCode).mockReset();
+      vi.mocked(sendSignInCode).mockResolvedValue(undefined);
+    });
+
+    afterEach(() => vi.unstubAllEnvs());
+
+    const request = (path: string, body: object) =>
+      realAuth.handler(
+        new Request(`http://localhost:3000/api/auth${path}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Origin: "http://localhost:3000",
+          },
+          body: JSON.stringify(body),
+        }),
+      );
+
+    async function codeFor(email: string) {
+      const response = await request("/email-otp/send-verification-otp", {
+        email,
+        type: "sign-in",
+      });
+      expect(response.status).toBe(200);
+      return vi.mocked(sendSignInCode).mock.calls.at(-1)![1];
+    }
+
+    it("verifies a university email without storing a name or photo", async () => {
+      const email = "new-student@stanford.edu";
+      const otp = await codeFor(email);
+      const response = await request("/sign-in/email-otp", {
+        email,
+        otp,
+        name: "A real name",
+        image: "https://example.com/me.jpg",
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("set-cookie")).toContain("session_token");
+      expect(await db.user.findUnique({ where: { email } })).toMatchObject({
+        name: "",
+        image: null,
+        emailVerified: true,
+        universityId: "u-stanford",
+      });
+      expect(await db.session.count()).toBe(1);
+    });
+
+    it("rejects a university supplied by the client", async () => {
+      const email = "new-student@stanford.edu";
+      const otp = await codeFor(email);
+      const response = await request("/sign-in/email-otp", {
+        email,
+        otp,
+        universityId: "u-mit",
+      });
+      expect(response.status).toBe(400);
+      expect(await db.user.count()).toBe(5);
+      expect(await db.session.count()).toBe(0);
+    });
+
+    it("rejects personal emails and repeated code requests", async () => {
+      expect(
+        (
+          await request("/email-otp/send-verification-otp", {
+            email: "someone@gmail.com",
+            type: "sign-in",
+          })
+        ).status,
+      ).toBe(400);
+      expect(sendSignInCode).not.toHaveBeenCalled();
+      await codeFor("ada@stanford.edu");
+      expect(
+        (
+          await request("/email-otp/send-verification-otp", {
+            email: "ada@stanford.edu",
+            type: "sign-in",
+          })
+        ).status,
+      ).toBe(429);
+      expect(sendSignInCode).toHaveBeenCalledTimes(1);
+    });
+
+    it("doesn't issue a session to a banned account", async () => {
+      await db.user.update({
+        where: { id: "ada" },
+        data: { bannedAt: new Date() },
+      });
+      const email = "ada@stanford.edu";
+      const otp = await codeFor(email);
+      const response = await request("/sign-in/email-otp", { email, otp });
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({
+        code: "ACCOUNT_SUSPENDED",
+      });
+      expect(await db.session.count()).toBe(0);
+    });
+
+    it.each(["former-staff@gmail.com", "former-staff@stanford.edu"])(
+      "rechecks team access for %s when a previously issued code is redeemed",
+      async (email) => {
+        vi.stubEnv("TEAM_EMAILS", email);
+        await db.university.create({ data: { ...TEAM, id: "u-team" } });
+        await db.user.create({
+          data: {
+            id: "former-staff",
+            email,
+            emailVerified: true,
+            universityId: "u-team",
+          },
+        });
+        const otp = await codeFor(email);
+        vi.stubEnv("TEAM_EMAILS", "");
+        const response = await request("/sign-in/email-otp", { email, otp });
+        expect(response.status).toBe(403);
+        expect(await db.session.count()).toBe(0);
+      },
+    );
+
+    it("consumes a sign-in code so it can't be reused", async () => {
+      const email = "ada@stanford.edu";
+      const otp = await codeFor(email);
+      expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
+        200,
+      );
+      expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
+        400,
+      );
+      expect(await db.session.count()).toBe(1);
+    });
+
+    it("refuses expired codes", async () => {
+      const email = "ada@stanford.edu";
+      const otp = await codeFor(email);
+      await db.verification.updateMany({
+        data: { expiresAt: new Date(Date.now() - 1_000) },
+      });
+      expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
+        400,
+      );
+      expect(await db.session.count()).toBe(0);
+    });
+
+    it("locks a code after five wrong guesses", async () => {
+      const email = "ada@stanford.edu";
+      const otp = await codeFor(email);
+      const wrong = otp === "000000" ? "111111" : "000000";
+      for (let attempt = 0; attempt < 5; attempt++)
+        expect(
+          (await request("/sign-in/email-otp", { email, otp: wrong })).status,
+        ).toBe(400);
+      const response = await request("/sign-in/email-otp", { email, otp });
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({
+        code: "TOO_MANY_ATTEMPTS",
+      });
+      expect(await db.session.count()).toBe(0);
+    });
+
+    it.each([
+      "/set-password",
+      "/email-otp/check-verification-otp",
+      "/email-otp/verify-email",
+      "/email-otp/request-password-reset",
+      "/forget-password/email-otp",
+      "/email-otp/reset-password",
+      "/email-otp/request-email-change",
+      "/email-otp/change-email",
+    ])("doesn't expose the unused %s endpoint", async (path) => {
+      const response = await request(path, {
+        email: "ada@stanford.edu",
+        type: "sign-in",
+        otp: "000000",
+        password: "a-strong-test-password",
+        newEmail: "someone@example.com",
+      });
+      expect(response.status).toBe(404);
+      expect(sendSignInCode).not.toHaveBeenCalled();
     });
   });
 

@@ -6,7 +6,12 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { db } from "@/lib/db";
 import { sendSignInCode } from "@/lib/email";
-import { universityForSignIn, type UniversityMatch } from "@/lib/universities";
+import {
+  isTeamEmail,
+  TEAM,
+  universityForSignIn,
+  type UniversityMatch,
+} from "@/lib/universities";
 
 const UNIVERSITY_EMAIL_REQUIRED = {
   code: "UNIVERSITY_EMAIL_REQUIRED",
@@ -105,10 +110,22 @@ export const auth = betterAuth({
         before: async (session) => {
           const user = await db.user.findUnique({
             where: { id: session.userId },
-            select: { bannedAt: true },
+            select: {
+              bannedAt: true,
+              email: true,
+              emailVerified: true,
+              university: { select: { slug: true } },
+            },
           });
           if (user?.bannedAt)
             throw APIError.from("FORBIDDEN", ACCOUNT_SUSPENDED);
+          // Existing-account OTP sign-ins don't run validateUserInfo.
+          if (
+            !user?.emailVerified ||
+            !universityForSignIn(user.email) ||
+            (user.university.slug === TEAM.slug && !isTeamEmail(user.email))
+          )
+            throw APIError.from("FORBIDDEN", UNIVERSITY_EMAIL_REQUIRED);
         },
       },
     },
@@ -126,6 +143,7 @@ export const auth = betterAuth({
     "/change-password",
     "/request-password-reset",
     "/reset-password",
+    "/set-password",
     "/send-verification-email",
     "/verify-email",
     "/verify-password",
@@ -135,6 +153,13 @@ export const auth = betterAuth({
     "/account-info",
     "/get-access-token",
     "/refresh-token",
+    "/email-otp/check-verification-otp",
+    "/email-otp/verify-email",
+    "/email-otp/request-password-reset",
+    "/forget-password/email-otp",
+    "/email-otp/reset-password",
+    "/email-otp/request-email-change",
+    "/email-otp/change-email",
   ],
   rateLimit: {
     storage: "database",
@@ -187,8 +212,8 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp }) {
         try {
           await sendSignInCode(email, otp);
-        } catch (error) {
-          console.error("Failed to send sign-in code", error);
+        } catch {
+          console.error("Failed to send sign-in code");
           throw APIError.from("SERVICE_UNAVAILABLE", {
             code: "EMAIL_DELIVERY_FAILED",
             message:

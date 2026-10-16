@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   test: {
-    env: { BETTER_AUTH_SECRET: "test-secret" },
+    env: {
+      BETTER_AUTH_SECRET: "test-only-canteen-secret-never-use-in-production",
+    },
   },
 });
