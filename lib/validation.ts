@@ -75,13 +75,32 @@ export const postInput = z
     message: "Post is too short.",
   });
 
+export const idInput = z.string().min(1).max(64);
+
+export const likeInput = z.object({
+  postId: idInput,
+  liked: z.boolean(),
+});
+
+export const feedInput = z.object({
+  scope: z.union([
+    z.enum(["everyone", "campus", "mine"]),
+    z
+      .string()
+      .max(256)
+      .regex(/^university:[a-z0-9-]+$/),
+  ]),
+  topic: z.string().max(80).optional(),
+  cursor: z.string().max(128),
+});
+
 export const pollVoteInput = z.object({
-  postId: z.string().min(1).max(64),
-  optionId: z.string().min(1).max(64),
+  postId: idInput,
+  optionId: idInput,
 });
 
 export const commentInput = z.object({
-  postId: z.string().min(1).max(64),
+  postId: idInput,
   body: text(LIMITS.comment.min, LIMITS.comment.max, "Reply"),
   // Client-generated so the optimistic bubble and the saved reply share one
   // identity (and one DOM node). A collision just fails the insert.
@@ -90,13 +109,13 @@ export const commentInput = z.object({
 
 export const reportInput = z.object({
   target: z.enum(["post", "comment"]),
-  id: z.string().min(1).max(64),
+  id: idInput,
   reason: z.enum(ReportReason),
 });
 
 export const moderationInput = z.object({
   target: z.enum(["post", "comment"]),
-  id: z.string().min(1).max(64),
+  id: idInput,
   decision: z.enum(["keep", "remove", "ban"]),
 });
 

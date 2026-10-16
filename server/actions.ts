@@ -14,6 +14,9 @@ import { findUniversityByEmail } from "@/lib/universities";
 import {
   commentInput,
   DELETE_CONFIRMATION,
+  feedInput,
+  idInput,
+  likeInput,
   LIMITS,
   moderationInput,
   pollVoteInput,
@@ -106,6 +109,8 @@ export async function createPost(
 ): Promise<ComposeState> {
   const viewer = await getViewer();
   if (!viewer) return { error: SIGNED_OUT.error };
+  if (!(form instanceof FormData))
+    return { error: "That post didn't go through. Try again." };
 
   const choices = form.getAll("pollChoice");
   const parsed = postInput.safeParse({
@@ -184,6 +189,7 @@ export async function createPost(
 export async function deletePost(postId: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
+  if (!idInput.safeParse(postId).success) return NOT_FOUND;
   const post = await db.post.findUnique({
     where: { id: postId },
     select: { authorId: true, imageUrl: true },
@@ -204,6 +210,7 @@ export async function setLike(
 ): Promise<ActionResult<{ liked: boolean; likeCount: number }>> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
+  if (!likeInput.safeParse({ postId, liked }).success) return NOT_FOUND;
   const post = await postVisibleTo(viewer, postId);
   if (!post) return NOT_FOUND;
 
@@ -250,6 +257,7 @@ export async function votePoll(
 export async function recordView(postId: string): Promise<void> {
   const viewer = await getViewer();
   if (!viewer) return;
+  if (!idInput.safeParse(postId).success) return;
   if (!(await postVisibleTo(viewer, postId))) return;
   await db.postView.createMany({
     data: [{ userId: viewer.id, postId }],
@@ -306,6 +314,7 @@ export async function addComment(
 export async function deleteComment(commentId: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
+  if (!idInput.safeParse(commentId).success) return NOT_FOUND;
   const { count } = await db.comment.deleteMany({
     where: { id: commentId, authorId: viewer.id },
   });
@@ -447,29 +456,35 @@ export async function loadMore(input: {
 }): Promise<ActionResult<queries.FeedPage>> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
+  const parsed = feedInput.safeParse(input);
+  if (!parsed.success)
+    return {
+      ok: false,
+      error: "That feed couldn't be loaded. Refresh and try again.",
+    };
+  const { scope: requestedScope, topic: requestedTopic, cursor } = parsed.data;
 
   let scope: queries.FeedScope;
-  if (input.scope.startsWith("university:")) {
+  if (requestedScope.startsWith("university:")) {
     const page = await queries.getUniversityPage(
       viewer,
-      input.scope.slice("university:".length),
+      requestedScope.slice("university:".length),
     );
     if (!page) return ok({ items: [], nextCursor: null });
     scope = { kind: "university", universityId: page.id };
   } else {
-    scope = { kind: input.scope as "everyone" | "campus" | "mine" };
+    scope = { kind: requestedScope as "everyone" | "campus" | "mine" };
   }
-  const topic: Topic | undefined = topicBySlug(input.topic)?.id;
-  return ok(
-    await queries.getFeed(viewer, { scope, topic, cursor: input.cursor }),
-  );
+  const topic: Topic | undefined = topicBySlug(requestedTopic)?.id;
+  return ok(await queries.getFeed(viewer, { scope, topic, cursor }));
 }
 
 export async function searchCanteen(
   query: string,
 ): Promise<queries.SearchResults> {
   const viewer = await getViewer();
-  if (!viewer) return { universities: [], posts: [] };
+  if (!viewer || typeof query !== "string")
+    return { universities: [], posts: [] };
   return queries.search(viewer, query);
 }
 
@@ -490,7 +505,8 @@ export async function markNotificationsRead(): Promise<void> {
 export async function lookupUniversity(
   email: string,
 ): Promise<{ name: string } | null> {
-  const match = findUniversityByEmail(String(email).slice(0, 254));
+  if (typeof email !== "string") return null;
+  const match = findUniversityByEmail(email.slice(0, 254));
   return match ? { name: match.name } : null;
 }
 
@@ -499,7 +515,10 @@ export async function deleteAccount(
 ): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
-  if (confirmation.trim().toLowerCase() !== DELETE_CONFIRMATION) {
+  if (
+    typeof confirmation !== "string" ||
+    confirmation.trim().toLowerCase() !== DELETE_CONFIRMATION
+  ) {
     return { ok: false, error: `Type "${DELETE_CONFIRMATION}" to confirm.` };
   }
 

@@ -330,6 +330,34 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.post.count()).toBe(0);
   });
 
+  it("rejects malformed action arguments without changing data", async () => {
+    const p = await post("ada");
+    as("ada");
+
+    expect((await actions.setLike(p.id, "false" as never)).ok).toBe(false);
+    expect((await actions.deletePost(null as never)).ok).toBe(false);
+    expect((await actions.deleteComment({} as never)).ok).toBe(false);
+    await expect(actions.recordView(null as never)).resolves.toBeUndefined();
+    expect((await actions.loadMore(null as never)).ok).toBe(false);
+    expect(
+      (await actions.loadMore({ scope: "invalid" as never, cursor: "" })).ok,
+    ).toBe(false);
+    expect(await actions.searchCanteen(null as never)).toEqual({
+      universities: [],
+      posts: [],
+    });
+    expect(await actions.lookupUniversity(null as never)).toBeNull();
+    expect((await actions.deleteAccount(null as never)).ok).toBe(false);
+    expect(await actions.createPost(null, null as never)).toHaveProperty(
+      "error",
+    );
+
+    expect(await db.post.count()).toBe(1);
+    expect(await db.user.count()).toBe(5);
+    expect(await db.like.count()).toBe(0);
+    expect(await db.postView.count()).toBe(0);
+  });
+
   it("accepts a client reply id only when it is a fresh UUID", async () => {
     const p = await post("ada");
     as("grace");
