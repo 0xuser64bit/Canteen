@@ -12,28 +12,33 @@ University students anywhere in the world. Sign-in verifies control of a recogni
 
 ## Product Purpose
 
-Canteen is an anonymous discussion space for verified university students. It makes candid conversation possible about academics, campus life, careers, mental health, and opportunities, without the risk of being identified by classmates, professors, or future employers. Success means students trust it enough to ask the real question, and the answers they get are from real students.
+Canteen is a campus-first discussion space for people who control a recognized university email address. Per-thread aliases help students ask candid questions about academics, campus life, careers, mental health, and opportunities without attaching a public profile. Success means students trust it enough to ask the real question and receive a reply they find helpful. Email verification does not prove current enrollment, and what someone writes or shares can still identify them.
 
 ## Positioning
 
-Verified, not identified. A neighboring forum can be anonymous or verified, rarely both. On Canteen every account is tied to a real university, but posts reveal only the university and a per-thread alias (for example "Quiet Otter"), so a student's activity cannot be linked across threads. Campus-only posts let students talk with people from their own university without the wider network listening.
+University-email verification with per-thread aliases. Other students see an alias (for example "Quiet Otter"), not the author's email or account identifier; small campuses remain unnamed outside their campus until five members join. Aliases differ across threads, while Canteen can link account records internally. Campus-only posts let students talk within their own university. The private account page shows a student their own email, university and activity; it does not expose that information to other students.
 
 ## Operating Context
 
-- Sign in with a university email address via a 6-digit code (no passwords), or with a university Google Workspace account. Production currently launches with Google sign-in only; email codes switch on once an email provider key is configured.
-- Main loops: read the feed, filter by topic, open a thread, reply, like; write a post (title, body, topic, audience, optional image).
-- Feeds: Everyone (all universities), My campus (own university, including campus-only posts), Opportunities (internships, jobs, hackathons, scholarships), and a page per university.
-- Notifications tell authors when their post gets replies or likes, never who acted.
+- Sign in with a university Google account when configured, or a 6-digit email code (no passwords). Production email codes require an email provider key.
+- My campus is the signed-in starting point. Read by topic or Needs an answer; ask a question or start a conversation, reply, like, save privately, or follow replies. Question authors can mark another student's reply helpful and undo that choice.
+- Feeds: My campus (own university, including campus-only posts), Everyone (all universities), Opportunities (internships, jobs, hackathons, scholarships), and a page per visible university. New posts default to a campus-only question.
+- Thread replies update through periodic polling, with earlier replies loaded in pages. Notifications cover authors' replies and likes, plus reply alerts for followed threads, without exposing the actor's account identity.
 
 ## Capabilities and Constraints
 
 - Topics: General, Academics, Campus life, Careers, Mental health, Opportunities.
 - Audience per post: Everyone, or My campus only.
-- Images are re-encoded in the browser before upload so location metadata never leaves the device.
-- Students can delete their own posts and comments, and delete their account with all their content.
-- Reporting hides content after enough distinct students flag it.
-- No real names, profile photos, follower counts, or public profiles exist anywhere in the product.
-- Universities come from a bundled dataset of about 10,000 institutions and their email domains; a university appears in the product once its first student joins.
+- Saved posts and followed threads appear in private account collections, limited to content the student can still access. Other students cannot see those collections.
+- New opportunity posts require an application link and deadline. Closed opportunities leave discovery automatically; accessible threads retain a closed state and a link to the original opportunity. Submissions are from students, not independently vetted listings.
+- Images are available when private storage is configured. They are re-encoded in the browser to strip location and camera metadata, then served only to authorized signed-in accounts. Visible image content can still identify someone; legacy public image links remain accessible until migration and erasure finish.
+- Students can delete their own posts and comments, and delete their account and related records. Post deletion erases its replies too. Stored images enter a durable erasure queue with retries; providers and backups may retain operational records.
+- Three distinct reports hide content pending review. The team records a reason when keeping content, removing it or suspending an author. Authors can review decisions and submit one private appeal per removal or suspension decision; suspended accounts retain access to decisions, appeals, sign-out and deletion, while student feeds and posting are blocked.
+- Moderation screens show content and appeals without author or reporter identities. Authorized service operators have database access to account-linked records.
+- Team-only campus launch measures show aggregate membership, weekly activity, authors helped and week-two return, suppressing small groups. One account-linked mark per UTC day records activity without page history or text, expires after 90 days and is erased with the account. No external analytics service receives these measures.
+- Community guidance explains verification, privacy limits, reporting, deletion and safe sharing. Campus launch prompts use actual campus membership rather than invented adoption claims.
+- There are no real-name account fields, profile photos, follower counts or public profiles.
+- Universities come from a bundled dataset of about 10,000 institutions and their email domains. A campus starts when its first member joins, with cross-campus visibility restricted until five members join.
 
 ## Brand Commitments
 
@@ -42,12 +47,12 @@ Verified, not identified. A neighboring forum can be anonymous or verified, rare
 ## Evidence on Hand
 
 - University dataset: `data/universities.json` (Hipo university-domains-list, MIT licensed).
-- There are no users, testimonials, metrics, partner universities, or press yet. Never fabricate any of them, including member counts or university logos.
+- Review captures use disposable local fixtures. No independently verified adoption, testimonials, university partnerships or press evidence has been supplied. Never present fixtures as live activity or fabricate social proof, including member counts or university logos.
 
 ## Product Principles
 
-1. Anonymity is structural, not cosmetic: identity never reaches the client, so no UI choice can leak it.
-2. Verified, not identified: trust comes from the university check, never from personal profiles.
-3. Campus is first class: every surface makes clear which university a voice comes from and who can see a post.
-4. Safety without surveillance: reporting and hiding work without anyone, including moderators, learning who wrote what.
+1. Protect identity between students: shared discussion responses omit account identity, and per-thread aliases avoid a stable public profile. A student's own account page can show their email; Canteen's stored records remain internally linkable.
+2. State verification precisely: sign-in checks university-email control, not current enrollment or the truth of a post.
+3. Campus is first class: show campus and audience context while respecting small-campus naming limits.
+4. Keep moderation identity-minimal: moderation screens withhold author and reporter identities, while privacy guidance discloses authorized operator access and account-linked records.
 5. Honest by default: no invented social proof, no dark patterns, no engagement bait.

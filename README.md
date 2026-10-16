@@ -15,11 +15,11 @@ Canteen is a group chat for university students. Your university email (or your 
 
 Anonymity in Canteen is a property of the data that reaches the browser, not a coat of UI paint.
 
-- **Verified, not identified.** Signing in maps your email domain to a university using the [university-domains-list](https://github.com/Hipo/university-domains-list) dataset. Your email is never shown anywhere, and Canteen never stores real names or profile photos.
+- **Verified, not identified.** Signing in maps your email domain to a university using the [university-domains-list](https://github.com/Hipo/university-domains-list) dataset. Other students never see your email. Your private account page shows it to you; Canteen never stores real names or profile photos.
 - **A new alias in every thread.** You appear as something like "Quiet Otter" in one thread and "Daring Koala" in the next. Aliases are an HMAC of your user id and the post id, so they're stable inside a thread and unlinkable across threads.
 - **Small campuses stay unnamed.** Other universities see your university's name only once at least 5 of its students have joined. Below that, your posts read "A university in India".
 - **Campus-only posts.** Posts can be limited to students of your own university. Other universities can't load them at all.
-- **No identity on the wire.** Server code turns database rows into view models before anything is rendered; author ids and emails never leave the server. Integration tests check the serialized payloads.
+- **Shared views omit account identity.** Server code turns discussion rows into view models before rendering; author account IDs and emails never reach other students. Your own private account page can show your email, and stored records remain internally linkable. Integration tests check shared serialized payloads.
 - **Photos lose their metadata.** Images are re-encoded in the browser before upload, which strips EXIF data such as GPS coordinates. The server also decodes and re-encodes every upload, so bypassing the composer cannot preserve metadata or spoof image dimensions.
 - **Staff are labeled.** Whoever runs a deployment can let their own accounts in with `TEAM_EMAILS`. Those accounts skip the university check, and everything they post says "Canteen team".
 - **Safety without surveillance.** Reports are anonymous. Content that three different students report is hidden automatically. Notifications say that someone replied or liked, never who. Team decisions have reasons, private history and one appeal per decision. Suspended accounts can authenticate only for status, appeal and account deletion; feeds and actions still recheck suspension.
