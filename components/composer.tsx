@@ -140,6 +140,8 @@ export function Composer({
   const [kind, setKind] = useState<PostKind>("QUESTION");
   const [topic, setTopic] = useState<Topic>(initialTopic);
   const [audience, setAudience] = useState<Audience>("CAMPUS");
+  const [applicationUrl, setApplicationUrl] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [image, setImage] = useState<PreparedImage | null>(null);
   const [poll, setPoll] = useState<string[] | null>(null);
   const [imageError, setImageError] = useState<string>();
@@ -196,6 +198,14 @@ export function Composer({
     form.set("kind", topic === "OPPORTUNITIES" ? "DISCUSSION" : kind);
     form.set("topic", topic);
     form.set("audience", audience);
+    if (topic === "OPPORTUNITIES") {
+      form.set("applicationUrl", applicationUrl);
+      const date = new Date(deadline);
+      form.set(
+        "deadline",
+        Number.isNaN(date.getTime()) ? "" : date.toISOString(),
+      );
+    }
     poll?.forEach((choice) => form.append("pollChoice", choice));
     if (image) {
       form.set("image", image.file);
@@ -312,6 +322,52 @@ export function Composer({
           </div>
         </fieldset>
 
+        {topic === "OPPORTUNITIES" && (
+          <fieldset className="flex flex-col gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
+            <legend className="text-[13px] font-semibold">
+              Application details
+            </legend>
+            <label
+              className="text-[13px] font-semibold"
+              htmlFor="application-url"
+            >
+              Official application link
+            </label>
+            <input
+              id="application-url"
+              type="url"
+              required
+              value={applicationUrl}
+              onChange={(e) => setApplicationUrl(e.target.value)}
+              placeholder="https://…"
+              maxLength={2048}
+              className="rounded-xl bg-background px-3 py-2 ring-1 ring-line"
+              aria-invalid={!!errors.applicationUrl || undefined}
+              aria-describedby="application-error"
+            />
+            <FieldError id="application-error">
+              {errors.applicationUrl}
+            </FieldError>
+            <label className="text-[13px] font-semibold" htmlFor="deadline">
+              Application deadline (your local time)
+            </label>
+            <input
+              id="deadline"
+              type="datetime-local"
+              required
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="min-w-0 rounded-xl bg-background px-3 py-2 ring-1 ring-line"
+              aria-invalid={!!errors.deadline || undefined}
+              aria-describedby="deadline-error"
+            />
+            <FieldError id="deadline-error">{errors.deadline}</FieldError>
+            <p className="text-[12px] text-muted">
+              Closed opportunities leave discovery automatically. Share a direct
+              link to the organizer.
+            </p>
+          </fieldset>
+        )}
         <div className="rounded-[26px] bg-surface p-1 shadow-soft ring-1 ring-line focus-within:ring-2 focus-within:ring-ink dark:focus-within:ring-you">
           <label htmlFor="title" className="sr-only">
             Title

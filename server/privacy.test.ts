@@ -323,9 +323,9 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       GET(new Request("http://localhost/api/threads/x/updates"), {
         params: Promise.resolve({ id: p.id }),
       });
-    expect(await (await read()).json()).toEqual({ revision: 0 });
+    expect(await (await read()).json()).toEqual({ revision: 0, closed: false });
     await actions.addComment(p.id, "A new reply");
-    expect(await (await read()).json()).toEqual({ revision: 1 });
+    expect(await (await read()).json()).toEqual({ revision: 1, closed: false });
     as("grace");
     expect((await read()).status).toBe(404);
     expect(
@@ -333,6 +333,48 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     ).toBe(false);
     as(null);
     expect((await read()).status).toBe(401);
+  });
+
+  it("expires opportunities from discovery while preserving saved history", async () => {
+    const p = await post("ada", { title: "Research internship" });
+    await db.post.update({
+      where: { id: p.id },
+      data: {
+        topic: "OPPORTUNITIES",
+        applicationUrl: "https://example.org/apply",
+        deadline: new Date(Date.now() + 60000),
+      },
+    });
+    as("alan");
+    await actions.setCollection(p.id, "saved", true);
+    expect(
+      (await queries.search(await viewer("alan"), "Research")).posts,
+    ).toHaveLength(1);
+    await db.post.update({
+      where: { id: p.id },
+      data: { deadline: new Date(0) },
+    });
+    expect(
+      (
+        await queries.getFeed(await viewer("alan"), {
+          scope: { kind: "everyone" },
+          topic: "OPPORTUNITIES",
+        })
+      ).items,
+    ).toHaveLength(0);
+    expect(
+      (await queries.search(await viewer("alan"), "Research")).posts,
+    ).toHaveLength(0);
+    expect(
+      (
+        await queries.getFeed(await viewer("alan"), {
+          scope: { kind: "saved" },
+        })
+      ).items,
+    ).toHaveLength(1);
+    expect(
+      (await queries.getThread(await viewer("alan"), p.id))?.applicationUrl,
+    ).toBe("https://example.org/apply");
   });
 
   it("keeps campus-only posts inside their university", async () => {

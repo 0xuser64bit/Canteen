@@ -22,6 +22,35 @@ describe("postInput", () => {
     expect(parsed.title).toBe("Best study spots?");
   });
 
+  it("requires a safe application link and future deadline for opportunities", () => {
+    const opportunity = {
+      ...valid,
+      topic: "OPPORTUNITIES",
+      applicationUrl: "https://example.org/apply",
+      deadline: new Date(Date.now() + 86400000).toISOString(),
+    };
+    expect(postInput.safeParse(opportunity).success).toBe(true);
+    for (const applicationUrl of [
+      "javascript:alert(1)",
+      "http://example.org",
+      "https://user:secret@example.org",
+      undefined,
+    ])
+      expect(
+        postInput.safeParse({ ...opportunity, applicationUrl }).success,
+      ).toBe(false);
+    expect(
+      postInput.safeParse({ ...opportunity, deadline: "2020-01-01T00:00:00Z" })
+        .success,
+    ).toBe(false);
+    expect(
+      postInput.safeParse({ ...opportunity, deadline: undefined }).success,
+    ).toBe(false);
+    expect(
+      postInput.safeParse({ ...opportunity, topic: "GENERAL" }).success,
+    ).toBe(false);
+  });
+
   it("rejects whitespace-only content", () => {
     expect(postInput.safeParse({ ...valid, body: "   \n\n  " }).success).toBe(
       false,

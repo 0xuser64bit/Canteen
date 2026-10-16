@@ -125,7 +125,15 @@ export type ComposeState = {
   error?: string;
   fieldErrors?: Partial<
     Record<
-      "title" | "body" | "topic" | "audience" | "image" | "poll" | "kind",
+      | "title"
+      | "body"
+      | "topic"
+      | "audience"
+      | "image"
+      | "poll"
+      | "kind"
+      | "applicationUrl"
+      | "deadline",
       string
     >
   >;
@@ -147,6 +155,8 @@ export async function createPost(
     topic: form.get("topic"),
     audience: form.get("audience"),
     kind: form.get("kind") ?? undefined,
+    applicationUrl: form.get("applicationUrl") ?? undefined,
+    deadline: form.get("deadline") ?? undefined,
     poll: choices.length > 0 ? choices : undefined,
   });
   if (!parsed.success) {
@@ -222,6 +232,7 @@ export async function createPost(
       const post = await tx.post.create({
         data: {
           ...fields,
+          deadline: fields.deadline ? new Date(fields.deadline) : null,
           pollOptions: poll && {
             create: poll.map((label, position) => ({ label, position })),
           },

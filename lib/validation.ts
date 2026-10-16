@@ -71,10 +71,50 @@ export const postInput = z
   .object({
     title: text(LIMITS.title.min, LIMITS.title.max, "Title"),
     body: text(0, LIMITS.body.max, "Post"),
+    applicationUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .url("Use a complete HTTPS application link.")
+      .refine((value) => {
+        if (!URL.canParse(value)) return false;
+        const url = new URL(value);
+        return url.protocol === "https:" && !url.username && !url.password;
+      }, "Use a complete HTTPS application link without login details.")
+      .optional(),
+    deadline: z.iso
+      .datetime()
+      .refine(
+        (value) => new Date(value).getTime() > Date.now(),
+        "Choose a future deadline.",
+      )
+      .optional(),
     kind: z.enum(PostKind).default("DISCUSSION"),
     topic: z.enum(Topic),
     audience: z.enum(Audience),
     poll: pollChoices.optional(),
+  })
+  .superRefine((post, ctx) => {
+    if (post.topic === "OPPORTUNITIES") {
+      if (!post.applicationUrl)
+        ctx.addIssue({
+          code: "custom",
+          path: ["applicationUrl"],
+          message: "Add the official application link.",
+        });
+      if (!post.deadline)
+        ctx.addIssue({
+          code: "custom",
+          path: ["deadline"],
+          message: "Add the application deadline.",
+        });
+    } else if (post.applicationUrl || post.deadline) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["topic"],
+        message: "Application links and deadlines belong in Opportunities.",
+      });
+    }
   })
   // A poll can stand on its question; anything else needs a body.
   .refine((post) => post.poll || post.body.length >= LIMITS.body.min, {

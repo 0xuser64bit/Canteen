@@ -19,9 +19,16 @@ export async function GET(
     return new Response(null, { status: 404, headers });
   const post = await db.post.findFirst({
     where: { id, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
-    select: { revision: true },
+    select: { revision: true, deadline: true },
   });
   return post
-    ? Response.json(post, { headers })
+    ? Response.json(
+        {
+          revision: post.revision,
+          closed:
+            post.deadline !== null && post.deadline.getTime() <= Date.now(),
+        },
+        { headers },
+      )
     : new Response(null, { status: 404, headers });
 }

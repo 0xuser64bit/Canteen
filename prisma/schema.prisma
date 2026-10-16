@@ -142,6 +142,8 @@ model Post {
   imageUrl    String?
   imageWidth  Int?
   imageHeight Int?
+  applicationUrl String?
+  deadline DateTime?
   revision Int @default(0)
   kind        PostKind @default(DISCUSSION)
   helpfulAnswer HelpfulAnswer?

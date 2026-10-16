@@ -326,8 +326,11 @@ export function ThreadView({ thread }: { thread: Thread }) {
             return;
           }
           if (!response.ok) throw new Error("Unavailable");
-          const { revision } = await response.json();
-          if (!disposed && revision !== thread.revision) {
+          const { revision, closed } = await response.json();
+          if (
+            !disposed &&
+            (revision !== thread.revision || closed !== thread.closed)
+          ) {
             setOlder([]); // Re-read older pages after moderation rather than retaining hidden replies.
             setEarlierCursor(null);
             router.refresh();
@@ -345,7 +348,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
       clearTimeout(timer);
       controller?.abort();
     };
-  }, [thread.id, thread.revision, router]);
+  }, [thread.id, thread.revision, thread.closed, router]);
 
   const fetchEarlier = () =>
     startEarlier(async () => {
@@ -445,6 +448,32 @@ export function ThreadView({ thread }: { thread: Thread }) {
               {thread.body && (
                 <div className="mt-3 text-[16px] leading-relaxed break-words whitespace-pre-wrap">
                   <Linkified text={thread.body} />
+                </div>
+              )}
+              {thread.applicationUrl && thread.deadline && (
+                <div className="mt-4 rounded-2xl p-3 ring-1 ring-current/15">
+                  <p className="text-[13px] font-semibold">
+                    {thread.closed ? "Applications closed" : "Apply before"} ·{" "}
+                    {new Intl.DateTimeFormat("en", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                      timeZone: "UTC",
+                    }).format(new Date(thread.deadline))}{" "}
+                    UTC
+                  </p>
+                  <a
+                    href={thread.applicationUrl}
+                    target="_blank"
+                    rel="noreferrer nofollow"
+                    className="mt-2 inline-block rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-background"
+                  >
+                    {thread.closed
+                      ? "View original opportunity ↗"
+                      : "Open application ↗"}
+                  </a>
+                  <p className="mt-2 text-[12px]">
+                    Shared by a student. Check details with the organizer.
+                  </p>
                 </div>
               )}
               {thread.poll && (

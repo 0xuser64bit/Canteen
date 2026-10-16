@@ -36,6 +36,16 @@ export function visibleTo(viewer: Viewer): Prisma.PostWhereInput {
   };
 }
 
+/** Closed opportunities remain readable, but leave discovery automatically. */
+export function discoverableTo(viewer: Viewer): Prisma.PostWhereInput {
+  return {
+    AND: [
+      visibleTo(viewer),
+      { OR: [{ deadline: null }, { deadline: { gt: new Date() } }] },
+    ],
+  };
+}
+
 const universitySelect = {
   id: true,
   slug: true,
@@ -146,6 +156,8 @@ function postSelect(viewerId: string) {
     imageUrl: true,
     imageWidth: true,
     imageHeight: true,
+    applicationUrl: true,
+    deadline: true,
     kind: true,
     helpfulAnswer: { select: { commentId: true } },
     topic: true,
@@ -175,6 +187,9 @@ export type PostSummary = {
   title: string;
   excerpt: string;
   image: { url: string; width: number; height: number } | null;
+  applicationUrl: string | null;
+  deadline: Date | null;
+  closed: boolean;
   kind: PostKind;
   helpfulCommentId: string | null;
   topic: Topic;
@@ -198,6 +213,9 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
   return {
     id: row.id,
     title: row.title,
+    applicationUrl: row.applicationUrl,
+    deadline: row.deadline,
+    closed: row.deadline !== null && row.deadline.getTime() <= Date.now(),
     excerpt:
       row.body.length > EXCERPT_LENGTH
         ? `${row.body.slice(0, EXCERPT_LENGTH).trimEnd()}…`
@@ -253,7 +271,9 @@ export async function getFeed(
       ? { authorId: viewer.id } // authors also see their own hidden posts
       : {
           AND: [
-            visibleTo(viewer),
+            scope.kind === "saved" || scope.kind === "following"
+              ? visibleTo(viewer)
+              : discoverableTo(viewer),
             scope.kind === "saved"
               ? { bookmarks: { some: { userId: viewer.id } } }
               : {},
@@ -425,7 +445,7 @@ const WEEK_MS = 7 * 24 * 3600 * 1000;
 export async function getTrending(viewer: Viewer) {
   const rows = await db.post.findMany({
     where: {
-      ...visibleTo(viewer),
+      ...discoverableTo(viewer),
       createdAt: { gte: new Date(Date.now() - WEEK_MS) },
       AND: {
         OR: [
@@ -459,6 +479,7 @@ export async function getActiveUniversities() {
     by: ["universityId"],
     where: {
       hiddenAt: null,
+      OR: [{ deadline: null }, { deadline: { gt: new Date() } }],
       audience: "EVERYONE",
       createdAt: { gte: new Date(Date.now() - WEEK_MS) },
     },
@@ -514,7 +535,7 @@ export async function search(
     db.post.findMany({
       where: {
         AND: [
-          visibleTo(viewer),
+          discoverableTo(viewer),
           {
             OR: [
               { title: { contains: query, mode: "insensitive" } },
