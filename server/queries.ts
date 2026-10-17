@@ -32,7 +32,19 @@ const EXCERPT_LENGTH = 420;
 export function visibleTo(viewer: Viewer): Prisma.PostWhereInput {
   return {
     hiddenAt: null,
-    OR: [{ audience: "EVERYONE" }, { universityId: viewer.university.id }],
+    OR: [
+      { audience: "EVERYONE" },
+      { universityId: viewer.university.id },
+      ...(viewer.hostCampuses?.length
+        ? [
+            {
+              universityId: {
+                in: viewer.hostCampuses.map((campus) => campus.id),
+              },
+            },
+          ]
+        : []),
+    ],
   };
 }
 
@@ -69,6 +81,7 @@ function publicUniversity(
   if (university.slug === TEAM.slug) return { name: TEAM.name, slug: null };
   const nameable =
     university.id === viewer.university.id ||
+    viewer.hostCampuses?.some((campus) => campus.id === university.id) ||
     university._count.users >= MIN_MEMBERS_TO_NAME_UNIVERSITY;
   return nameable
     ? { name: university.name, slug: university.slug }
@@ -83,13 +96,23 @@ function encodeCursor(row: { createdAt: Date; id: string }) {
   return `${row.createdAt.toISOString()}_${row.id}`;
 }
 
-function afterCursor(cursor: string | undefined) {
+function afterCursor(
+  cursor: string | undefined,
+  inclusive = false,
+  ascending = false,
+) {
   if (!cursor) return {};
   const [iso, id] = cursor.split("_");
   const createdAt = new Date(iso ?? "");
   if (!id || Number.isNaN(createdAt.getTime())) return {};
   return {
-    OR: [{ createdAt: { lt: createdAt } }, { createdAt, id: { lt: id } }],
+    OR: [
+      { createdAt: ascending ? { gt: createdAt } : { lt: createdAt } },
+      {
+        createdAt,
+        id: ascending ? { gt: id } : inclusive ? { lte: id } : { lt: id },
+      },
+    ],
   };
 }
 
@@ -108,6 +131,7 @@ export type Poll = {
 function pollSelect(viewerId: string) {
   return {
     authorId: true,
+    author: { select: { university: { select: { slug: true } } } },
     pollOptions: {
       orderBy: { position: "asc" },
       select: { id: true, label: true, _count: { select: { votes: true } } },
@@ -154,6 +178,7 @@ function postSelect(viewerId: string) {
     title: true,
     body: true,
     imageUrl: true,
+    imageAlt: true,
     imageWidth: true,
     imageHeight: true,
     applicationUrl: true,
@@ -189,7 +214,7 @@ export type PostSummary = {
   id: string;
   title: string;
   excerpt: string;
-  image: { url: string; width: number; height: number } | null;
+  image: { url: string; width: number; height: number; alt: string } | null;
   applicationUrl: string | null;
   deadline: Date | null;
   closed: boolean;
@@ -209,6 +234,7 @@ export type PostSummary = {
   revision: number;
   saved: boolean;
   following: boolean;
+  staff: boolean;
   poll: Poll | null;
 };
 
@@ -226,6 +252,9 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
     image: row.imageUrl
       ? {
           url: `/api/images/${row.id}`,
+          alt:
+            row.imageAlt ??
+            "Image attached to this post; description unavailable.",
           width: row.imageWidth ?? 1200,
           height: row.imageHeight ?? 900,
         }
@@ -246,6 +275,7 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
     revision: row.revision,
     saved: row.bookmarks.length > 0,
     following: row.follows.length > 0,
+    staff: row.author.university.slug === TEAM.slug,
     poll: toPoll(row, viewer),
   };
 }
@@ -259,6 +289,19 @@ export type FeedScope =
   | { kind: "following" };
 
 export type FeedPage = { items: PostSummary[]; nextCursor: string | null };
+export type FeedSort = "newest" | "oldest" | "closing";
+
+function feedCursor(
+  cursor: string | undefined,
+  sort: FeedSort,
+): Prisma.PostWhereInput {
+  if (sort !== "closing") return afterCursor(cursor, false, sort === "oldest");
+  if (!cursor) return {};
+  const [iso, id] = cursor.split("_");
+  const deadline = new Date(iso ?? "");
+  if (!id || Number.isNaN(deadline.getTime())) return {};
+  return { OR: [{ deadline: { gt: deadline } }, { deadline, id: { gt: id } }] };
+}
 
 export async function getFeed(
   viewer: Viewer,
@@ -267,7 +310,16 @@ export async function getFeed(
     topic,
     cursor,
     unanswered,
-  }: { scope: FeedScope; topic?: Topic; cursor?: string; unanswered?: boolean },
+    noReplies,
+    sort = "newest",
+  }: {
+    scope: FeedScope;
+    topic?: Topic;
+    cursor?: string;
+    unanswered?: boolean;
+    noReplies?: boolean;
+    sort?: FeedSort;
+  },
 ): Promise<FeedPage> {
   const scoped: Prisma.PostWhereInput =
     scope.kind === "mine"
@@ -306,10 +358,20 @@ export async function getFeed(
               ],
             }
           : {},
-        afterCursor(cursor),
+        noReplies
+          ? { kind: "QUESTION", comments: { none: { hiddenAt: null } } }
+          : {},
+        sort === "closing" ? { deadline: { gt: new Date() } } : {},
+        feedCursor(cursor, sort),
       ],
     },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    orderBy:
+      sort === "closing"
+        ? [{ deadline: "asc" }, { id: "asc" }]
+        : [
+            { createdAt: sort === "oldest" ? "asc" : "desc" },
+            { id: sort === "oldest" ? "asc" : "desc" },
+          ],
     take: PAGE_SIZE + 1,
     select: postSelect(viewer.id),
   });
@@ -317,7 +379,14 @@ export async function getFeed(
   const page = rows.slice(0, PAGE_SIZE);
   return {
     items: page.map((row) => toSummary(row, viewer)),
-    nextCursor: rows.length > PAGE_SIZE ? encodeCursor(page.at(-1)!) : null,
+    nextCursor:
+      rows.length > PAGE_SIZE
+        ? encodeCursor(
+            sort === "closing"
+              ? { createdAt: page.at(-1)!.deadline!, id: page.at(-1)!.id }
+              : page.at(-1)!,
+          )
+        : null,
   };
 }
 
@@ -343,6 +412,8 @@ export type Thread = PostSummary & {
   participantCount: number;
   /** How the viewer appears if they reply. */
   viewerAlias: Pseudonym;
+  historical: boolean;
+  helpfulReply: ThreadComment | null;
 };
 
 export type CommentPage = { items: ThreadComment[]; nextCursor: string | null };
@@ -352,6 +423,7 @@ export async function getComments(
   viewer: Viewer,
   postId: string,
   cursor?: string,
+  inclusive = false,
 ): Promise<CommentPage | null> {
   const post = await db.post.findFirst({
     where: { id: postId, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
@@ -362,7 +434,7 @@ export async function getComments(
     where: {
       AND: [
         { postId, OR: [{ hiddenAt: null }, { authorId: viewer.id }] },
-        afterCursor(cursor),
+        afterCursor(cursor, inclusive),
       ],
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -395,14 +467,34 @@ export async function getComments(
 
 // Cached per request: the page and its metadata both read the thread.
 export const getThread = cache(
-  async (viewer: Viewer, postId: string): Promise<Thread | null> => {
+  async (
+    viewer: Viewer,
+    postId: string,
+    cursor?: string,
+    focusId?: string,
+  ): Promise<Thread | null> => {
     const post = await db.post.findFirst({
       where: { id: postId, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
       select: postSelect(viewer.id),
     });
     if (!post) return null;
+    const focus = focusId
+      ? await db.comment.findFirst({
+          where: {
+            id: focusId,
+            postId,
+            OR: [{ hiddenAt: null }, { authorId: viewer.id }],
+          },
+          select: { id: true, createdAt: true },
+        })
+      : null;
     const [comments, participants] = await Promise.all([
-      getComments(viewer, postId),
+      getComments(
+        viewer,
+        postId,
+        focus ? encodeCursor(focus) : cursor,
+        Boolean(focus),
+      ),
       db.$queryRaw<
         { count: bigint }[]
       >`SELECT COUNT(DISTINCT "authorId") AS count FROM (
@@ -410,6 +502,19 @@ export const getThread = cache(
       UNION SELECT ${post.authorId} AS "authorId"
     ) AS participants`,
     ]);
+    const helpfulId = post.helpfulAnswer?.commentId;
+    const helpful = helpfulId
+      ? await db.comment.findFirst({
+          where: { id: helpfulId, postId, hiddenAt: null },
+          select: {
+            id: true,
+            body: true,
+            createdAt: true,
+            authorId: true,
+            author: { select: { university: { select: universitySelect } } },
+          },
+        })
+      : null;
     return {
       ...toSummary(post, viewer),
       body: post.body,
@@ -417,6 +522,19 @@ export const getThread = cache(
       participantCount: Number(participants[0]?.count ?? 1),
       comments: comments?.items ?? [],
       earlierCursor: comments?.nextCursor ?? null,
+      historical: Boolean(cursor || focus),
+      helpfulReply: helpful
+        ? {
+            id: helpful.id,
+            body: helpful.body,
+            createdAt: helpful.createdAt,
+            alias: pseudonym(helpful.authorId, postId),
+            university: publicUniversity(helpful.author.university, viewer),
+            isMine: helpful.authorId === viewer.id,
+            isAuthor: helpful.authorId === post.authorId,
+            hidden: false,
+          }
+        : null,
     };
   },
 );
@@ -436,7 +554,9 @@ export async function getUniversityPage(viewer: Viewer, slug: string) {
     select: { ...universitySelect, website: true },
   });
   if (!university) return null;
-  const isMine = university.id === viewer.university.id;
+  const isMine =
+    university.id === viewer.university.id ||
+    Boolean(viewer.hostCampuses?.some((campus) => campus.id === university.id));
   // Small campuses stay unnamed, so their page would only out its members.
   if (!isMine && university._count.users < MIN_MEMBERS_TO_NAME_UNIVERSITY)
     return null;
@@ -642,6 +762,7 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
         title: true,
         body: true,
         imageUrl: true,
+        imageAlt: true,
         imageWidth: true,
         imageHeight: true,
         audience: true,
@@ -686,6 +807,9 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
       image: post.imageUrl
         ? {
             url: `/api/images/${post.id}`,
+            alt:
+              post.imageAlt ??
+              "Image attached to this post; description unavailable.",
             width: post.imageWidth ?? 1200,
             height: post.imageHeight ?? 900,
           }
@@ -739,21 +863,30 @@ export type NotificationItem = {
   type: NotificationType;
   unread: boolean;
   createdAt: Date;
+  revision: number;
+  replyId: string | null;
   post: { id: string; title: string };
 };
 
 export async function getNotifications(
   viewer: Viewer,
+  cursor?: string,
 ): Promise<NotificationItem[]> {
   const rows = await db.notification.findMany({
-    where: { userId: viewer.id, post: visibleTo(viewer) },
-    orderBy: { createdAt: "desc" },
+    where: {
+      userId: viewer.id,
+      post: visibleTo(viewer),
+      ...afterCursor(cursor),
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 50,
     select: {
       id: true,
       type: true,
       readAt: true,
       createdAt: true,
+      revision: true,
+      replyId: true,
       post: { select: { id: true, title: true } },
     },
   });
@@ -762,6 +895,8 @@ export async function getNotifications(
     type: row.type,
     unread: row.readAt === null,
     createdAt: row.createdAt,
+    revision: row.revision,
+    replyId: row.replyId,
     post: row.post,
   }));
 }

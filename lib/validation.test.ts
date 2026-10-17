@@ -52,6 +52,19 @@ describe("postInput", () => {
     ).toBe(false);
   });
 
+  it("accepts bounded image descriptions and rejects identifying contact details", () => {
+    expect(
+      postInput.parse({ ...valid, imageAlt: "  A quiet library study area  " })
+        .imageAlt,
+    ).toBe("A quiet library study area");
+    for (const imageAlt of [
+      "",
+      "x".repeat(501),
+      "Email student@example.org for details",
+    ])
+      expect(postInput.safeParse({ ...valid, imageAlt }).success).toBe(false);
+  });
+
   it("rejects whitespace-only content", () => {
     expect(postInput.safeParse({ ...valid, body: "   \n\n  " }).success).toBe(
       false,

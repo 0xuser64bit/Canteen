@@ -33,6 +33,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@/lib/session", async () => {
   const { db } = await import("@/lib/db");
   return {
+    getDraftOwner: vi.fn(async () => `draft-owner:${state.viewerId}`),
     getAccountViewer: vi.fn(async () =>
       state.viewerId
         ? db.user.findUnique({
@@ -118,7 +119,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "DailyActivity", "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
+      'TRUNCATE "Maintenance", "UniversityRequest", "Publication", "DailyActivity", "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -646,7 +647,11 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     ).toBe(1);
 
     as("ada");
-    await actions.markNotificationsRead();
+    await actions.markNotificationsRead(
+      (await queries.getNotifications(await viewer("ada"))).map(
+        ({ id, revision }) => ({ id, revision }),
+      ),
+    );
     as("alan");
     await actions.setLike(p.id, true);
     await finishBackground();
@@ -656,6 +661,193 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       }),
     ).toBe(1);
     expect(await db.notification.count()).toBe(2);
+  });
+
+  it("acknowledges only delivered versions and leaves older, new and foreign alerts unread", async () => {
+    const p = await post("ada");
+    await db.notification.createMany({
+      data: Array.from({ length: 55 }, (_, i) => ({
+        id: crypto.randomUUID(),
+        userId: "ada",
+        postId: p.id,
+        type: "COMMENT" as const,
+        createdAt: new Date(Date.now() - (60 - i) * 1000),
+      })),
+    });
+    const delivered = await queries.getNotifications(await viewer("ada"));
+    expect(delivered).toHaveLength(50);
+    const stale = delivered[0]!;
+    await db.notification.update({
+      where: { id: stale.id },
+      data: { revision: { increment: 1 } },
+    });
+    const arrived = await db.notification.create({
+      data: { userId: "ada", postId: p.id, type: "LIKE" },
+    });
+    const foreign = await db.notification.create({
+      data: { userId: "alan", postId: p.id, type: "COMMENT" },
+    });
+    as("ada");
+    await actions.markNotificationsRead([
+      ...delivered.slice(0, 49).map(({ id, revision }) => ({ id, revision })),
+      { id: foreign.id, revision: 0 },
+    ]);
+    expect(
+      (await db.notification.findUniqueOrThrow({ where: { id: stale.id } }))
+        .readAt,
+    ).toBeNull();
+    expect(
+      (await db.notification.findUniqueOrThrow({ where: { id: arrived.id } }))
+        .readAt,
+    ).toBeNull();
+    expect(
+      (await db.notification.findUniqueOrThrow({ where: { id: foreign.id } }))
+        .readAt,
+    ).toBeNull();
+    expect(
+      await db.notification.count({
+        where: { userId: "ada", readAt: { not: null } },
+      }),
+    ).toBe(48);
+    const last = delivered.at(-1)!;
+    const older = await queries.getNotifications(
+      await viewer("ada"),
+      `${last.createdAt.toISOString()}_${last.id}`,
+    );
+    expect(older).toHaveLength(5);
+    expect(older.every((item) => item.unread)).toBe(true);
+  });
+
+  it("preserves a focused historical reply page through revision changes and rechecks removed replies", async () => {
+    const p = await post("ada", { kind: "QUESTION" });
+    const ids = Array.from({ length: 110 }, () => crypto.randomUUID());
+    await db.comment.createMany({
+      data: ids.map((id, i) => ({
+        id,
+        postId: p.id,
+        authorId: "alan",
+        body: `Reply ${i}`,
+        createdAt: new Date(Date.now() - (110 - i) * 1000),
+      })),
+    });
+    await db.helpfulAnswer.create({
+      data: { postId: p.id, commentId: ids[8]! },
+    });
+    const initial = (await queries.getThread(
+      await viewer("ada"),
+      p.id,
+      undefined,
+      ids[30],
+    ))!;
+    expect(initial.comments.at(-1)?.id).toBe(ids[30]);
+    expect(initial.helpfulReply?.id).toBe(ids[8]);
+    as("grace");
+    await actions.setLike(p.id, true);
+    await db.comment.update({
+      where: { id: ids[20] },
+      data: { hiddenAt: new Date() },
+    });
+    const refreshed = (await queries.getThread(
+      await viewer("ada"),
+      p.id,
+      undefined,
+      ids[30],
+    ))!;
+    expect(refreshed.comments.at(-1)?.id).toBe(ids[30]);
+    expect(refreshed.comments.map((reply) => reply.id)).not.toContain(ids[20]);
+    expect(refreshed.revision).toBeGreaterThan(initial.revision);
+    await db.comment.delete({ where: { id: ids[8] } });
+    expect(
+      (await queries.getThread(await viewer("ada"), p.id, undefined, ids[30]))!
+        .helpfulReply,
+    ).toBeNull();
+  });
+
+  it("makes interrupted post retries idempotent without replenishing publication quotas", async () => {
+    as("ada");
+    const form = new FormData();
+    const id = crypto.randomUUID();
+    for (const [key, value] of Object.entries({
+      id,
+      title: "A useful question",
+      body: "Some context",
+      topic: "GENERAL",
+      audience: "CAMPUS",
+    }))
+      form.set(key, value);
+    expect(await actions.createPost(null, form)).toEqual({ postedId: id });
+    expect(await actions.createPost(null, form)).toEqual({ postedId: id });
+    form.set("draftOwner", "a-different-session");
+    expect(await actions.createPost(null, form)).toHaveProperty("error");
+    expect(await db.post.count()).toBe(1);
+    expect(
+      await db.publication.count({ where: { userId: "ada", kind: "POST" } }),
+    ).toBe(1);
+    await actions.deletePost(id);
+    expect(
+      await db.publication.count({ where: { userId: "ada", kind: "POST" } }),
+    ).toBe(1);
+  });
+
+  it("sorts waiting questions oldest first and saved opportunities by deadline across page boundaries", async () => {
+    const ids = Array.from({ length: 24 }, () => crypto.randomUUID());
+    await db.post.createMany({
+      data: ids.map((id, i) => ({
+        id,
+        authorId: "ada",
+        universityId: "u-stanford",
+        title: "A waiting question",
+        body: "Some context",
+        audience: "CAMPUS" as const,
+        kind: "QUESTION" as const,
+        createdAt: new Date(Date.now() - (24 - i) * 1000),
+      })),
+    });
+    await db.comment.create({
+      data: { postId: ids[0]!, authorId: "alan", body: "An initial reply" },
+    });
+    const v = await viewer("alan");
+    const first = await queries.getFeed(v, {
+      scope: { kind: "campus" },
+      unanswered: true,
+      noReplies: true,
+      sort: "oldest",
+    });
+    const second = await queries.getFeed(v, {
+      scope: { kind: "campus" },
+      unanswered: true,
+      noReplies: true,
+      sort: "oldest",
+      cursor: first.nextCursor!,
+    });
+    expect([...first.items, ...second.items].map((item) => item.id)).toEqual(
+      ids.slice(1),
+    );
+    await db.post.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        topic: "OPPORTUNITIES",
+        deadline: new Date(Date.now() + 86400000),
+        applicationUrl: "https://example.org/apply",
+      },
+    });
+    await db.bookmark.createMany({
+      data: ids.map((postId) => ({ userId: "alan", postId })),
+    });
+    const closing = await queries.getFeed(v, {
+      scope: { kind: "saved" },
+      topic: "OPPORTUNITIES",
+      sort: "closing",
+    });
+    const more = await queries.getFeed(v, {
+      scope: { kind: "saved" },
+      topic: "OPPORTUNITIES",
+      sort: "closing",
+      cursor: closing.nextCursor!,
+    });
+    expect([...closing.items, ...more.items].map((item) => item.id)).toEqual(
+      [...ids].sort(),
+    );
   });
 
   it("rejects invalid posts and signed-out writes", async () => {
@@ -724,6 +916,22 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.comment.count()).toBe(20);
   });
 
+  it("does not replenish reply quotas when the student erases replies", async () => {
+    const p = await post("ada");
+    as("alan");
+    for (let i = 0; i < 20; i++) {
+      const id = crypto.randomUUID();
+      expect((await actions.addComment(p.id, "A reply", id)).ok).toBe(true);
+      expect((await actions.deleteComment(id)).ok).toBe(true);
+    }
+    expect(await db.comment.count()).toBe(0);
+    expect((await actions.addComment(p.id, "One more")).ok).toBe(false);
+    await db.publication.updateMany({
+      data: { createdAt: new Date(Date.now() - 11 * 60_000) },
+    });
+    expect((await actions.addComment(p.id, "After the window")).ok).toBe(true);
+  });
+
   it("enforces the post limit across simultaneous requests", async () => {
     as("ada");
     const results = await Promise.allSettled(
@@ -736,14 +944,16 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         return actions.createPost(null, form);
       }),
     );
-    const redirects = results.filter((result) => result.status === "rejected");
-    expect(redirects).toHaveLength(5);
-    for (const result of redirects)
-      expect(result.reason).toMatchObject({
-        url: expect.stringMatching(/^\/p\//),
-      });
+    const published = results.filter(
+      (result) => result.status === "fulfilled" && result.value?.postedId,
+    );
+    expect(published).toHaveLength(5);
     expect(await db.post.count()).toBe(5);
-    expect(results.filter((result) => result.status === "fulfilled")).toEqual([
+    expect(
+      results.filter(
+        (result) => result.status === "fulfilled" && result.value?.error,
+      ),
+    ).toEqual([
       {
         status: "fulfilled",
         value: { error: expect.stringContaining("quickly") },
@@ -784,7 +994,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     as("grace");
     await expect(
       actions.deleteAccount("delete my account"),
-    ).rejects.toMatchObject({ url: "/?deleted=1" });
+    ).resolves.toMatchObject({ ok: true });
     expect(await db.user.findUnique({ where: { id: "grace" } })).toBeNull();
     expect(await db.comment.count()).toBe(0);
     expect(await db.like.count()).toBe(0);
@@ -792,6 +1002,28 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(
       (await db.post.findUniqueOrThrow({ where: { id: p.id } })).revision,
     ).toBeGreaterThan(revision);
+  });
+
+  it("erases two accounts with cross-replies without reversing post lock order", async () => {
+    const a = await post("ada"),
+      b = await post("alan");
+    await db.comment.createMany({
+      data: [
+        { postId: a.id, authorId: "alan", body: "Cross reply A" },
+        { postId: b.id, authorId: "ada", body: "Cross reply B" },
+      ],
+    });
+    const { getAccountViewer } = await import("@/lib/session");
+    vi.mocked(getAccountViewer)
+      .mockResolvedValueOnce({ ...(await viewer("ada")), bannedAt: null })
+      .mockResolvedValueOnce({ ...(await viewer("alan")), bannedAt: null });
+    const results = await Promise.all([
+      actions.deleteAccount("delete my account"),
+      actions.deleteAccount("delete my account"),
+    ]);
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(await db.post.count()).toBe(0);
+    expect(await db.comment.count()).toBe(0);
   });
 
   describe("images", () => {
@@ -842,16 +1074,15 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         new File([new Uint8Array(bytes)], "photo.jpg", { type: "image/jpeg" }),
       );
       // These are untrusted, even when a genuine client normally sends them.
+      form.set("imageAlt", "Description of the attached image");
       form.set("imageWidth", "9999");
       form.set("imageHeight", "9999");
       return form;
     }
 
     it("strips metadata on the server and derives the dimensions from the image", async () => {
-      await expect(
-        actions.createPost(null, await imageForm()),
-      ).rejects.toMatchObject({
-        url: expect.stringMatching(/^\/p\//),
+      expect(await actions.createPost(null, await imageForm())).toMatchObject({
+        postedId: expect.any(String),
       });
       const uploaded = vi.mocked(put).mock.calls[0]![1];
       if (!Buffer.isBuffer(uploaded)) throw new Error("Expected image bytes");
@@ -863,7 +1094,22 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         imageUrl,
         imageWidth: 2,
         imageHeight: 3,
+        imageAlt: "Description of the attached image",
       });
+      const p = await db.post.findFirstOrThrow();
+      expect(
+        (await queries.getThread(await viewer("alan"), p.id))!.image?.alt,
+      ).toBe("Description of the attached image");
+    });
+
+    it("requires an image description before doing upload work", async () => {
+      const form = await imageForm();
+      form.delete("imageAlt");
+      expect(
+        (await actions.createPost(null, form))?.fieldErrors?.imageAlt,
+      ).toBeDefined();
+      expect(put).not.toHaveBeenCalled();
+      expect(await db.publication.count()).toBe(0);
     });
 
     it("serves image bytes only to authorized viewers and never caches them", async () => {
@@ -928,7 +1174,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       vi.mocked(del).mockRejectedValue(new Error("Offline"));
       await expect(
         actions.deleteAccount("delete my account"),
-      ).rejects.toHaveProperty("url");
+      ).resolves.toMatchObject({ ok: true });
       await Promise.all(state.background.splice(0));
       expect(await db.blobDeletion.count()).toBe(1);
       expect(await db.user.findUnique({ where: { id: "ada" } })).toBeNull();
@@ -983,6 +1229,130 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       );
     });
 
+    it.each(["post", "account"] as const)(
+      "queues the current image when migration commits before %s erasure",
+      async (scope) => {
+        const { migrateLegacyImages } = await import("@/server/media");
+        vi.stubEnv("BLOB_READ_WRITE_TOKEN", "legacy-token");
+        const legacy = "https://test.public.blob.vercel-storage.com/raced.webp";
+        const p = await post("ada", { imageUrl: legacy });
+        const bytes = await sharp({
+          create: { width: 2, height: 3, channels: 3, background: "red" },
+        })
+          .webp()
+          .toBuffer();
+        vi.mocked(get).mockResolvedValueOnce({
+          statusCode: 200,
+          stream: new Response(new Uint8Array(bytes)).body,
+        } as never);
+        vi.mocked(del).mockRejectedValue(
+          new Error("Storage temporarily unavailable"),
+        );
+        const transaction = db.$transaction.bind(db);
+        vi.spyOn(db, "$transaction").mockImplementationOnce(
+          async (operation) => {
+            expect(await migrateLegacyImages()).toBe(1);
+            return transaction(operation);
+          },
+        );
+        const result =
+          scope === "post"
+            ? await actions.deletePost(p.id)
+            : await actions.deleteAccount("delete my account");
+        expect(result.ok).toBe(true);
+        await finishBackground();
+        expect(await db.post.count()).toBe(0);
+        expect(
+          (await db.blobDeletion.findMany({ select: { key: true } })).map(
+            (job) => job.key,
+          ),
+        ).toContain(imageUrl);
+      },
+    );
+
+    it("retains the orphan intent when erasure commits during a legacy upload", async () => {
+      const { migrateLegacyImages } = await import("@/server/media");
+      vi.stubEnv("BLOB_READ_WRITE_TOKEN", "legacy-token");
+      const legacy = "https://test.public.blob.vercel-storage.com/raced.webp";
+      const p = await post("ada", { imageUrl: legacy });
+      const bytes = await sharp({
+        create: { width: 2, height: 3, channels: 3, background: "red" },
+      })
+        .webp()
+        .toBuffer();
+      vi.mocked(get).mockResolvedValueOnce({
+        statusCode: 200,
+        stream: new Response(new Uint8Array(bytes)).body,
+      } as never);
+      const blob = await vi.mocked(put).getMockImplementation()!(
+        "",
+        Buffer.alloc(0),
+        {} as never,
+      );
+      vi.mocked(put).mockImplementationOnce(async () => {
+        await actions.deletePost(p.id);
+        return blob;
+      });
+      expect(await migrateLegacyImages()).toBe(0);
+      await finishBackground();
+      expect(await db.post.count()).toBe(0);
+      expect(
+        (await db.blobDeletion.findMany({ select: { key: true } })).some(
+          (job) => job.key.startsWith("posts/"),
+        ),
+      ).toBe(true);
+    });
+
+    it("records maintenance health and expires only bounded limiter and activity data", async () => {
+      const { GET } = await import("@/app/api/maintenance/route");
+      vi.stubEnv("CRON_SECRET", "a-test-secret");
+      await db.publication.createMany({
+        data: [
+          {
+            userId: "ada",
+            kind: "POST",
+            createdAt: new Date(Date.now() - 25 * 60 * 60_000),
+          },
+          { userId: "ada", kind: "POST" },
+        ],
+      });
+      await db.rateLimit.createMany({
+        data: [
+          {
+            id: "old-budget",
+            key: "old-budget",
+            count: 1,
+            lastRequest: BigInt(Date.now() - 25 * 60 * 60_000),
+          },
+          {
+            id: "fresh-budget",
+            key: "fresh-budget",
+            count: 1,
+            lastRequest: BigInt(Date.now()),
+          },
+        ],
+      });
+      const request = () =>
+        new Request("http://localhost/api/maintenance", {
+          headers: { authorization: "Bearer a-test-secret" },
+        });
+      expect((await GET(request())).status).toBe(200);
+      expect(
+        (await db.maintenance.findUniqueOrThrow({ where: { id: "scheduled" } }))
+          .succeededAt,
+      ).not.toBeNull();
+      expect(await db.publication.count()).toBe(1);
+      expect(await db.rateLimit.count()).toBe(1);
+      vi.spyOn(db.publication, "deleteMany").mockRejectedValueOnce(
+        new Error("Database unavailable"),
+      );
+      expect((await GET(request())).status).toBe(503);
+      expect(
+        (await db.maintenance.findUniqueOrThrow({ where: { id: "scheduled" } }))
+          .failedAt,
+      ).not.toBeNull();
+    });
+
     it("rejects unauthenticated maintenance requests", async () => {
       const { GET } = await import("@/app/api/maintenance/route");
       vi.stubEnv("CRON_SECRET", "a-test-secret");
@@ -1008,9 +1378,10 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     });
 
     it("durably cleans the upload when saving the post fails", async () => {
-      vi.spyOn(db, "$transaction").mockRejectedValueOnce(
-        new Error("Database unavailable"),
-      );
+      const transaction = db.$transaction.bind(db);
+      vi.spyOn(db, "$transaction")
+        .mockImplementationOnce(async (operation) => transaction(operation))
+        .mockRejectedValueOnce(new Error("Database unavailable"));
       const result = await actions.createPost(null, await imageForm());
       expect(result?.error).toBeDefined();
       const job = await db.blobDeletion.findFirstOrThrow();
@@ -1029,10 +1400,12 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
     it("preserves the image if the database commits but its acknowledgement is lost", async () => {
       const transaction = db.$transaction.bind(db);
-      vi.spyOn(db, "$transaction").mockImplementationOnce(async (operation) => {
-        await transaction(operation);
-        throw new Error("Commit acknowledgement lost");
-      });
+      vi.spyOn(db, "$transaction")
+        .mockImplementationOnce(async (operation) => transaction(operation))
+        .mockImplementationOnce(async (operation) => {
+          await transaction(operation);
+          throw new Error("Commit acknowledgement lost");
+        });
       expect(await actions.createPost(null, await imageForm())).toHaveProperty(
         "error",
       );
@@ -1078,6 +1451,44 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(response.status).toBe(200);
       return vi.mocked(sendSignInCode).mock.calls.at(-1)![1];
     }
+
+    it("discards profile-bearing provider tokens on both account creation and returning sign-in updates", async () => {
+      const context = await realAuth.$context;
+      const token = `synthetic.${Buffer.from(JSON.stringify({ name: "Private name", picture: "https://example.org/photo.jpg" })).toString("base64url")}.signature`;
+      const account = await context.internalAdapter.createAccount({
+        userId: "ada",
+        providerId: "google",
+        accountId: "synthetic-provider-subject",
+        accessToken: "access",
+        refreshToken: "refresh",
+        idToken: token,
+      });
+      expect(account).toBeDefined();
+      expect(account).toMatchObject({
+        accessToken: null,
+        refreshToken: null,
+        idToken: null,
+      });
+      await context.internalAdapter.updateAccount(account!.id, {
+        accessToken: "new-access",
+        refreshToken: "new-refresh",
+        idToken: token,
+        accessTokenExpiresAt: new Date(),
+      });
+      const stored = await db.account.findUniqueOrThrow({
+        where: { id: account!.id },
+      });
+      expect(stored).toMatchObject({
+        userId: "ada",
+        providerId: "google",
+        accountId: "synthetic-provider-subject",
+        accessToken: null,
+        refreshToken: null,
+        idToken: null,
+        accessTokenExpiresAt: null,
+        refreshTokenExpiresAt: null,
+      });
+    });
 
     it("verifies a university email without storing a name or photo", async () => {
       const email = "new-student@stanford.edu";
@@ -1260,6 +1671,123 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     };
     const hiddenAt = async (id: string) =>
       (await db.post.findUniqueOrThrow({ where: { id } })).hiddenAt;
+
+    it("serializes threshold reports with KEEP for posts and comments", async () => {
+      for (const target of ["post", "comment"] as const) {
+        const p = await post("ada");
+        const id =
+          target === "post"
+            ? p.id
+            : (
+                await db.comment.create({
+                  data: {
+                    postId: p.id,
+                    authorId: "ada",
+                    body: "A reported reply",
+                  },
+                })
+              ).id;
+        await report("grace", target, id);
+        await report("linus", target, id);
+        const reporter = await viewer("margaret"),
+          moderator = await viewer("mod");
+        vi.mocked(getViewer)
+          .mockResolvedValueOnce(reporter)
+          .mockResolvedValueOnce(moderator);
+        const results = await Promise.all([
+          actions.reportContent({ target, id, reason: "SPAM" }),
+          actions.moderate({ target, id, decision: "keep" }),
+        ]);
+        expect(results.every((result) => result.ok)).toBe(true);
+        const item =
+          target === "post"
+            ? await db.post.findUniqueOrThrow({ where: { id } })
+            : await db.comment.findUniqueOrThrow({ where: { id } });
+        const open = await db.report.count({
+          where: {
+            resolvedAt: null,
+            ...(target === "post" ? { postId: id } : { commentId: id }),
+          },
+        });
+        expect(item.hiddenAt === null || open > 0).toBe(true);
+      }
+    });
+
+    it("restricts campus hosts to explicit assignments, labels their posts and revokes reply alerts", async () => {
+      vi.stubEnv(
+        "CAMPUS_HOSTS",
+        JSON.stringify({ "mod@example.com": ["stanford.edu"] }),
+      );
+      const base = await viewer("mod");
+      const host = {
+        ...base,
+        hostCampuses: [
+          {
+            id: "u-stanford",
+            slug: "stanford-university",
+            name: "Stanford University",
+          },
+        ],
+      };
+      const campus = await post("ada", { audience: "CAMPUS" });
+      const other = await post("grace", { audience: "CAMPUS" });
+      expect(await queries.getThread(host, campus.id)).not.toBeNull();
+      expect(await queries.getThread(base, campus.id)).toBeNull();
+      expect(await queries.getThread(host, other.id)).toBeNull();
+      vi.mocked(getViewer).mockResolvedValueOnce(host);
+      const form = new FormData();
+      for (const [key, value] of Object.entries({
+        title: "A message from the host",
+        body: "Ask during our coverage hours",
+        topic: "GENERAL",
+        audience: "CAMPUS",
+        hostCampus: "stanford-university",
+      }))
+        form.set(key, value);
+      const created = await actions.createPost(null, form);
+      const thread = (await queries.getThread(
+        await viewer("ada"),
+        created!.postedId!,
+      ))!;
+      expect(thread.staff).toBe(true);
+      expect(thread.university.name).toBe("Stanford University");
+      as("ada");
+      await actions.addComment(thread.id, "A question for the host");
+      expect(await db.notification.count({ where: { userId: "mod" } })).toBe(1);
+      vi.stubEnv("CAMPUS_HOSTS", "{}");
+      await actions.addComment(thread.id, "A later reply");
+      expect(
+        (await db.notification.findFirstOrThrow({ where: { userId: "mod" } }))
+          .revision,
+      ).toBe(0);
+      expect(
+        await queries.getThread(await viewer("mod"), campus.id),
+      ).toBeNull();
+      as("mod");
+      expect(await actions.createPost(null, form)).toHaveProperty("error");
+    });
+
+    it("keeps domain corrections private, bounded and subject to actual dataset verification", async () => {
+      const { requestUniversity, reviewUniversityRequest } =
+        await import("@/server/university-requests");
+      const form = new FormData();
+      form.set("domain", "missing-campus.example");
+      form.set("website", "https://missing-campus.example");
+      as(null);
+      expect(await requestUniversity(null, form)).toEqual({ ok: true });
+      expect(await requestUniversity(null, form)).toEqual({ ok: true });
+      const request = await db.universityRequest.findFirstOrThrow();
+      expect(await db.universityRequest.count()).toBe(1);
+      expect((await reviewUniversityRequest(request.id, false)).ok).toBe(false);
+      as("mod");
+      expect((await reviewUniversityRequest(request.id, true)).ok).toBe(false);
+      expect((await reviewUniversityRequest(request.id, false)).ok).toBe(true);
+      await db.rateLimit.update({
+        where: { key: "university-domain-requests" },
+        data: { count: 100 },
+      });
+      expect(await requestUniversity(null, form)).toHaveProperty("error");
+    });
 
     it("is team-only and shows content, never identities", async () => {
       const p = await post("ada");
@@ -1715,8 +2243,8 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       form.set("audience", "EVERYONE");
       form.append("pollChoice", "North");
       form.append("pollChoice", "South");
-      await expect(actions.createPost(null, form)).rejects.toMatchObject({
-        url: expect.stringMatching(/^\/p\//),
+      expect(await actions.createPost(null, form)).toMatchObject({
+        postedId: expect.any(String),
       });
       const options = await db.pollOption.findMany({
         orderBy: { position: "asc" },

@@ -2,16 +2,21 @@
 
 import { refresh } from "next/cache";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { auth } from "@/lib/auth";
+import { campusHostDomains } from "@/lib/campus-hosts";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { NotificationType, Topic } from "@/lib/generated/prisma/enums";
 import { preparePostImage } from "@/lib/images";
-import { getViewer, getAccountViewer, type Viewer } from "@/lib/session";
+import {
+  getViewer,
+  getAccountViewer,
+  getDraftOwner,
+  type Viewer,
+} from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
-import { findUniversityByEmail } from "@/lib/universities";
+import { findUniversityByEmail, TEAM } from "@/lib/universities";
 import {
   appealInput,
   reviewAppealInput,
@@ -62,7 +67,13 @@ async function postVisibleTo(
 ) {
   return client.post.findFirst({
     where: { id: postId, ...queries.visibleTo(viewer) },
-    select: { id: true, authorId: true, audience: true, universityId: true },
+    select: {
+      id: true,
+      authorId: true,
+      audience: true,
+      universityId: true,
+      university: { select: { domain: true } },
+    },
   });
 }
 
@@ -75,22 +86,22 @@ async function lockAuthor(tx: Prisma.TransactionClient, authorId: string) {
 }
 
 async function postingTooFast(
-  kind: "post" | "comment",
+  kind: "post" | "comment" | "upload",
   authorId: string,
   client: Prisma.TransactionClient = db,
 ) {
   const window = {
     post: { max: 5, ms: 15 * 60_000 },
     comment: { max: 20, ms: 10 * 60_000 },
+    upload: { max: 5, ms: 15 * 60_000 },
   }[kind];
   const where = {
-    authorId,
+    userId: authorId,
+    kind: { post: "POST", comment: "COMMENT", upload: "UPLOAD" }[kind] as
+      "POST" | "COMMENT" | "UPLOAD",
     createdAt: { gte: new Date(Date.now() - window.ms) },
   };
-  const recent =
-    kind === "post"
-      ? await client.post.count({ where })
-      : await client.comment.count({ where });
+  const recent = await client.publication.count({ where });
   return recent >= window.max;
 }
 
@@ -100,6 +111,7 @@ async function notify(
   userId: string,
   postId: string,
   type: NotificationType,
+  replyId?: string,
 ) {
   await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`notification:${userId}`}, 0))::text`;
   const user = await tx.user.findUnique({
@@ -114,9 +126,10 @@ async function notify(
   if (unread)
     await tx.notification.update({
       where: { id: unread.id },
-      data: { createdAt: new Date() },
+      data: { createdAt: new Date(), revision: { increment: 1 }, replyId },
     });
-  else await tx.notification.create({ data: { userId, postId, type } });
+  else
+    await tx.notification.create({ data: { userId, postId, type, replyId } });
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +137,7 @@ async function notify(
 // ---------------------------------------------------------------------------
 
 export type ComposeState = {
+  postedId?: string;
   error?: string;
   fieldErrors?: Partial<
     Record<
@@ -132,6 +146,7 @@ export type ComposeState = {
       | "topic"
       | "audience"
       | "image"
+      | "imageAlt"
       | "poll"
       | "kind"
       | "applicationUrl"
@@ -149,9 +164,27 @@ export async function createPost(
   if (!viewer) return { error: SIGNED_OUT.error };
   if (!(form instanceof FormData))
     return { error: "That post didn't go through. Try again." };
+  const draftOwner = form.get("draftOwner");
+  if (draftOwner !== null && draftOwner !== (await getDraftOwner()))
+    return {
+      error: "Your session changed. Refresh before publishing this draft.",
+    };
+
+  const hostSlug = form.get("hostCampus");
+  const hostCampus =
+    typeof hostSlug === "string"
+      ? viewer.hostCampuses?.find((campus) => campus.slug === hostSlug)
+      : undefined;
+  if (hostSlug && !hostCampus)
+    return {
+      error:
+        "That campus assignment is no longer available. Refresh and try again.",
+    };
 
   const choices = form.getAll("pollChoice");
   const parsed = postInput.safeParse({
+    id: form.get("id") ?? undefined,
+    imageAlt: form.get("imageAlt") ?? undefined,
     title: form.get("title"),
     body: form.get("body"),
     topic: form.get("topic"),
@@ -170,6 +203,14 @@ export async function createPost(
     return { fieldErrors };
   }
 
+  if (parsed.data.id) {
+    const existing = await db.post.findFirst({
+      where: { id: parsed.data.id, authorId: viewer.id },
+      select: { id: true },
+    });
+    if (existing) return { postedId: existing.id };
+  }
+
   if (await postingTooFast("post", viewer.id)) {
     return { error: POSTING_TOO_FAST };
   }
@@ -180,6 +221,12 @@ export async function createPost(
   let imageHeight: number | null = null;
   const image = form.get("image");
   if (image instanceof File && image.size > 0) {
+    if (!parsed.data.imageAlt)
+      return {
+        fieldErrors: {
+          imageAlt: "Describe the important information in this image.",
+        },
+      };
     if (!process.env.BLOB_PRIVATE_READ_WRITE_TOKEN) {
       return {
         fieldErrors: { image: "Image uploads aren't enabled on this server." },
@@ -191,6 +238,24 @@ export async function createPost(
       };
     }
     let prepared: Awaited<ReturnType<typeof preparePostImage>>;
+    const admitted = await db.$transaction(async (tx) => {
+      const author = await lockAuthor(tx, viewer.id);
+      if (
+        !author ||
+        author.bannedAt ||
+        (await postingTooFast("upload", viewer.id, tx))
+      )
+        return false;
+      await tx.publication.create({
+        data: { userId: viewer.id, kind: "UPLOAD" },
+      });
+      return true;
+    });
+    if (!admitted)
+      return {
+        error:
+          "You've tried several image uploads. Wait a few minutes before trying another.",
+      };
     try {
       prepared = await preparePostImage(Buffer.from(await image.arrayBuffer()));
     } catch {
@@ -229,6 +294,13 @@ export async function createPost(
     result = await db.$transaction(async (tx) => {
       const author = await lockAuthor(tx, viewer.id);
       if (!author || author.bannedAt) return SIGNED_OUT;
+      if (fields.id) {
+        const existing = await tx.post.findFirst({
+          where: { id: fields.id, authorId: viewer.id },
+          select: { id: true },
+        });
+        if (existing) return ok(existing);
+      }
       if (await postingTooFast("post", viewer.id, tx))
         return { ok: false as const, error: POSTING_TOO_FAST };
       const post = await tx.post.create({
@@ -242,11 +314,14 @@ export async function createPost(
           imageWidth,
           imageHeight,
           authorId: viewer.id,
-          universityId: viewer.university.id,
+          universityId: hostCampus?.id ?? viewer.university.id,
         },
         select: { id: true },
       });
       if (imageIntent) await attachImage(tx, imageIntent);
+      await tx.publication.create({
+        data: { userId: viewer.id, kind: "POST" },
+      });
       return ok(post);
     });
   } catch {
@@ -260,24 +335,31 @@ export async function createPost(
     // The upload intent survives rollback; a committed post removes it atomically.
     return { error: result.error };
   }
-  redirect(`/p/${result.data.id}`);
+  refresh();
+  return { postedId: result.data.id };
 }
 
 export async function deletePost(postId: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
   if (!idInput.safeParse(postId).success) return NOT_FOUND;
-  const post = await db.post.findUnique({
-    where: { id: postId },
-    select: { authorId: true, imageUrl: true },
+  const result = await db.$transaction(async (tx) => {
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return SIGNED_OUT;
+    const post = await tx.post.findFirst({
+      where: { id: postId, authorId: viewer.id },
+      select: { id: true },
+    });
+    if (!post) return NOT_FOUND;
+    const removed = await tx.post.delete({
+      where: { id: postId },
+      select: { imageUrl: true },
+    });
+    if (removed.imageUrl) await queueImageDeletion(tx, removed.imageUrl);
+    return ok(Boolean(removed.imageUrl));
   });
-  if (!post || post.authorId !== viewer.id) return NOT_FOUND;
-
-  await db.$transaction(async (tx) => {
-    await tx.post.delete({ where: { id: postId } });
-    if (post.imageUrl) await queueImageDeletion(tx, post.imageUrl);
-  });
-  if (post.imageUrl) after(processImageDeletions);
+  if (!result.ok) return result;
+  if (result.data) after(processImageDeletions);
   return ok(null);
 }
 
@@ -288,7 +370,7 @@ export async function setLike(
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
   if (!likeInput.safeParse({ postId, liked }).success) return NOT_FOUND;
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const author = await lockAuthor(tx, viewer.id);
     if (!author || author.bannedAt) return SIGNED_OUT;
     const post = await postVisibleTo(viewer, postId, tx);
@@ -307,6 +389,8 @@ export async function setLike(
     } else await tx.like.deleteMany({ where: { userId: viewer.id, postId } });
     return ok({ liked, likeCount: await tx.like.count({ where: { postId } }) });
   });
+  if (result.ok) refresh();
+  return result;
 }
 
 export async function votePoll(
@@ -337,6 +421,7 @@ export async function votePoll(
     });
   });
   const poll = await queries.getPoll(viewer, postId);
+  refresh();
   return poll ? ok(poll) : NOT_FOUND;
 }
 
@@ -379,13 +464,16 @@ export async function addComment(
           ok: false as const,
           error: "You're replying very quickly. Give it a minute.",
         };
-      await tx.comment.create({
+      const comment = await tx.comment.create({
         data: {
           id: parsed.data.id,
           postId,
           body: parsed.data.body,
           authorId: viewer.id,
         },
+      });
+      await tx.publication.create({
+        data: { userId: viewer.id, kind: "COMMENT" },
       });
       await tx.post.update({
         where: { id: postId },
@@ -395,16 +483,30 @@ export async function addComment(
         where: {
           id: { not: viewer.id },
           bannedAt: null,
-          OR: [{ id: post.authorId }, { follows: { some: { postId } } }],
+          AND: [
+            { OR: [{ id: post.authorId }, { follows: { some: { postId } } }] },
+          ],
           ...(post.audience === "CAMPUS"
-            ? { universityId: post.universityId }
+            ? {
+                OR: [
+                  { universityId: post.universityId },
+                  { university: { slug: TEAM.slug } },
+                ],
+              }
             : {}),
         },
-        select: { id: true },
+        select: { id: true, email: true, universityId: true },
         orderBy: { id: "asc" },
       });
-      for (const recipient of recipients)
-        await notify(tx, recipient.id, postId, "COMMENT");
+      for (const recipient of recipients) {
+        if (
+          post.audience === "CAMPUS" &&
+          recipient.universityId !== post.universityId &&
+          !campusHostDomains(recipient.email).includes(post.university.domain)
+        )
+          continue;
+        await notify(tx, recipient.id, postId, "COMMENT", comment.id);
+      }
       return ok(post);
     });
   } catch (error) {
@@ -467,35 +569,53 @@ export async function reportContent(input: {
   if (item.authorId === viewer.id)
     return { ok: false, error: "You can delete your own content instead." };
 
-  const key = target === "post" ? { postId: id } : { commentId: id };
-  await db.report.createMany({
-    data: [{ reporterId: viewer.id, reason, ...key }],
-    skipDuplicates: true,
-  });
-  // Reports a moderator already reviewed don't count again, and the same
-  // student can't report twice, so it takes new reporters to re-hide.
-  const reports = await db.report.count({
-    where: { ...key, resolvedAt: null },
-  });
-  if (reports >= HIDE_AFTER_REPORTS) {
-    const hide = { where: { id }, data: { hiddenAt: new Date() } };
-    if (target === "post")
-      await db.post.update({
-        where: { id },
-        data: { hiddenAt: new Date(), revision: { increment: 1 } },
-      });
-    else {
-      await db.$transaction([
-        db.comment.update(hide),
-        db.helpfulAnswer.deleteMany({ where: { commentId: id } }),
-        db.post.update({
-          where: { id: "postId" in item ? item.postId : id },
+  return db.$transaction(async (tx) => {
+    // Match moderation's author lock; sorted acquisition also covers reporter suspension.
+    const authors = await tx.$queryRaw<{ id: string; bannedAt: Date | null }[]>`
+      SELECT "id", "bannedAt" FROM "User" WHERE "id" IN (${viewer.id}, ${item.authorId}) ORDER BY "id" FOR NO KEY UPDATE
+    `;
+    if (!authors.some((author) => author.id === viewer.id && !author.bannedAt))
+      return SIGNED_OUT;
+    if (
+      !authors.some((author) => author.id === item.authorId && !author.bannedAt)
+    )
+      return NOT_FOUND;
+    const current =
+      target === "post"
+        ? await postVisibleTo(viewer, id, tx)
+        : await tx.comment.findFirst({
+            where: { id, hiddenAt: null, post: queries.visibleTo(viewer) },
+            select: { postId: true },
+          });
+    if (!current) return NOT_FOUND;
+    const key = target === "post" ? { postId: id } : { commentId: id };
+    await tx.report.createMany({
+      data: [{ reporterId: viewer.id, reason, ...key }],
+      skipDuplicates: true,
+    });
+    const reports = await tx.report.count({
+      where: { ...key, resolvedAt: null },
+    });
+    if (reports >= HIDE_AFTER_REPORTS) {
+      if (target === "post") {
+        await tx.post.update({
+          where: { id },
+          data: { hiddenAt: new Date(), revision: { increment: 1 } },
+        });
+      } else {
+        await tx.comment.update({
+          where: { id },
+          data: { hiddenAt: new Date() },
+        });
+        await tx.helpfulAnswer.deleteMany({ where: { commentId: id } });
+        await tx.post.update({
+          where: { id: "postId" in current ? current.postId : id },
           data: { revision: { increment: 1 } },
-        }),
-      ]);
+        });
+      }
     }
-  }
-  return ok(null);
+    return ok(null);
+  });
 }
 
 /** Decisions preserve the content for its author's appeal; author deletion still erases it. */
@@ -827,6 +947,8 @@ export async function loadMore(input: {
     | `university:${string}`;
   topic?: string;
   unanswered?: boolean;
+  noReplies?: boolean;
+  sort?: queries.FeedSort;
   cursor: string;
 }): Promise<ActionResult<queries.FeedPage>> {
   const viewer = await getViewer();
@@ -860,6 +982,8 @@ export async function loadMore(input: {
       topic,
       cursor,
       unanswered: parsed.data.unanswered,
+      noReplies: parsed.data.noReplies,
+      sort: parsed.data.sort,
     }),
   );
 }
@@ -873,14 +997,36 @@ export async function searchCanteen(
   return queries.search(viewer, query);
 }
 
-export async function markNotificationsRead(): Promise<void> {
+export async function markNotificationsRead(
+  delivered: { id: string; revision: number }[],
+): Promise<void> {
   const viewer = await getViewer();
-  if (!viewer) return;
+  if (
+    !viewer ||
+    !Array.isArray(delivered) ||
+    delivered.length === 0 ||
+    delivered.length > 50 ||
+    delivered.some(
+      (item) =>
+        !item ||
+        !idInput.safeParse(item.id).success ||
+        !Number.isSafeInteger(item.revision) ||
+        item.revision < 0,
+    )
+  )
+    return;
   await db.$transaction(async (tx) => {
     const author = await lockAuthor(tx, viewer.id);
     if (!author || author.bannedAt) return;
+    // Coordinate with notify's read-then-update coalescing, not just its revision.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`notification:${viewer.id}`}, 0))::text`;
     await tx.notification.updateMany({
-      where: { userId: viewer.id, readAt: null },
+      where: {
+        OR: delivered.map(({ id, revision }) => ({ id, revision })),
+        userId: viewer.id,
+        readAt: null,
+        post: queries.visibleTo(viewer),
+      },
       data: { readAt: new Date() },
     });
   });
@@ -911,9 +1057,13 @@ export async function deleteAccount(
     return { ok: false, error: `Type "${DELETE_CONFIRMATION}" to confirm.` };
   }
 
-  await auth.api.signOut({ headers: await headers() });
   await db.$transaction(async (tx) => {
     await lockAuthor(tx, viewer.id);
+    // Lock owned and replied-to posts together, in one order, before media snapshots
+    // and revision updates. Two students erasing cross-replies cannot invert this order.
+    await tx.$queryRaw`SELECT "id" FROM "Post" WHERE "authorId" = ${viewer.id}
+      OR EXISTS (SELECT 1 FROM "Comment" WHERE "Comment"."postId" = "Post"."id" AND "Comment"."authorId" = ${viewer.id})
+      ORDER BY "id" FOR UPDATE`;
     const images = await tx.post.findMany({
       where: { authorId: viewer.id, imageUrl: { not: null } },
       select: { imageUrl: true },
@@ -926,7 +1076,13 @@ export async function deleteAccount(
     await tx.user.delete({ where: { id: viewer.id } });
   });
   after(processImageDeletions);
-  redirect("/?deleted=1");
+  try {
+    await auth.api.signOut({ headers: await headers() });
+  } catch {
+    // The account and all sessions are already erased. Let the client clear drafts.
+    console.error("Account erased; session cookie cleanup failed");
+  }
+  return ok(null);
 }
 
 export async function setCollection(

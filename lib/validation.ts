@@ -69,7 +69,9 @@ const pollChoices = z
 
 export const postInput = z
   .object({
+    id: z.uuid().optional(),
     title: text(LIMITS.title.min, LIMITS.title.max, "Title"),
+    imageAlt: text(1, 500, "Image description").optional(),
     body: text(0, LIMITS.body.max, "Post"),
     applicationUrl: z
       .string()
@@ -139,6 +141,8 @@ export const feedInput = z.object({
   ]),
   topic: z.string().max(80).optional(),
   unanswered: z.boolean().optional(),
+  noReplies: z.boolean().optional(),
+  sort: z.enum(["newest", "oldest", "closing"]).optional(),
   cursor: z.string().max(128),
 });
 

@@ -37,6 +37,7 @@ model User {
   moderationCases ModerationCase[]
   notifications   Notification[]
   dailyActivity   DailyActivity[]
+  publications    Publication[]
   bookmarks       Bookmark[]
   follows         Follow[]
   pollVotes       PollVote[]
@@ -116,6 +117,24 @@ model University {
   posts Post[]
 }
 
+enum PublicationKind {
+  POST
+  COMMENT
+  UPLOAD
+}
+
+// Bounded anti-abuse state survives content deletion, and erases with the account.
+model Publication {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      PublicationKind
+  createdAt DateTime        @default(now())
+
+  @@index([userId, kind, createdAt])
+  @@index([createdAt])
+}
+
 enum Topic {
   GENERAL
   ACADEMICS
@@ -142,6 +161,7 @@ model Post {
   title          String
   body           String
   imageUrl       String?
+  imageAlt       String?
   imageWidth     Int?
   imageHeight    Int?
   applicationUrl String?
@@ -289,6 +309,8 @@ enum NotificationType {
 
 // Notifications never say who acted; that would break anonymity.
 model Notification {
+  revision  Int              @default(0)
+  replyId   String?
   id        String           @id @default(cuid())
   type      NotificationType
   readAt    DateTime?
@@ -311,6 +333,25 @@ model BlobDeletion {
   lockedUntil DateTime?
 
   @@index([dueAt])
+}
+
+// Operational heartbeat only: no student identifiers or content.
+model Maintenance {
+  id          String    @id
+  startedAt   DateTime
+  succeededAt DateTime?
+  failedAt    DateTime?
+}
+
+model UniversityRequest {
+  id         String    @id @default(cuid())
+  domain     String    @unique
+  website    String
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+  accepted   Boolean?
+
+  @@index([reviewedAt, createdAt])
 }
 
 // Only the question's author chooses a helpful answer; deleting it reopens the question.

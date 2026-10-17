@@ -1,0 +1,2 @@
+ALTER TABLE "Notification" ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Notification" ADD COLUMN "replyId" TEXT;
