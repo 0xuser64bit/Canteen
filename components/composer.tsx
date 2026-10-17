@@ -20,7 +20,9 @@ import {
 } from "react";
 import { HelplineNote } from "@/components/helpline";
 import { Button } from "@/components/ui/button";
+import { DateTimeField } from "@/components/ui/datetime-field";
 import { Counter, FieldError } from "@/components/ui/field";
+import { parseLocalDateTime } from "@/lib/datetime";
 import type { Audience, PostKind, Topic } from "@/lib/generated/prisma/enums";
 import { TOPICS } from "@/lib/topics";
 import { cn } from "@/lib/utils";
@@ -200,11 +202,8 @@ export function Composer({
     form.set("audience", audience);
     if (topic === "OPPORTUNITIES") {
       form.set("applicationUrl", applicationUrl);
-      const date = new Date(deadline);
-      form.set(
-        "deadline",
-        Number.isNaN(date.getTime()) ? "" : date.toISOString(),
-      );
+      const date = parseLocalDateTime(deadline);
+      form.set("deadline", date ? date.toISOString() : "");
     }
     poll?.forEach((choice) => form.append("pollChoice", choice));
     if (image) {
@@ -226,6 +225,9 @@ export function Composer({
     title.trim().length >= LIMITS.title.min &&
     (body.trim().length > 0 || poll !== null) &&
     pollReady &&
+    (topic !== "OPPORTUNITIES" ||
+      (applicationUrl.trim().length > 0 &&
+        parseLocalDateTime(deadline) !== null)) &&
     !tooLong;
 
   return (
@@ -351,15 +353,12 @@ export function Composer({
             <label className="text-[13px] font-semibold" htmlFor="deadline">
               Application deadline (your local time)
             </label>
-            <input
+            <DateTimeField
               id="deadline"
-              type="datetime-local"
-              required
               value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="min-w-0 rounded-xl bg-background px-3 py-2 ring-1 ring-line"
-              aria-invalid={!!errors.deadline || undefined}
-              aria-describedby="deadline-error"
+              onChange={setDeadline}
+              invalid={!!errors.deadline}
+              describedBy="deadline-error"
             />
             <FieldError id="deadline-error">{errors.deadline}</FieldError>
             <p className="text-[12px] text-muted">

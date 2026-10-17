@@ -28,7 +28,7 @@ import { reducedMotion } from "@/components/preferences";
 import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
-import { TimeAgo } from "@/components/time";
+import { DateTime, TimeAgo } from "@/components/time";
 import { Button } from "@/components/ui/button";
 import { Counter } from "@/components/ui/field";
 import { topicLabel } from "@/lib/topics";
@@ -482,12 +482,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
                 <div className="mt-4 rounded-2xl p-3 ring-1 ring-current/15">
                   <p className="text-[13px] font-semibold">
                     {thread.closed ? "Applications closed" : "Apply before"} ·{" "}
-                    {new Intl.DateTimeFormat("en", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                      timeZone: "UTC",
-                    }).format(new Date(thread.deadline))}{" "}
-                    UTC
+                    <DateTime date={thread.deadline} /> · your local time
                   </p>
                   <a
                     href={thread.applicationUrl}
