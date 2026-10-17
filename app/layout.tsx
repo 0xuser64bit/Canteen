@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Mona_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { preferencesScript } from "@/lib/preferences";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -43,6 +44,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={mona.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: preferencesScript }} />
+      </head>
       <body className="min-h-dvh font-sans">
         <Providers>{children}</Providers>
       </body>

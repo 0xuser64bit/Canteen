@@ -3,6 +3,7 @@
 import { ThemeProvider, useTheme } from "next-themes";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
+import { PreferenceSync } from "@/components/preferences";
 
 function ThemedToaster() {
   const { resolvedTheme } = useTheme();
@@ -30,6 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
+      <PreferenceSync />
       {children}
       <ThemedToaster />
     </ThemeProvider>
