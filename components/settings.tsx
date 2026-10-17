@@ -2,11 +2,12 @@
 
 import { Check, Monitor, Moon, RotateCcw, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Logo } from "@/components/logo";
 import { savePreferences, usePreferences } from "@/components/preferences";
 import { Button } from "@/components/ui/button";
+import { TimeAgo } from "@/components/time";
 import { DEFAULT_PREFERENCES, type Preferences } from "@/lib/preferences";
 
 const subscribeHydration = () => () => {};
@@ -65,6 +66,7 @@ function Choices({
 
 export function Settings() {
   const preferences = usePreferences();
+  const [previewTime] = useState(() => new Date());
   const { theme, setTheme } = useTheme();
   const hydrated = useSyncExternalStore(
     subscribeHydration,
@@ -167,7 +169,7 @@ export function Settings() {
             Feels like me.
           </div>
           <p className="mt-3 text-right text-[12px] text-muted">
-            Preview · only you see your theme
+            <TimeAgo date={previewTime} /> · Preview
           </p>
         </div>
 

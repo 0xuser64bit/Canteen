@@ -27,8 +27,9 @@ export default async function JoinPage({ searchParams }: PageProps<"/join">) {
           Pull up a chair.
         </h1>
         <p className="mt-3 mb-6 text-[15px] leading-relaxed text-muted">
-          Canteen is for verified university students. We check your university
-          once, then never show who you are.
+          Start with your university email. Other students see a per-thread
+          alias, not your email. What you choose to share can still identify
+          you.
         </p>
         <SignIn
           emailEnabled={isEmailEnabled}

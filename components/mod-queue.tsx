@@ -73,7 +73,7 @@ function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
           Reply in <span className="font-semibold text-ink">{item.title}</span>
         </p>
       )}
-      <div className="mb-1.5 flex max-w-full items-center gap-1.5 px-1 text-[13px] text-muted">
+      <div className="mb-1.5 flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 px-1 text-[13px] text-muted">
         <AliasName alias={item.alias} className="shrink-0" />
         <span aria-hidden>·</span>
         <UniversityLabel university={item.university} />

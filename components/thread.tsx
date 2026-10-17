@@ -433,7 +433,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
           <div
             className={cn("flex min-w-0 flex-1 flex-col", mine && "items-end")}
           >
-            <div className="mb-1.5 flex max-w-full items-center gap-1.5 px-1 text-[13px] text-muted">
+            <div className="mb-1.5 flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 px-1 text-[13px] text-muted">
               {mine ? (
                 <span className="font-semibold text-ink">You</span>
               ) : (

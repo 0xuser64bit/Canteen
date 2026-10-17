@@ -45,7 +45,7 @@ export function TimeAgo({
         <time
           dateTime={date.toISOString()}
           tabIndex={0}
-          className={cn("cursor-help rounded-sm", className)}
+          className={cn("max-w-full cursor-help rounded-sm", className)}
           suppressHydrationWarning
         >
           {preferences.timestamps === "exact"

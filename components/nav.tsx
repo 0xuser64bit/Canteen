@@ -136,6 +136,7 @@ export function SideNav({
   modQueue?: number;
 }) {
   const isActive = useActive();
+  const pathname = usePathname();
   const unread = useUnread(serverUnread);
   return (
     <nav
@@ -186,7 +187,11 @@ export function SideNav({
       <div className="mt-auto flex flex-col gap-3">
         <Link
           href="/settings"
-          className="flex min-h-11 items-center gap-3 rounded-2xl px-3.5 text-[14px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+          aria-current={pathname === "/settings" ? "page" : undefined}
+          className={cn(
+            "flex min-h-11 items-center gap-3 rounded-2xl px-3.5 text-[14px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink",
+            pathname === "/settings" && "bg-surface text-ink ring-1 ring-line",
+          )}
         >
           <Settings2 aria-hidden className="size-[18px]" /> Settings
         </Link>
@@ -222,7 +227,8 @@ export function MobileNav({ unread: serverUnread }: { unread: number }) {
 
   const [feed, campus, , alerts, you] = ITEMS as [Item, Item, Item, Item, Item];
   const tab = (item: Item) => {
-    const active = isActive(item);
+    const active =
+      isActive(item) || (item.href === "/me" && pathname === "/settings");
     return (
       <Link
         key={item.href}

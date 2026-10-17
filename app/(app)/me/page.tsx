@@ -49,7 +49,7 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
         <section className="rounded-[28px] bg-surface p-5 shadow-soft ring-1 ring-line sm:p-6">
           <p className="flex items-center gap-2 text-[13px] font-semibold text-muted">
             <BadgeCheck className="size-[18px] text-ink" />{" "}
-            {isTeam ? "Team account" : "Verified student"}
+            {isTeam ? "Team account" : "University email verified"}
           </p>
           <Link
             href={`/u/${viewer.university.slug}`}
@@ -93,14 +93,14 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
         </Button>
         <section aria-labelledby="privacy">
           <h2 id="privacy" className="mb-3 text-[15px] font-bold">
-            How you stay anonymous
+            How your identity is protected
           </h2>
           <ul className="flex flex-col gap-3 text-[14px] leading-relaxed text-muted">
             <li className="flex gap-3">
               <Shuffle className="mt-0.5 size-[18px] shrink-0 text-ink" />
               <span>
-                You get a different alias in every thread, so your posts
-                can&apos;t be linked to each other.
+                You get a different alias in every thread. What you choose to
+                share can still identify you.
               </span>
             </li>
             <li className="flex gap-3">
