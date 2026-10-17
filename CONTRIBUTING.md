@@ -16,9 +16,9 @@ If you touched anything in `server/` or `lib/`, also run the integration tests a
 
 These are not style preferences. A pull request that breaks one will not be merged.
 
-1. **Identity never reaches the client.** Server code converts rows into view models (`PostSummary`, `Thread`, and friends in `server/queries.ts`) before rendering. Never pass a user id, email, or raw Prisma row to a Client Component or return one from a Server Action.
+1. **Identity never reaches the client.** Server code converts rows into view models (`PostSummary`, `Thread`, and friends in `server/queries.ts`) before rendering. Shared discussion views must never pass an author/reporter user ID, email, or raw Prisma row to a Client Component or Server Action response. A private account page may show its authenticated owner their own email. An opaque draft owner is derived from the current session; never send session IDs or tokens.
 2. **One visibility rule.** Every query and action that reads or acts on a post goes through `visibleTo(viewer)` in `server/queries.ts`. Don't hand-roll a second version.
-3. **The session decides who you are.** Server Actions derive the user from `getViewer()`. Never accept a user id, email, or university from the client.
+3. **The session decides who you are.** Server Actions derive the user from `getViewer()`. Never accept a user ID, email or university as authority from the client. A host campus slug is only a request: resolve it against current server-owned assignments. Current team status alone does not grant campus discussion access.
 4. **Validate at the boundary.** Server Actions parse their input with the schemas in `lib/validation.ts`.
 5. **No identifying logs.** Don't log emails, user ids next to content, IP addresses, or post bodies.
 6. **Nothing that links aliases.** Features that let someone connect a student's posts across threads (profiles, "more from this author", per-user counters shown to others) break the product's core promise.
@@ -34,3 +34,9 @@ These are not style preferences. A pull request that breaks one will not be merg
 ## Adding a university
 
 Universities and their email domains come from `data/universities.json`, a copy of [Hipo/university-domains-list](https://github.com/Hipo/university-domains-list). If yours is missing or wrong, the best fix is upstream; you can also open an issue here with the university's name, country, and student email domain.
+
+## Regression checks
+
+The database suite includes publication quotas after erasure, post retry IDs, delivered notification revisions/ownership, historical and helpful-reply navigation, report/KEEP serialization, provider-token create/update hooks, campus-host revocation, domain review, maintenance retention, and migration/erasure commit ordering. Run it against native PostgreSQL for meaningful concurrency coverage; single-backend embedded engines cannot establish multi-session lock behavior. External email and Blob calls stay mocked.
+
+Browser review should include two accounts in one browser, cross-tab draft invalidation, continued typing during delayed/failed replies, refreshed poll props, and earlier reply pages during moderation. Keep draft text through failed transport and clear it only on confirmed publication; never persist image bytes or adopt an unowned legacy draft.

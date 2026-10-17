@@ -5,38 +5,39 @@
 <h1 align="center">Canteen</h1>
 
 <p align="center"><strong>Talk like nobody's watching.</strong><br />
-Anonymous conversations between verified university students.</p>
+University-email sign-in. A different alias in every thread.</p>
 
 ---
 
-Canteen is a group chat for university students. Your university email (or your university's Google account) proves you're a student. After that, nobody, including other students, ever sees who you are.
+Canteen is a group chat for university students. Sign-in checks control of a recognized university email address; it does not prove current enrollment. Other students see a per-thread alias instead of your email. Canteen can link account records internally, and what you share can still identify you.
 
 ## How anonymity works
 
 Anonymity in Canteen is a property of the data that reaches the browser, not a coat of UI paint.
 
-- **Verified, not identified.** Signing in maps your email domain to a university using the [university-domains-list](https://github.com/Hipo/university-domains-list) dataset. Other students never see your email. Your private account page shows it to you; Canteen never stores real names or profile photos.
+- **Verified, not identified.** Signing in maps your email domain to a university using the [university-domains-list](https://github.com/Hipo/university-domains-list) dataset. Other students never see your email. Your private account page shows it to you; Canteen leaves real-name and profile-photo fields empty and discards provider tokens after sign-in.
 - **A new alias in every thread.** You appear as something like "Quiet Otter" in one thread and "Daring Koala" in the next. Aliases are an HMAC of your user id and the post id, so they're stable inside a thread and unlinkable across threads.
 - **Small campuses stay unnamed.** Other universities see your university's name only once at least 5 of its students have joined. Below that, your posts read "A university in India".
-- **Campus-only posts.** Posts can be limited to students of your own university. Other universities can't load them at all.
+- **Campus-only posts.** Posts can be limited to your university and explicitly assigned Canteen campus hosts. Other universities cannot load them; moderators can review reported content. Hosts are disabled until an operator assigns them.
 - **Shared views omit account identity.** Server code turns discussion rows into view models before rendering; author account IDs and emails never reach other students. Your own private account page can show your email, and stored records remain internally linkable. Integration tests check shared serialized payloads.
 - **Photos lose their metadata.** Images are re-encoded in the browser before upload, which strips EXIF data such as GPS coordinates. The server also decodes and re-encodes every upload, so bypassing the composer cannot preserve metadata or spoof image dimensions.
 - **Staff are labeled.** Whoever runs a deployment can let their own accounts in with `TEAM_EMAILS`. Those accounts skip the university check, and everything they post says "Canteen team".
 - **Safety without surveillance.** Reports are anonymous. Content that three different students report is hidden automatically. Notifications say that someone replied or liked, never who. Team decisions have reasons, private history and one appeal per decision. Suspended accounts can authenticate only for status, appeal and account deletion; feeds and actions still recheck suspension.
 - **Removal and erasure are different.** Team removal hides content while retaining it for review and appeal. Authors can erase their posts or account; database content is removed and image erasure is queued durably. Decision metadata and appeals survive content deletion so an account suspension remains appealable, and are erased with the account.
-- **Moderators see content, not people.** Reports land in a queue for team accounts. It shows what was said and the alias it was said under, never an email. Moderators can keep it, remove it, or ban the account, which signs it out for good and hides everything it wrote.
-- **No contact details.** Posts and replies can't carry phone numbers or email addresses, so nobody gets doxxed in a thread.
+- **Moderators see content, not people.** Reports land in a queue for team accounts. It shows what was said and the alias it was said under, never an email. Moderators can keep it, remove it, or ban the account, which revokes its sessions and hides everything it wrote. Suspended students can sign in for status, appeal, and deletion only.
+- **No contact details.** Text checks catch some phone numbers and email addresses. They cannot catch every identifying detail; check text, links, and visible photo content before posting.
 
 ## Features
 
 - Feeds for every university, your own campus, each university, and opportunities, filterable by topic
 - Threads with per-thread aliases, OP tags, likes, unique view counts, and replies
-- Composer with topics, audience (everyone or campus-only), images, polls, and saved drafts
+- Composer with topics, audience, accessible image descriptions, polls, and session-owned drafts that preserve publishing context until confirmed success
 - Polls with two to four choices. Results appear once you vote, and only totals ever leave the server
 - Campus invites: until five classmates join, a share link helps bring the rest in
 - Search across posts and universities (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd>)
-- Notifications for replies and likes
-- Campus-first navigation, question/conversation types, questions needing help, and author-marked helpful replies
+- Paginated notifications that acknowledge only delivered versions, with direct links to replies
+- Campus-first navigation, oldest-waiting and no-reply question queues, author-marked helpful answers with direct navigation, and closing-soon saved opportunities
+- Explicitly assigned, labeled campus hosts and a private domain-only university correction queue
 - Account page with sign-out and full account deletion
 - A moderation queue for team accounts, and help links on mental health threads
 - Light and dark themes, built mobile-first
@@ -74,17 +75,18 @@ Open http://localhost:3000 and sign in with any address at a real university dom
 
 ### Configuration
 
-| Variable                                   | Required        | Purpose                                                                                                                |
-| ------------------------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                             | yes             | PostgreSQL connection string. Use a pooled URL in production.                                                          |
-| `BETTER_AUTH_SECRET`                       | yes             | Signs sessions and derives aliases. `openssl rand -base64 32`.                                                         |
-| `BETTER_AUTH_URL`                          | no              | Public site URL. Derived automatically on Vercel and in development.                                                   |
-| `RESEND_API_KEY`, `EMAIL_FROM`             | no              | Sends sign-in codes by email. Without them, production offers Google sign-in only.                                     |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no              | "Continue with Google" for accounts with a verified university email. Redirect URI: `<site>/api/auth/callback/google`. |
-| `BLOB_PRIVATE_READ_WRITE_TOKEN`            | no              | Private Blob store for new uploads.                                                                                    |
-| `BLOB_READ_WRITE_TOKEN`                    | no              | Legacy public store, retained until migration and erasure finish.                                                      |
-| `CRON_SECRET`                              | for maintenance | Protects scheduled image cleanup, migration and activity retention.                                                    |
-| `TEAM_EMAILS`                              | no              | Comma-separated staff emails that can join without a university email. They post as "Canteen team".                    |
+| Variable                                   | Required        | Purpose                                                                                                                                         |
+| ------------------------------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                             | yes             | PostgreSQL connection string. Use a pooled URL in production.                                                                                   |
+| `BETTER_AUTH_SECRET`                       | yes             | Signs sessions and derives aliases. `openssl rand -base64 32`.                                                                                  |
+| `BETTER_AUTH_URL`                          | no              | Public site URL. Derived automatically on Vercel and in development.                                                                            |
+| `RESEND_API_KEY`, `EMAIL_FROM`             | no              | Sends sign-in codes by email. Without them, production offers Google sign-in only.                                                              |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no              | "Continue with Google" for accounts with a verified university email. Redirect URI: `<site>/api/auth/callback/google`.                          |
+| `BLOB_PRIVATE_READ_WRITE_TOKEN`            | no              | Private Blob store for new uploads.                                                                                                             |
+| `BLOB_READ_WRITE_TOKEN`                    | no              | Legacy public store, retained until migration and erasure finish.                                                                               |
+| `CRON_SECRET`                              | for maintenance | Protects scheduled image cleanup, migration and activity retention.                                                                             |
+| `CAMPUS_HOSTS`                             | no              | JSON map from a current team email to up to ten canonical campus domains. Grants scoped campus discussion access and posting. Empty by default. |
+| `TEAM_EMAILS`                              | no              | Comma-separated staff emails that can join without a university email. They post as "Canteen team".                                             |
 
 ## Checks and tests
 
@@ -92,7 +94,7 @@ Open http://localhost:3000 and sign in with any address at a real university dom
 bun run check   # format, lint, typecheck, unit tests
 ```
 
-Integration tests exercise the privacy and permission rules against a real database. Point them at a disposable, migrated database:
+Integration tests exercise the privacy and permission rules against a real database. Point them at a disposable, migrated **native PostgreSQL** database:
 
 ```sh
 createdb canteen_test
@@ -109,13 +111,20 @@ CI runs all of this, plus a production dependency audit and build, on every push
 
 ## Deploy
 
-Canteen deploys to [Vercel](https://vercel.com) as-is. `vercel.json` installs with Bun and runs `scripts/vercel-build.sh`, which applies pending migrations on production deploys only. Add a Postgres database (for example Neon from the Vercel Marketplace), set the variables above, and deploy. Give preview deployments their own database so pull requests never migrate production.
+Canteen deploys to [Vercel](https://vercel.com) as-is. `vercel.json` installs with Bun and runs `scripts/vercel-build.sh`, which applies pending migrations on production deploys only. Add a Postgres database (for example Neon from the Vercel Marketplace), set the variables above, and deploy. Give preview deployments their own database so pull requests never migrate production. Provision and migrate it explicitly before the first preview build; the build script intentionally skips preview migrations. See the exact deployment sequence in [LAUNCH.md](LAUNCH.md#deployment-and-migration-sequence).
 
 ### Current operational limits
 
 - **Private images require configuration.** Create a private Blob store and set `BLOB_PRIVATE_READ_WRITE_TOKEN` and `CRON_SECRET`. Images are streamed through authenticated, uncached routes. Keep the old public-store token while legacy files migrate: maintenance copies one image, atomically swaps its reference, and queues erasure of the public original. Already-shared public URLs remain accessible until erasure completes.
-- **Cleanup is durable but asynchronous.** Upload intents exist before storage writes; deletion jobs commit with post/account removal. Workers lease jobs and retry failures with backoff. `vercel.json` runs maintenance daily ([Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)); deletion actions also attempt immediate cleanup. On other hosts, schedule `GET /api/maintenance` with `Authorization: Bearer <CRON_SECRET>`. Invoke repeatedly to clear migration/deletion backlogs; monitor `BlobDeletion` oldest due date and attempts. No credentials or files are migrated by installing code alone.
-- **Live threads use polling.** Visible, online threads check their revision every ten seconds and back off on failure. Replies load in pages of 50. Move to push delivery if concurrent open threads make polling costly. Notifications commit with the reply or like; saves and follows are private account data.
+- **Cleanup is durable but asynchronous.** Upload intents exist before storage writes; deletion jobs commit with post/account removal. Workers lease jobs and retry failures with backoff. `vercel.json` runs maintenance daily ([Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)); deletion actions also attempt immediate cleanup. On other hosts, schedule `GET /api/maintenance` with `Authorization: Bearer <CRON_SECRET>`. Each run drains up to four batches of ten deletion jobs within a bounded time budget and migrates one legacy image. Invoke repeatedly to drain larger backlogs. The team-only `/launch` page shows last success/failure, overdue jobs, retries, and the age of waiting reports and appeals; it is a status page, not an external alerting service. No credentials or files are migrated by installing code alone.
+- **Live threads use polling.** Visible, online threads check their revision every ten seconds and back off on failure. Replies use URL-backed pages of 50, so refresh revalidates the current reading range. Earlier/latest navigation and notification/helpful-answer links preserve a specific reading page. Move to push delivery if concurrent open threads make polling costly. Notifications commit with the reply or like; saves and follows are private account data.
+
+### Retention and migration notes
+
+- Post, reply and image-attempt quotas use publication events independent of surviving content. These contain account ID, kind and time, expire after 24 hours through maintenance, and cascade on account deletion. Deleted text is never retained for quota enforcement.
+- Provider access, refresh and ID tokens are discarded by account create/update hooks. The token-minimization migration clears existing values; account/provider bindings remain intact. Review and apply all six audit migrations before starting the new application.
+- Drafts live only in this browser, scoped to an opaque authenticated session and optional host campus. New sessions cannot adopt old drafts; successful sign-out/deletion clears them. Image bytes are not saved. Browser storage is readable by someone with direct device access.
+- University correction requests contain a domain and HTTPS homepage, without requester email or IP address. They are deduplicated, share a global budget of 100 submissions per 24-hour window, and expire after 90 days through maintenance. Review never changes eligibility automatically; verified dataset changes must ship first.
 
 ## Campus launch
 
@@ -136,7 +145,7 @@ data/           university domain dataset
 
 ## Contributing
 
-Bug reports, ideas, and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the privacy rules. If your university is missing, open an issue with its name and email domain.
+Bug reports, ideas, and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, especially the privacy rules. If your university is missing, use `/university-request` with its domain and official homepage. Do not put a personal email address in a public issue.
 
 Found a way to unmask someone or reach data you shouldn't? Please report it privately; see [SECURITY.md](SECURITY.md).
 
