@@ -37,6 +37,7 @@ University-email verification with per-thread aliases. Other students see an ali
 - Moderation screens show content and appeals without author or reporter identities. Authorized service operators have database access to account-linked records.
 - Team-only campus launch measures show aggregate membership, weekly activity, authors helped and week-two return, suppressing small groups. One account-linked mark per UTC day records activity without page history or text, expires after 90 days and is erased with the account. No external analytics service receives these measures.
 - Community guidance explains verification, privacy limits, reporting, deletion and safe sharing. Campus launch prompts use actual campus membership rather than invented adoption claims.
+- Display settings let students choose color mode, one of six accents coordinated with the logo, quieter or vivid dark accents, reduced motion, plain or doodle wallpaper, and local timestamp and clock formats. Preferences apply immediately in this browser; they do not sync to the account. Reset changes display settings only.
 - There are no real-name account fields, profile photos, follower counts or public profiles.
 - Universities come from a bundled dataset of about 10,000 institutions and their email domains. A campus starts when its first member joins, with cross-campus visibility restricted until five members join.
 
