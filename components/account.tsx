@@ -25,9 +25,19 @@ export function SignOutButton() {
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          await authClient.signOut();
-          router.replace("/");
-          router.refresh();
+          try {
+            const result = await authClient.signOut();
+            if (result.error) {
+              toast.error("Couldn't sign out. Try again.");
+              return;
+            }
+            router.replace("/");
+            router.refresh();
+          } catch {
+            toast.error(
+              "Couldn't sign out. Check your connection and try again.",
+            );
+          }
         })
       }
     >

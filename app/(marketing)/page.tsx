@@ -25,7 +25,7 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
     ? "Join with your university email"
     : "Join with your university account";
   // Only promise what this deployment actually does.
-  const imagesEnabled = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  const imagesEnabled = Boolean(process.env.BLOB_PRIVATE_READ_WRITE_TOKEN);
 
   return (
     <div className="overflow-x-clip">
@@ -51,9 +51,9 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
             <Highlight>Talk</Highlight> like nobody&apos;s watching.
           </h1>
           <p className="mt-7 max-w-[34rem] text-[18px] leading-relaxed text-pretty text-muted sm:text-[20px]">
-            Canteen is the group chat for verified university students. Your
-            university account proves you&apos;re a student. Your posts never
-            show who you are.
+            Canteen is the campus group chat behind a fresh alias. Sign in with
+            your university email. Other students see your alias, not your
+            email.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Button
@@ -89,14 +89,14 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
               <h3 className="text-[26px] font-bold tracking-tight">
-                Prove you&apos;re a student, once.
+                Start with your university email.
               </h3>
               <p className="mt-3 max-w-[32rem] text-[17px] leading-relaxed text-muted">
                 {isEmailEnabled
                   ? "Sign in with a code sent to your university email, or with your university's Google account."
                   : "Sign in with the Google account your university gave you."}{" "}
-                That tells us which university you&apos;re at. It never becomes
-                your name.
+                This verifies control of a university email, not current
+                enrollment. Other students never see that email.
               </p>
             </div>
             <div className="rounded-[28px] bg-surface p-6 shadow-soft ring-1 ring-line">
@@ -121,9 +121,9 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
                 A new name in every thread.
               </h3>
               <p className="mt-3 max-w-[32rem] text-[17px] leading-relaxed text-muted">
-                Each conversation gives you a fresh alias, so what you say in
-                one thread can&apos;t be traced to another. Inside a thread your
-                alias stays put, so conversations still make sense.
+                Each conversation gives you a fresh alias. Inside a thread it
+                stays put, so conversations still make sense. What you choose to
+                share can still identify you.
               </p>
             </div>
             <div className="flex flex-col gap-4 rounded-[28px] bg-surface p-6 shadow-soft ring-1 ring-line">
@@ -148,7 +148,7 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
                 </div>
               ))}
               <p className="border-t border-line pt-4 text-[13px] text-muted">
-                Same student. Two threads. No link between them.
+                Same student. Two threads. Different aliases.
               </p>
             </div>
           </div>
@@ -190,7 +190,7 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
             <li>
               {imagesEnabled
                 ? "Photos are re-encoded on your phone before upload, which removes location data."
-                : "Your email never appears anywhere, not even to the students you talk with."}
+                : "Other students never see your email. Canteen keeps account-linked records internally."}
             </li>
             <li>
               The whole thing is open source, so anyone can check how it works.{" "}

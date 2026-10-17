@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { DateTimeField } from "@/components/ui/datetime-field";
 import { Counter, FieldError } from "@/components/ui/field";
 import { parseLocalDateTime } from "@/lib/datetime";
+import { parseDraft, type Draft } from "@/lib/draft";
 import type { Audience, PostKind, Topic } from "@/lib/generated/prisma/enums";
 import { TOPICS } from "@/lib/topics";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,6 @@ import { createPost, type ComposeState } from "@/server/actions";
 
 const DRAFT_KEY = "canteen:draft";
 
-type Draft = { title: string; body: string };
 type PreparedImage = {
   file: File;
   preview: string;
@@ -39,11 +39,7 @@ type PreparedImage = {
 
 function readDraft(): Draft {
   try {
-    return {
-      title: "",
-      body: "",
-      ...JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}"),
-    };
+    return parseDraft(localStorage.getItem(DRAFT_KEY));
   } catch {
     return { title: "", body: "" };
   }
@@ -148,23 +144,25 @@ export function Composer({
   const [poll, setPoll] = useState<string[] | null>(null);
   const [imageError, setImageError] = useState<string>();
   const [preparing, setPreparing] = useState(false);
-  const restored = useRef(false);
+  const [restored, setRestored] = useState(false);
+  const restoreStarted = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   // Restore a draft once, after hydration (storage doesn't exist on the server).
   useEffect(() => {
-    if (restored.current) return;
-    restored.current = true;
+    if (restoreStarted.current) return;
+    restoreStarted.current = true;
     const draft = readDraft();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage
     if (draft.title) setTitle(draft.title);
     if (draft.body) setBody(draft.body);
+    setRestored(true);
   }, []);
 
   // Saves as you type, and again if the server rejects a submit (state changes).
   useEffect(() => {
-    if (restored.current) writeDraft({ title, body });
-  }, [title, body, state]);
+    if (restored) writeDraft({ title, body });
+  }, [title, body, state, restored]);
 
   useEffect(
     () => () => void (image && URL.revokeObjectURL(image.preview)),

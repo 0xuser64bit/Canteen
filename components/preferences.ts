@@ -64,13 +64,16 @@ export function savePreferences(patch: Partial<Preferences>) {
 
 export function PreferenceSync() {
   const preferences = usePreferences();
-  useEffect(() => applyPreferences(preferences), [preferences]);
+  useEffect(
+    () => applyPreferences(parsePreferences(snapshot())),
+    [preferences],
+  );
   return null;
 }
 
 export function reducedMotion() {
   return (
-    document.documentElement.dataset.motion === "reduce" ||
+    parsePreferences(snapshot()).motion === "reduce" ||
     matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 }
