@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { db } from "@/lib/db";
 import { sendSignInCode } from "@/lib/email";
+import { withoutProviderTokens } from "@/lib/auth-privacy";
 import {
   isTeamEmail,
   TEAM,
@@ -50,6 +51,8 @@ const google =
           // No `hd` restriction: team members sign in with personal Gmail. Students
           // still need a verified university address (validateUserInfo below).
           prompt: "select_account" as const,
+          disableDefaultScope: true,
+          scope: ["openid", "email"],
           // Canteen never stores real names or photos.
           mapProfileToUser: () => ({ name: "", image: undefined }),
         },
@@ -86,6 +89,14 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    account: {
+      create: {
+        before: async (account) => ({ data: withoutProviderTokens(account) }),
+      },
+      update: {
+        before: async (account) => ({ data: withoutProviderTokens(account) }),
+      },
+    },
     user: {
       create: {
         before: async (user) => {
