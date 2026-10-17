@@ -44,7 +44,10 @@ export default async function UniversityPage({
               <>{countryName(university.countryCode)} · </>
             )}
             {plural(university.memberCount, "student")}
-            {university.isMine && " · your campus"}
+            {university.isMine &&
+              (viewer.university.id === university.id
+                ? " · your campus"
+                : " · hosting")}
           </>
         }
         actions={
@@ -72,11 +75,16 @@ export default async function UniversityPage({
             title={`No posts from ${university.name} yet`}
             body={
               university.isMine
-                ? "You could be the first. Pick My campus as the audience to keep it between classmates."
+                ? "You could be the first. Campus posts are visible to this university and explicitly assigned Canteen hosts."
                 : "When its students post for everyone, you'll find them here."
             }
             action={university.isMine}
             topic={topic?.slug}
+            campus={
+              university.isMine && viewer.university.id !== university.id
+                ? university.slug
+                : undefined
+            }
           />
         }
       />

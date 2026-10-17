@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+import { type ComponentType, type SVGProps } from "react";
 import { Logo } from "@/components/logo";
 import { openSearch } from "@/components/search";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -28,7 +28,9 @@ type Item = {
     | "/home?topic=opportunities"
     | "/notifications"
     | "/me"
-    | "/mod";
+    | "/mod"
+    | "/host"
+    | "/launch";
   label: string;
   short: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
@@ -81,19 +83,6 @@ const MODERATION: Item = {
   active: (p) => p === "/mod",
 };
 
-export const NOTIFICATIONS_READ = "canteen:notifications-read";
-
-/** The server count, zeroed once the notifications page marks it read. */
-function useUnread(unread: number) {
-  const [cleared, setCleared] = useState<number | null>(null);
-  useEffect(() => {
-    const onRead = () => setCleared(unread);
-    window.addEventListener(NOTIFICATIONS_READ, onRead);
-    return () => window.removeEventListener(NOTIFICATIONS_READ, onRead);
-  }, [unread]);
-  return cleared === unread ? 0 : unread;
-}
-
 function useActive() {
   const pathname = usePathname();
   const topic = useSearchParams().get("topic");
@@ -137,7 +126,7 @@ export function SideNav({
 }) {
   const isActive = useActive();
   const pathname = usePathname();
-  const unread = useUnread(serverUnread);
+  const unread = serverUnread;
   return (
     <nav
       aria-label="Main"
@@ -151,33 +140,51 @@ export function SideNav({
         <Logo />
       </Link>
       <ul className="flex flex-col gap-1">
-        {(modQueue === undefined ? ITEMS : [...ITEMS, MODERATION]).map(
-          (item) => {
-            const active = isActive(item);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "group flex h-12 items-center gap-3.5 rounded-2xl px-3.5 text-[15px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink",
-                    active &&
-                      "bg-surface font-semibold text-ink shadow-soft ring-1 ring-line",
-                  )}
-                >
-                  <item.icon
-                    className={cn("size-[22px]", active && "stroke-[2.4]")}
-                  />
-                  <span className="flex-1">{item.label}</span>
-                  {item.href === "/notifications" && <Badge count={unread} />}
-                  {item.href === "/mod" && (
-                    <Badge count={modQueue ?? 0} label="waiting" />
-                  )}
-                </Link>
-              </li>
-            );
-          },
-        )}
+        {(modQueue === undefined
+          ? ITEMS
+          : [
+              ...ITEMS,
+              MODERATION,
+              {
+                href: "/host" as const,
+                label: "Campus hosting",
+                short: "Host",
+                icon: School,
+                active: (path: string) => path === "/host",
+              },
+              {
+                href: "/launch" as const,
+                label: "Campus launch",
+                short: "Launch",
+                icon: Home,
+                active: (path: string) => path === "/launch",
+              },
+            ]
+        ).map((item) => {
+          const active = isActive(item);
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "group flex h-12 items-center gap-3.5 rounded-2xl px-3.5 text-[15px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink",
+                  active &&
+                    "bg-surface font-semibold text-ink shadow-soft ring-1 ring-line",
+                )}
+              >
+                <item.icon
+                  className={cn("size-[22px]", active && "stroke-[2.4]")}
+                />
+                <span className="flex-1">{item.label}</span>
+                {item.href === "/notifications" && <Badge count={unread} />}
+                {item.href === "/mod" && (
+                  <Badge count={modQueue ?? 0} label="waiting" />
+                )}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       <Button asChild variant="primary" size="lg" className="mt-6 w-full">
         <Link href="/new">
@@ -220,7 +227,7 @@ export function SideNav({
 
 export function MobileNav({ unread: serverUnread }: { unread: number }) {
   const isActive = useActive();
-  const unread = useUnread(serverUnread);
+  const unread = serverUnread;
   const pathname = usePathname();
   // Threads and the composer own the bottom of the screen.
   if (pathname.startsWith("/p/") || pathname === "/new") return null;

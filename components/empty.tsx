@@ -9,12 +9,17 @@ export function EmptyState({
   body,
   action = true,
   topic,
+  campus,
 }: {
   title: string;
   body: ReactNode;
   action?: boolean;
   topic?: string;
+  campus?: string;
 }) {
+  const params = new URLSearchParams();
+  if (topic) params.set("topic", topic);
+  if (campus) params.set("campus", campus);
   return (
     <div className="wallpaper flex min-h-[60dvh] flex-col items-center justify-center px-6 py-16 text-center">
       <div className="max-w-sm rounded-[28px] bg-surface px-6 py-7 shadow-soft ring-1 ring-line">
@@ -26,7 +31,7 @@ export function EmptyState({
         </p>
         {action && (
           <Button asChild variant="primary" className="mt-5">
-            <Link href={topic ? `/new?topic=${topic}` : "/new"}>
+            <Link href={params.size ? `/new?${params}` : "/new"}>
               <PenLine /> Start a thread
             </Link>
           </Button>

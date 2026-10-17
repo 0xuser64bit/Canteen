@@ -3,20 +3,25 @@
 import { Heart, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
-import { NOTIFICATIONS_READ } from "@/components/nav";
+import { useRouter } from "next/navigation";
 import { TimeAgo } from "@/components/time";
 import { cn } from "@/lib/utils";
 import { markNotificationsRead } from "@/server/actions";
 import type { NotificationItem } from "@/server/queries";
 
 export function NotificationList({ items }: { items: NotificationItem[] }) {
+  const router = useRouter();
   const hasUnread = items.some((item) => item.unread);
   useEffect(() => {
     if (!hasUnread) return;
-    markNotificationsRead().then(() =>
-      window.dispatchEvent(new Event(NOTIFICATIONS_READ)),
-    );
-  }, [hasUnread]);
+    markNotificationsRead(
+      items
+        .filter((item) => item.unread)
+        .map(({ id, revision }) => ({ id, revision })),
+    )
+      .then(() => router.refresh())
+      .catch(() => {});
+  }, [hasUnread, items, router]);
 
   return (
     <ul className="flex flex-col px-2 py-3 lg:px-3">
@@ -25,7 +30,11 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
         return (
           <li key={item.id}>
             <Link
-              href={`/p/${item.post.id}`}
+              href={
+                item.replyId
+                  ? `/p/${item.post.id}?reply=${item.replyId}#reply-${item.replyId}`
+                  : `/p/${item.post.id}`
+              }
               className="flex items-start gap-3.5 rounded-3xl px-3 py-3.5 transition-colors hover:bg-surface-3"
             >
               <span

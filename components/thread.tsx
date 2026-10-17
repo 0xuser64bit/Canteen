@@ -10,6 +10,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   useEffect,
   useLayoutEffect,
@@ -34,12 +35,7 @@ import { Counter } from "@/components/ui/field";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
 import { LIMITS } from "@/lib/validation";
-import {
-  addComment,
-  recordView,
-  markHelpful,
-  loadEarlierReplies,
-} from "@/server/actions";
+import { addComment, recordView, markHelpful } from "@/server/actions";
 import type { Thread, ThreadComment } from "@/server/queries";
 
 type Reply = ThreadComment & { sending?: boolean };
@@ -238,6 +234,8 @@ function ReplyBar({
   onSend: (body: string) => Promise<boolean>;
 }) {
   const [body, setBody] = useState("");
+  const [failed, setFailed] = useState<string | null>(null);
+  const editor = useRef("");
   const [pending, startTransition] = useTransition();
   const form = useRef<HTMLFormElement>(null);
   const empty = body.trim().length === 0;
@@ -247,8 +245,23 @@ function ReplyBar({
     if (empty || pending || body.length > LIMITS.comment.max) return;
     const text = body;
     setBody("");
+    editor.current = "";
     startTransition(async () => {
-      if (!(await onSend(text))) setBody(text);
+      let sent = false;
+      try {
+        sent = await onSend(text);
+      } catch {
+        toast.error(
+          "Your reply wasn't sent. Check your connection and try again.",
+        );
+      }
+      if (!sent) {
+        if (editor.current === "") {
+          editor.current = text;
+          setBody(text);
+        } else
+          setFailed((previous) => (previous ? `${previous}\n\n${text}` : text));
+      }
     });
   };
 
@@ -272,6 +285,26 @@ function ReplyBar({
       onSubmit={submit}
       className="sticky bottom-0 z-20 border-t border-line bg-background/90 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:px-6"
     >
+      {failed !== null && (
+        <details className="mb-2 rounded-xl bg-surface-2 p-3 text-[13px]">
+          <summary>A previous reply wasn&apos;t sent</summary>
+          <p className="my-2 break-words whitespace-pre-wrap">{failed}</p>
+          <button
+            type="button"
+            className="cursor-pointer font-semibold underline"
+            onClick={() => {
+              const restored = editor.current
+                ? `${failed}\n\n${editor.current}`
+                : failed;
+              editor.current = restored;
+              setBody(restored);
+              setFailed(null);
+            }}
+          >
+            Restore with current draft
+          </button>
+        </details>
+      )}
       <div className="flex items-end gap-2 rounded-[26px] bg-surface p-1.5 ring-1 ring-line transition-shadow focus-within:ring-2 focus-within:ring-ink dark:focus-within:ring-you">
         <label htmlFor="reply" className="sr-only">
           Reply
@@ -280,7 +313,10 @@ function ReplyBar({
           id="reply"
           rows={1}
           value={body}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={(event) => {
+            editor.current = event.target.value;
+            setBody(event.target.value);
+          }}
           onKeyDown={onKeyDown}
           placeholder="Write a reply"
           maxLength={LIMITS.comment.max + 200}
@@ -307,23 +343,12 @@ function ReplyBar({
 
 export function ThreadView({ thread }: { thread: Thread }) {
   const router = useRouter();
-  const [history, setHistory] = useState<{
-    revision: number;
-    items: ThreadComment[];
-    cursor: string | null;
-  }>({ revision: thread.revision, items: [], cursor: thread.earlierCursor });
-  const older = history.revision === thread.revision ? history.items : [];
-  const earlierCursor =
-    history.revision === thread.revision
-      ? history.cursor
-      : thread.earlierCursor;
-  const [loadingEarlier, startEarlier] = useTransition();
   const [replies, addReply] = useOptimistic<Reply[], Reply>(
-    [...older, ...thread.comments].filter(
-      (reply, index, all) =>
-        all.findIndex((item) => item.id === reply.id) === index,
-    ),
-    (current, reply) => [...current, reply],
+    thread.comments,
+    (current, reply) =>
+      current.some((item) => item.id === reply.id)
+        ? current
+        : [...current, reply],
   );
 
   useEffect(() => {
@@ -372,18 +397,6 @@ export function ThreadView({ thread }: { thread: Thread }) {
     };
   }, [thread.id, thread.revision, thread.closed, router]);
 
-  const fetchEarlier = () =>
-    startEarlier(async () => {
-      if (!earlierCursor) return;
-      const result = await loadEarlierReplies(thread.id, earlierCursor);
-      if (!result.ok) return void toast.error(result.error);
-      setHistory({
-        revision: thread.revision,
-        items: [...result.data.items, ...older],
-        cursor: result.data.nextCursor,
-      });
-    });
-
   const send = async (body: string) => {
     // Same id for the optimistic bubble and the saved reply: React keeps the
     // node, so the rise animation isn't cut short when the server is fast.
@@ -401,6 +414,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
     });
     const result = await addComment(thread.id, body, id);
     if (!result.ok) toast.error(result.error);
+    else if (thread.historical) router.push(`/p/${thread.id}#reply-${id}`);
     return result.ok;
   };
 
@@ -440,6 +454,9 @@ export function ThreadView({ thread }: { thread: Thread }) {
                 <AliasName alias={thread.alias} className="shrink-0" />
               )}
               <span aria-hidden>·</span>
+              {thread.staff && thread.university.name !== "Canteen team" && (
+                <span className="font-semibold">Canteen team · </span>
+              )}
               <UniversityLabel university={thread.university} />
               <span aria-hidden>·</span>
               <TimeAgo date={thread.createdAt} className="shrink-0" />
@@ -508,7 +525,11 @@ export function ThreadView({ thread }: { thread: Thread }) {
                 />
               )}
               {thread.image && (
-                <PostImage image={thread.image} alt="" priority />
+                <PostImage
+                  image={thread.image}
+                  alt={thread.image.alt}
+                  priority
+                />
               )}
               <div className="-mx-2 mt-3 flex items-center gap-1">
                 <span
@@ -548,6 +569,31 @@ export function ThreadView({ thread }: { thread: Thread }) {
           <HelplineNote className="mx-auto mt-6 max-w-xl" />
         )}
 
+        {thread.helpfulReply && (
+          <section
+            aria-label="Helpful answer"
+            className="mt-6 rounded-2xl bg-surface p-4 ring-1 ring-line"
+          >
+            <h2 className="text-[14px] font-semibold">
+              <Check aria-hidden className="mr-1 inline size-4" /> Marked
+              helpful by the author
+            </h2>
+            <p className="mt-1 text-[13px] text-muted">
+              <AliasName alias={thread.helpfulReply.alias} />
+              {" · "}
+              <UniversityLabel university={thread.helpfulReply.university} />
+            </p>
+            <div className="mt-2 text-[15px] break-words whitespace-pre-wrap">
+              <Linkified text={thread.helpfulReply.body} />
+            </div>
+            <Link
+              href={`/p/${thread.id}?reply=${thread.helpfulReply.id}#reply-${thread.helpfulReply.id}`}
+              className="mt-3 inline-block text-[13px] font-semibold underline"
+            >
+              Read in conversation
+            </Link>
+          </section>
+        )}
         <div className="my-8 flex items-center gap-3 text-[12px] font-semibold text-muted">
           <span className="h-px flex-1 bg-line" />
           {replies.length === 0
@@ -556,17 +602,28 @@ export function ThreadView({ thread }: { thread: Thread }) {
           <span className="h-px flex-1 bg-line" />
         </div>
 
-        {earlierCursor && (
-          <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              disabled={loadingEarlier}
-              onClick={fetchEarlier}
-            >
-              {loadingEarlier ? "Loading…" : "Load earlier replies"}
+        <nav
+          aria-label="Reply pages"
+          className="mb-4 flex justify-center gap-3"
+        >
+          {thread.earlierCursor && (
+            <Button asChild variant="ghost">
+              <Link
+                href={`/p/${thread.id}?before=${encodeURIComponent(thread.earlierCursor)}`}
+                scroll={false}
+              >
+                Earlier replies
+              </Link>
             </Button>
-          </div>
-        )}
+          )}
+          {thread.historical && (
+            <Button asChild variant="ghost">
+              <Link href={`/p/${thread.id}`} scroll={false}>
+                Latest replies
+              </Link>
+            </Button>
+          )}
+        </nav>
         <div role="list" aria-label="Replies">
           {replies.map((reply, index) => {
             const previous = replies[index - 1];
@@ -584,7 +641,12 @@ export function ThreadView({ thread }: { thread: Thread }) {
               next.createdAt.getTime() - reply.createdAt.getTime() <
                 GROUP_WINDOW_MS;
             return (
-              <div role="listitem" key={reply.id}>
+              <div
+                role="listitem"
+                key={reply.id}
+                id={`reply-${reply.id}`}
+                className="scroll-mt-24"
+              >
                 <ReplyBubble
                   reply={reply}
                   grouped={sameAsPrevious}

@@ -24,4 +24,33 @@ describe("saved drafts", () => {
       body,
     });
   });
+
+  it("recovers audience, opportunity, poll and retry context without trusting invalid enums", () => {
+    const draft = {
+      title: "An opportunity",
+      body: "Details",
+      kind: "DISCUSSION",
+      topic: "OPPORTUNITIES",
+      audience: "EVERYONE",
+      applicationUrl: "https://example.org/apply",
+      deadline: "2030-01-02T12:30",
+      poll: ["Yes", "No"],
+      submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      imageAlt: "Application details",
+    };
+    expect(parseDraft(JSON.stringify(draft))).toEqual(draft);
+    expect(
+      parseDraft(
+        JSON.stringify({
+          title: "Q",
+          body: "B",
+          audience: "ALL",
+          kind: {},
+          topic: "FAKE",
+          poll: [42],
+          submissionId: "bad",
+        }),
+      ),
+    ).toEqual({ title: "Q", body: "B" });
+  });
 });

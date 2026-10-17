@@ -6,6 +6,7 @@ import {
   PageHeader,
   TopicChips,
   QuestionFilter,
+  FeedControls,
 } from "@/components/page-header";
 import { requireViewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
@@ -22,14 +23,28 @@ export default async function CampusPage({
   searchParams,
 }: PageProps<"/campus">) {
   const viewer = await requireViewer();
-  const { topic: slug, unanswered: filter } = await searchParams;
+  const {
+    topic: slug,
+    unanswered: filter,
+    noReplies: repliesFilter,
+    sort: requestedSort,
+  } = await searchParams;
+  const noReplies = repliesFilter === "1";
   const unanswered = filter === "1";
+  const sort =
+    requestedSort === "closing" || requestedSort === "oldest"
+      ? requestedSort
+      : unanswered
+        ? "oldest"
+        : "newest";
   const topic = topicBySlug(typeof slug === "string" ? slug : undefined);
   const [page, university] = await Promise.all([
     getFeed(viewer, {
       scope: { kind: "campus" },
       topic: topic?.id,
       unanswered,
+      noReplies,
+      sort,
     }),
     getUniversityPage(viewer, viewer.university.slug),
   ]);
@@ -53,6 +68,13 @@ export default async function CampusPage({
           base="/campus"
           active={topic?.slug}
         />
+        <FeedControls
+          base="/campus"
+          topic={topic?.slug}
+          unanswered={unanswered}
+          noReplies={noReplies}
+          sort={sort}
+        />
       </PageHeader>
       {small && (
         <InviteCard
@@ -62,14 +84,16 @@ export default async function CampusPage({
         />
       )}
       <Feed
-        key={`${topic?.slug ?? "all"}:${unanswered}`}
+        key={`${topic?.slug ?? "all"}:${unanswered}:${noReplies}:${sort}`}
         unanswered={unanswered}
+        noReplies={noReplies}
+        sort={sort}
         initial={page}
         scope="campus"
         topic={topic?.slug}
         empty={
           <EmptyState
-            // The invite card above is this page's one yellow action until it unlocks.
+            // Keep one primary invitation while the campus is small.
             action={!small}
             title={
               unanswered ? "No questions waiting" : "Your campus is waiting"
@@ -77,7 +101,7 @@ export default async function CampusPage({
             body={
               unanswered
                 ? "Every question here has a helpful reply, or nobody has asked yet. Start with something you need help with."
-                : `Nobody from ${viewer.university.name} has posted${topic ? ` in ${topic.label}` : ""} yet. Posts set to "My campus" are only visible to your classmates.`
+                : `Nobody from ${viewer.university.name} has posted${topic ? ` in ${topic.label}` : ""} yet. Campus posts are visible to your university and explicitly assigned Canteen hosts.`
             }
             topic={topic?.slug}
           />

@@ -3,7 +3,7 @@
 import { Eye, Heart, Lock, MessageCircle, ShieldAlert } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
 import { PollView } from "@/components/poll";
@@ -44,27 +44,25 @@ export function LikeButton({
   count: number;
   onYellow?: boolean;
 }) {
-  const [state, setState] = useState({
-    liked: initialLiked,
-    count: initialCount,
-  });
-  const [, startTransition] = useTransition();
+  const [state, choose] = useOptimistic(
+    { liked: initialLiked, count: initialCount },
+    (current, liked: boolean) => ({
+      liked,
+      count: current.count + (Number(liked) - Number(current.liked)),
+    }),
+  );
+  const [pending, startTransition] = useTransition();
 
   const toggle = () => {
-    const previous = state;
-    const liked = !previous.liked;
-    setState({ liked, count: previous.count + (liked ? 1 : -1) });
+    if (pending) return;
+    const liked = !state.liked;
     startTransition(async () => {
-      const result = await setLike(postId, liked);
-      if (result.ok)
-        setState(
-          result.data.liked === liked
-            ? { liked, count: result.data.likeCount }
-            : previous,
-        );
-      else {
-        setState(previous);
-        toast.error(result.error);
+      choose(liked);
+      try {
+        const result = await setLike(postId, liked);
+        if (!result.ok) toast.error(result.error);
+      } catch {
+        toast.error("That like didn't go through. Try again.");
       }
     });
   };
@@ -73,6 +71,7 @@ export function LikeButton({
     <button
       type="button"
       onClick={toggle}
+      disabled={pending}
       aria-pressed={state.liked}
       aria-label={state.liked ? "Unlike" : "Like"}
       className={cn(
@@ -126,7 +125,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
               "flex shrink-0 items-center gap-1 text-[12px] font-semibold whitespace-nowrap",
               quiet,
             )}
-            title="Only students at this university can see this"
+            title="Visible to this university and explicitly assigned Canteen hosts; moderators can review reports"
           >
             <Lock className="size-3.5" /> Campus
           </span>
@@ -223,6 +222,9 @@ export function PostCard({
             <AliasName alias={post.alias} className="shrink-0" />
           )}
           <span aria-hidden>·</span>
+          {post.staff && post.university.name !== "Canteen team" && (
+            <span className="font-semibold">Canteen team · </span>
+          )}
           <UniversityLabel university={post.university} />
           <span aria-hidden>·</span>
           <TimeAgo date={post.createdAt} className="shrink-0" />
@@ -265,7 +267,7 @@ export function PostCard({
           {post.image && (
             <PostImage
               image={post.image}
-              alt=""
+              alt={post.image.alt}
               priority={priority}
               className="max-h-[420px]"
             />

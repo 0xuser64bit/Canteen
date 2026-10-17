@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/field";
 import { authClient } from "@/lib/auth-client";
+import { clearDrafts } from "@/lib/draft-storage";
 import { DELETE_CONFIRMATION } from "@/lib/validation";
 import { deleteAccount } from "@/server/actions";
 
@@ -31,6 +32,7 @@ export function SignOutButton() {
               toast.error("Couldn't sign out. Try again.");
               return;
             }
+            clearDrafts();
             router.replace("/");
             router.refresh();
           } catch {
@@ -47,6 +49,7 @@ export function SignOutButton() {
 }
 
 export function DeleteAccountButton() {
+  const router = useRouter();
   const [confirmation, setConfirmation] = useState("");
   const [pending, startTransition] = useTransition();
   const matches = confirmation.trim().toLowerCase() === DELETE_CONFIRMATION;
@@ -63,14 +66,23 @@ export function DeleteAccountButton() {
       </DialogTrigger>
       <DialogContent
         title="Delete your account?"
-        description="This permanently deletes your account and everything you posted: posts, replies, likes, and images. There's no undo."
+        description="This permanently deletes your account, posts, replies and likes. Images enter the erasure queue. There's no undo."
       >
         <form
           onSubmit={(event) => {
             event.preventDefault();
             startTransition(async () => {
-              const result = await deleteAccount(confirmation);
-              if (result && !result.ok) toast.error(result.error);
+              try {
+                const result = await deleteAccount(confirmation);
+                if (!result.ok) return void toast.error(result.error);
+                clearDrafts();
+                router.replace("/?deleted=1");
+                router.refresh();
+              } catch {
+                toast.error(
+                  "Couldn't confirm deletion. Check your connection and try again.",
+                );
+              }
             });
           }}
         >

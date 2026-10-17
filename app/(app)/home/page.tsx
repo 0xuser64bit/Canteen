@@ -6,6 +6,7 @@ import {
   PageHeader,
   TopicChips,
   QuestionFilter,
+  FeedControls,
 } from "@/components/page-header";
 import { requireViewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
@@ -20,14 +21,28 @@ export const metadata: Metadata = { title: "Everyone" };
 
 export default async function HomePage({ searchParams }: PageProps<"/home">) {
   const viewer = await requireViewer();
-  const { topic: slug, unanswered: filter } = await searchParams;
+  const {
+    topic: slug,
+    unanswered: filter,
+    noReplies: repliesFilter,
+    sort: requestedSort,
+  } = await searchParams;
+  const noReplies = repliesFilter === "1";
   const unanswered = filter === "1";
+  const sort =
+    requestedSort === "closing" || requestedSort === "oldest"
+      ? requestedSort
+      : unanswered
+        ? "oldest"
+        : "newest";
   const topic = topicBySlug(typeof slug === "string" ? slug : undefined);
   const [page, campusSize] = await Promise.all([
     getFeed(viewer, {
       scope: { kind: "everyone" },
       topic: topic?.id,
       unanswered,
+      noReplies,
+      sort,
     }),
     viewer.university.slug === TEAM.slug ? null : getCampusSize(viewer),
   ]);
@@ -45,6 +60,13 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
       >
         <QuestionFilter base="/home" active={unanswered} topic={topic?.slug} />
         <TopicChips unanswered={unanswered} base="/home" active={topic?.slug} />
+        <FeedControls
+          base="/home"
+          topic={topic?.slug}
+          unanswered={unanswered}
+          noReplies={noReplies}
+          sort={sort}
+        />
       </PageHeader>
       {campusSize !== null && campusSize < MIN_MEMBERS_TO_NAME_UNIVERSITY && (
         <InviteCard
@@ -55,8 +77,10 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         />
       )}
       <Feed
-        key={`${topic?.slug ?? "all"}:${unanswered}`}
+        key={`${topic?.slug ?? "all"}:${unanswered}:${noReplies}:${sort}`}
         unanswered={unanswered}
+        noReplies={noReplies}
+        sort={sort}
         initial={page}
         scope="everyone"
         topic={topic?.slug}

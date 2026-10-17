@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { Discover } from "@/components/discover";
+import { DraftBoundary } from "@/components/draft-boundary";
 import { MobileNav, SideNav } from "@/components/nav";
 import { SearchPalette } from "@/components/search";
 import { recordActivity } from "@/server/metrics";
-import { requireViewer } from "@/lib/session";
+import { getDraftOwner, requireViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
 import { getModQueueSize, getUnreadCount, isModerator } from "@/server/queries";
 
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1320px]">
+      <DraftBoundary owner={await getDraftOwner()} />
       <Suspense>
         <SideNav
           unread={unread}

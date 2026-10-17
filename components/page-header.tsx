@@ -5,6 +5,7 @@ import { LogoMark } from "@/components/logo";
 import { SearchButton } from "@/components/search-button";
 import { TOPICS } from "@/lib/topics";
 import { cn } from "@/lib/utils";
+import type { FeedSort } from "@/server/queries";
 
 /** Sticky "you are here" bar: names the place and stays put while content scrolls. */
 export function PageHeader({
@@ -115,6 +116,75 @@ export function QuestionFilter({
       >
         Needs an answer
       </Link>
+    </nav>
+  );
+}
+
+export function FeedControls({
+  base,
+  topic,
+  unanswered,
+  noReplies,
+  sort,
+  collection,
+}: {
+  base: "/campus" | "/home" | "/me";
+  topic?: string;
+  unanswered?: boolean;
+  noReplies?: boolean;
+  sort: FeedSort;
+  collection?: string;
+}) {
+  const params = new URLSearchParams();
+  if (topic) params.set("topic", topic);
+  if (unanswered) params.set("unanswered", "1");
+  if (noReplies) params.set("noReplies", "1");
+  if (collection) params.set("collection", collection);
+  const link = (value: FeedSort, label: string) => {
+    const query = new URLSearchParams(params);
+    query.set("sort", value);
+    return (
+      <Link
+        key={value}
+        href={`${base}?${query}` as "/home"}
+        scroll={false}
+        aria-current={sort === value ? "page" : undefined}
+        className={cn(
+          "rounded-full px-3 py-1.5",
+          sort === value
+            ? "bg-ink font-semibold text-background"
+            : "text-muted hover:bg-surface-3",
+        )}
+      >
+        {label}
+      </Link>
+    );
+  };
+  const toggle = new URLSearchParams(params);
+  toggle.set("sort", sort);
+  if (noReplies) toggle.delete("noReplies");
+  else toggle.set("noReplies", "1");
+  return (
+    <nav
+      aria-label="Feed order"
+      className="flex flex-wrap items-center gap-2 px-4 pb-3 text-[13px] lg:px-6"
+    >
+      {link("newest", "Latest")}
+      {unanswered && link("oldest", "Oldest waiting")}
+      {topic === "opportunities" && link("closing", "Closing soon")}
+      {unanswered && (
+        <Link
+          href={`${base}?${toggle}` as "/campus"}
+          scroll={false}
+          aria-current={noReplies ? "page" : undefined}
+          className={cn(
+            "rounded-full px-3 py-1.5 ring-1 ring-line",
+            noReplies ? "bg-ink text-background" : "text-muted",
+          )}
+        >
+          No replies yet
+        </Link>
+      )}
     </nav>
   );
 }

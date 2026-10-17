@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   startTransition,
   useActionState,
@@ -23,37 +24,23 @@ import { Button } from "@/components/ui/button";
 import { DateTimeField } from "@/components/ui/datetime-field";
 import { Counter, FieldError } from "@/components/ui/field";
 import { parseLocalDateTime } from "@/lib/datetime";
-import { parseDraft, type Draft } from "@/lib/draft";
+import {
+  DRAFT_CHANGE,
+  DRAFT_OWNER_KEY,
+  ownsDraft,
+  readDraft,
+  writeDraft,
+} from "@/lib/draft-storage";
 import type { Audience, PostKind, Topic } from "@/lib/generated/prisma/enums";
 import { TOPICS } from "@/lib/topics";
 import { cn } from "@/lib/utils";
 import { LIMITS } from "@/lib/validation";
 import { createPost, type ComposeState } from "@/server/actions";
 
-const DRAFT_KEY = "canteen:draft";
-
 type PreparedImage = {
   file: File;
   preview: string;
 };
-
-function readDraft(): Draft {
-  try {
-    return parseDraft(localStorage.getItem(DRAFT_KEY));
-  } catch {
-    return { title: "", body: "" };
-  }
-}
-
-function writeDraft(draft: Draft | null) {
-  try {
-    if (draft && (draft.title || draft.body))
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    else localStorage.removeItem(DRAFT_KEY);
-  } catch {
-    // Storage can be unavailable (private mode); drafts are a convenience.
-  }
-}
 
 /**
  * Redraws the photo onto a canvas and exports a fresh file. The new file has
@@ -106,6 +93,38 @@ function Choice({
       type="button"
       role="radio"
       aria-checked={checked}
+      tabIndex={checked ? 0 : -1}
+      onKeyDown={(event) => {
+        const keys = [
+          "ArrowRight",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowUp",
+          "Home",
+          "End",
+        ];
+        if (!keys.includes(event.key)) return;
+        event.preventDefault();
+        const radios = [
+          ...event.currentTarget
+            .closest('[role="radiogroup"]')!
+            .querySelectorAll<HTMLButtonElement>('[role="radio"]'),
+        ];
+        const current = radios.indexOf(event.currentTarget);
+        const index =
+          event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? radios.length - 1
+              : (current +
+                  (event.key === "ArrowLeft" || event.key === "ArrowUp"
+                    ? -1
+                    : 1) +
+                  radios.length) %
+                radios.length;
+        radios[index]?.focus();
+        radios[index]?.click();
+      }}
       onClick={onSelect}
       className={cn(
         "flex shrink-0 cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold ring-1 transition-colors ring-inset",
@@ -121,14 +140,19 @@ function Choice({
 }
 
 export function Composer({
+  draftOwner,
   university,
   initialTopic,
   imagesEnabled,
+  hostCampus,
 }: {
+  draftOwner: string;
   university: string;
   initialTopic: Topic;
   imagesEnabled: boolean;
+  hostCampus?: string;
 }) {
+  const router = useRouter();
   const [state, dispatch, pending] = useActionState<ComposeState, FormData>(
     createPost,
     null,
@@ -141,10 +165,15 @@ export function Composer({
   const [applicationUrl, setApplicationUrl] = useState("");
   const [deadline, setDeadline] = useState("");
   const [image, setImage] = useState<PreparedImage | null>(null);
+  const [imageAlt, setImageAlt] = useState("");
+  const submissionId = useRef("");
   const [poll, setPoll] = useState<string[] | null>(null);
   const [imageError, setImageError] = useState<string>();
   const [preparing, setPreparing] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [invalidated, setInvalidated] = useState(false);
+  const invalidatedRef = useRef(false);
+  const [missingImage, setMissingImage] = useState(false);
   const restoreStarted = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -152,17 +181,97 @@ export function Composer({
   useEffect(() => {
     if (restoreStarted.current) return;
     restoreStarted.current = true;
-    const draft = readDraft();
+    const draft = readDraft(draftOwner, hostCampus);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage
     if (draft.title) setTitle(draft.title);
     if (draft.body) setBody(draft.body);
+    if (draft.kind) setKind(draft.kind);
+    if (draft.topic) setTopic(draft.topic);
+    if (draft.audience) setAudience(draft.audience);
+    if (draft.applicationUrl) setApplicationUrl(draft.applicationUrl);
+    if (draft.deadline) setDeadline(draft.deadline);
+    if (draft.poll) setPoll(draft.poll);
+    if (draft.imageAlt) setImageAlt(draft.imageAlt);
+    setMissingImage(!!draft.imageAlt);
+    submissionId.current = draft.submissionId ?? crypto.randomUUID();
     setRestored(true);
-  }, []);
+  }, [draftOwner, hostCampus]);
+
+  useEffect(() => {
+    const changed = (event: Event) => {
+      if (
+        event instanceof StorageEvent &&
+        event.key !== null &&
+        event.key !== DRAFT_OWNER_KEY
+      )
+        return;
+      if (!ownsDraft(draftOwner)) {
+        invalidatedRef.current = true;
+        setInvalidated(true);
+        setTitle("");
+        setBody("");
+        setKind("QUESTION");
+        setTopic(initialTopic);
+        setAudience("CAMPUS");
+        setApplicationUrl("");
+        setDeadline("");
+        setPoll(null);
+        setImage(null);
+        setImageAlt("");
+        setImageError(undefined);
+        setMissingImage(false);
+        setRestored(false);
+      }
+    };
+    window.addEventListener("storage", changed);
+    window.addEventListener(DRAFT_CHANGE, changed);
+    return () => {
+      window.removeEventListener("storage", changed);
+      window.removeEventListener(DRAFT_CHANGE, changed);
+    };
+  }, [draftOwner, hostCampus, initialTopic]);
 
   // Saves as you type, and again if the server rejects a submit (state changes).
   useEffect(() => {
-    if (restored) writeDraft({ title, body });
-  }, [title, body, state, restored]);
+    if (restored && !state?.postedId)
+      writeDraft(
+        draftOwner,
+        {
+          title,
+          body,
+          kind,
+          topic,
+          audience,
+          applicationUrl,
+          deadline,
+          poll,
+          imageAlt,
+          submissionId: submissionId.current,
+        },
+        hostCampus,
+      );
+  }, [
+    draftOwner,
+    hostCampus,
+    title,
+    body,
+    kind,
+    topic,
+    audience,
+    applicationUrl,
+    deadline,
+    poll,
+    imageAlt,
+    state,
+    restored,
+  ]);
+
+  useEffect(() => {
+    if (!state?.postedId) return;
+    writeDraft(draftOwner, null, hostCampus);
+    router.push(`/p/${state.postedId}`);
+    router.refresh();
+  }, [draftOwner, hostCampus, state?.postedId, router]);
 
   useEffect(
     () => () => void (image && URL.revokeObjectURL(image.preview)),
@@ -177,10 +286,17 @@ export function Composer({
     setPreparing(true);
     try {
       const prepared = await prepareImage(file);
+      if (invalidatedRef.current) {
+        URL.revokeObjectURL(prepared.preview);
+        return;
+      }
       if (prepared.file.size > LIMITS.imageBytes) {
         URL.revokeObjectURL(prepared.preview);
         setImageError("That image is too large even after compressing.");
-      } else setImage(prepared);
+      } else {
+        setImage(prepared);
+        setMissingImage(false);
+      }
     } catch {
       setImageError("We couldn't read that image. Try a JPEG or PNG.");
     } finally {
@@ -191,8 +307,11 @@ export function Composer({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    writeDraft(null); // a successful post navigates away; a failure re-saves via the effect
+    if (invalidatedRef.current || pending || preparing || !ready) return;
     const form = new FormData();
+    form.set("draftOwner", draftOwner);
+    form.set("id", submissionId.current);
+    if (hostCampus) form.set("hostCampus", hostCampus);
     form.set("title", title);
     form.set("body", body);
     form.set("kind", topic === "OPPORTUNITIES" ? "DISCUSSION" : kind);
@@ -206,6 +325,7 @@ export function Composer({
     poll?.forEach((choice) => form.append("pollChoice", choice));
     if (image) {
       form.set("image", image.file);
+      form.set("imageAlt", imageAlt);
     }
     startTransition(() => dispatch(form));
   };
@@ -220,9 +340,12 @@ export function Composer({
   const pollReady =
     choices.every(Boolean) && new Set(choices).size === choices.length;
   const ready =
+    restored &&
+    !invalidated &&
     title.trim().length >= LIMITS.title.min &&
     (body.trim().length > 0 || poll !== null) &&
     pollReady &&
+    (!image || imageAlt.trim().length > 0) &&
     (topic !== "OPPORTUNITIES" ||
       (applicationUrl.trim().length > 0 &&
         parseLocalDateTime(deadline) !== null)) &&
@@ -247,7 +370,15 @@ export function Composer({
         </Button>
       </header>
 
-      <div className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6">
+      {invalidated && (
+        <p role="status" className="px-4 py-3 text-[14px] text-muted lg:px-6">
+          Your session changed. Refresh this page before writing a new post.
+        </p>
+      )}
+      <fieldset
+        disabled={invalidated}
+        className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 lg:px-6"
+      >
         {topic !== "OPPORTUNITIES" && (
           <fieldset>
             <legend className="mb-2 text-[13px] font-semibold text-muted">
@@ -317,9 +448,13 @@ export function Composer({
               checked={audience === "CAMPUS"}
               onSelect={() => setAudience("CAMPUS")}
             >
-              <Lock className="size-4" /> Only {university}
+              <Lock className="size-4" /> {university} campus
             </Choice>
           </div>
+          <p className="mt-2 text-[12px] text-muted">
+            Campus posts include explicitly assigned Canteen hosts. Moderators
+            can review reported content.
+          </p>
         </fieldset>
 
         {topic === "OPPORTUNITIES" && (
@@ -455,12 +590,18 @@ export function Composer({
               </div>
             </fieldset>
           )}
+          {missingImage && !image && (
+            <p role="status" className="px-4 pb-3 text-[13px] text-muted">
+              Your text was restored. Reattach your image if you want to include
+              it.
+            </p>
+          )}
           {image && (
             <div className="relative mx-3 mb-3">
               {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
               <img
                 src={image.preview}
-                alt="Attached image preview"
+                alt={imageAlt || "Attached image preview"}
                 className="max-h-80 w-full rounded-2xl object-cover"
               />
               <button
@@ -471,6 +612,27 @@ export function Composer({
               >
                 <X className="size-4" />
               </button>
+              <label
+                htmlFor="image-alt"
+                className="mt-3 block text-[13px] font-semibold"
+              >
+                Describe the image
+              </label>
+              <textarea
+                id="image-alt"
+                value={imageAlt}
+                onChange={(event) => setImageAlt(event.target.value)}
+                required
+                maxLength={500}
+                aria-invalid={!!errors.imageAlt || undefined}
+                aria-describedby="image-alt-help image-alt-error"
+                className="mt-2 min-h-20 w-full rounded-xl bg-surface p-3 text-[16px] ring-1 ring-line"
+              />
+              <p id="image-alt-help" className="mt-1 text-[12px] text-muted">
+                Include the important information for someone who cannot see it.
+                Avoid identifying details.
+              </p>
+              <FieldError id="image-alt-error">{errors.imageAlt}</FieldError>
             </div>
           )}
           {(imagesEnabled || !poll || nearLimit) && (
@@ -482,13 +644,13 @@ export function Composer({
                     type="file"
                     accept="image/*"
                     disabled={preparing || pending}
-                    className="sr-only"
+                    className="peer sr-only"
                     id="image"
                     onChange={(event) => pickImage(event.target.files?.[0])}
                   />
                   <label
                     htmlFor="image"
-                    className="flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring"
+                    className="flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring hover:bg-surface-3 hover:text-ink"
                   >
                     {preparing ? (
                       <Loader2 className="size-[18px] animate-spin" />
@@ -537,7 +699,7 @@ export function Composer({
           Keep it kind: no names, no screenshots of private chats, no personal
           details.
         </p>
-      </div>
+      </fieldset>
     </form>
   );
 }

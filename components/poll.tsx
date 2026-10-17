@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { votePoll } from "@/server/actions";
@@ -20,20 +20,22 @@ export function PollView({
   poll: Poll;
   onYellow?: boolean;
 }) {
-  const [poll, setPoll] = useState(initial);
+  const [poll, choose] = useOptimistic(initial, (current, choice: string) => ({
+    ...current,
+    choice,
+  }));
   const [pending, startTransition] = useTransition();
   const revealed = poll.options.some((option) => option.votes !== null);
 
   const vote = (optionId: string) => {
     if (optionId === poll.choice || pending) return;
-    const previous = poll;
-    setPoll({ ...poll, choice: optionId });
     startTransition(async () => {
-      const result = await votePoll(postId, optionId);
-      if (result.ok) setPoll(result.data);
-      else {
-        setPoll(previous);
-        toast.error(result.error);
+      choose(optionId);
+      try {
+        const result = await votePoll(postId, optionId);
+        if (!result.ok) toast.error(result.error);
+      } catch {
+        toast.error("That vote didn't go through. Try again.");
       }
     });
   };
@@ -50,6 +52,7 @@ export function PollView({
           <button
             key={option.id}
             type="button"
+            disabled={pending}
             onClick={() => vote(option.id)}
             aria-pressed={chosen}
             className={cn(

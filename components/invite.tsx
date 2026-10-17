@@ -86,11 +86,11 @@ export function InviteCard({
 
   const left = goal - members;
   const headline = compact
-    ? `${left} more to unlock ${university}`
-    : `${left} more ${left === 1 ? "student" : "students"} to unlock ${university}`;
+    ? `${left} more to name ${university} across campuses`
+    : `${left} more ${left === 1 ? "student" : "students"} to name ${university} across campuses`;
   const invite = () =>
-    share("/", "Canteen", {
-      text: `I'm on Canteen, the anonymous group chat for verified students. ${left} more from ${university} and our campus unlocks.`,
+    share("/campus", "Canteen", {
+      text: `I'm on Canteen, with university-email sign-in and per-thread aliases. ${left} more from ${university} and our university can be named across campuses. Campus discussions already work.`,
       copied: "Invite copied. Paste it in your class chat.",
     });
 

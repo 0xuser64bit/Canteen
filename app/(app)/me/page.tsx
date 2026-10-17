@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DeleteAccountButton, SignOutButton } from "@/components/account";
 import { Feed } from "@/components/feed";
-import { PageHeader } from "@/components/page-header";
+import { FeedControls, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { requireViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
@@ -31,14 +31,24 @@ const joined = new Intl.DateTimeFormat("en", {
 });
 
 export default async function MePage({ searchParams }: PageProps<"/me">) {
-  const requested = (await searchParams).collection;
+  const {
+    collection: requested,
+    topic: requestedTopic,
+    sort: requestedSort,
+  } = await searchParams;
+  const opportunities = requestedTopic === "opportunities";
+  const sort = requestedSort === "closing" ? "closing" : "newest";
   const collection =
     requested === "saved" || requested === "following" ? requested : "mine";
   const viewer = await requireViewer();
   const isTeam = viewer.university.slug === TEAM.slug;
   const [stats, posts, modQueue] = await Promise.all([
     getAccountStats(viewer),
-    getFeed(viewer, { scope: { kind: collection } }),
+    getFeed(viewer, {
+      scope: { kind: collection },
+      topic: opportunities ? "OPPORTUNITIES" : undefined,
+      sort,
+    }),
     isModerator(viewer) ? getModQueueSize() : undefined,
   ]);
 
@@ -168,9 +178,35 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
               </Link>
             ))}
           </nav>
+          {collection === "saved" && (
+            <nav
+              aria-label="Saved content"
+              className="mb-3 flex gap-4 text-[13px]"
+            >
+              <Link className="underline" href="/me?collection=saved">
+                All saved posts
+              </Link>
+              <Link
+                className="underline"
+                href="/me?collection=saved&topic=opportunities&sort=closing"
+              >
+                Saved opportunities closing soon
+              </Link>
+            </nav>
+          )}
+          {opportunities && (
+            <FeedControls
+              base="/me"
+              collection={collection}
+              topic="opportunities"
+              sort={sort}
+            />
+          )}
           <div className="-mx-4 lg:-mx-6">
             <Feed
-              key={collection}
+              key={`${collection}:${opportunities}:${sort}`}
+              topic={opportunities ? "opportunities" : undefined}
+              sort={sort}
               initial={posts}
               scope={collection}
               empty={

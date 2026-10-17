@@ -22,12 +22,16 @@ export function Feed({
   scope,
   topic,
   unanswered,
+  noReplies,
+  sort,
   empty,
 }: {
   initial: FeedPage;
   scope: Scope;
   topic?: string;
   unanswered?: boolean;
+  noReplies?: boolean;
+  sort?: Parameters<typeof loadMore>[0]["sort"];
   empty: React.ReactNode;
 }) {
   const [more, setMore] = useState<PostSummary[]>([]);
@@ -48,7 +52,14 @@ export function Feed({
   const fetchNext = () => {
     if (!cursor || pending) return;
     startTransition(async () => {
-      const result = await loadMore({ scope, topic, cursor, unanswered });
+      const result = await loadMore({
+        scope,
+        topic,
+        cursor,
+        unanswered,
+        noReplies,
+        sort,
+      });
       if (!result.ok) return void toast.error(result.error);
       setMore((items) => [...items, ...result.data.items]);
       setCursor(result.data.nextCursor);

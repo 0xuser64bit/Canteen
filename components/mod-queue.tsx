@@ -92,7 +92,11 @@ function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
           </p>
         )}
         {item.image && (
-          <PostImage image={item.image} alt="" className="max-h-80" />
+          <PostImage
+            image={item.image}
+            alt={item.image.alt}
+            className="max-h-80"
+          />
         )}
       </div>
 

@@ -8,6 +8,8 @@ import {
   MailCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
+import Link from "next/link";
 import {
   useEffect,
   useRef,
@@ -78,10 +80,12 @@ export function SignIn({
   emailEnabled,
   googleEnabled,
   initialError,
+  returnTo = "/campus",
 }: {
   emailEnabled: boolean;
   googleEnabled: boolean;
   initialError?: string;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
@@ -137,16 +141,12 @@ export function SignIn({
                 "That code didn't match. Check the email and try again."),
         );
       }
-      router.replace("/campus");
+      router.replace(returnTo as Route);
       router.refresh();
     });
 
   const onEmailSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (hint?.name === null)
-      return setError(
-        "That doesn't look like a university email. Use the address your university gave you.",
-      );
     sendCode();
   };
 
@@ -155,8 +155,8 @@ export function SignIn({
       setError(undefined);
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/campus",
-        errorCallbackURL: "/join",
+        callbackURL: returnTo,
+        errorCallbackURL: `/join?next=${encodeURIComponent(returnTo)}`,
       });
     });
 
@@ -171,6 +171,12 @@ export function SignIn({
 
   return (
     <div className="flex flex-col gap-4">
+      <Link
+        href="/university-request"
+        className="text-[13px] text-muted underline"
+      >
+        University domain not recognized? Request a review
+      </Link>
       {error && (
         <p
           role="alert"

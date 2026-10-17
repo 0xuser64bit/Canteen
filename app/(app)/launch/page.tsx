@@ -3,11 +3,19 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { requireViewer } from "@/lib/session";
 import { getLaunchMetrics } from "@/server/metrics";
+import { getOperations } from "@/server/operations";
+import { DomainQueue } from "@/components/domain-queue";
+import { DateTime } from "@/components/time";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Campus launch" };
 
 export default async function LaunchPage() {
-  const rows = await getLaunchMetrics(await requireViewer());
+  const viewer = await requireViewer();
+  const [rows, operations] = await Promise.all([
+    getLaunchMetrics(viewer),
+    getOperations(viewer),
+  ]);
   if (!rows) notFound();
   return (
     <>
@@ -16,6 +24,94 @@ export default async function LaunchPage() {
         subtitle="Team only · aggregate measures, updated as students visit"
       />
       <div className="space-y-6 px-4 py-6 lg:px-6">
+        <Link href="/host" className="text-[14px] font-semibold underline">
+          Open assigned campus questions
+        </Link>
+        {operations && (
+          <section className="space-y-3 border-b border-line pb-6">
+            <h2 className="text-[18px] font-semibold">
+              Maintenance and review
+            </h2>
+            <p
+              className={
+                operations.stale
+                  ? "text-[14px] font-semibold text-danger"
+                  : "text-[14px] text-muted"
+              }
+            >
+              {operations.stale
+                ? "Maintenance needs attention: no successful run in the last 26 hours."
+                : "Scheduled maintenance has run within the last 26 hours."}
+            </p>
+            <dl className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-3">
+              <div>
+                <dt className="text-muted">Last successful run</dt>
+                <dd>
+                  {operations.lastSuccess ? (
+                    <DateTime date={operations.lastSuccess} />
+                  ) : (
+                    "No successful run recorded"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted">Last failed run</dt>
+                <dd>
+                  {operations.lastFailure ? (
+                    <DateTime date={operations.lastFailure} />
+                  ) : (
+                    "None recorded"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted">Deletion jobs due</dt>
+                <dd>{operations.due}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Oldest due job</dt>
+                <dd>
+                  {operations.oldestDue ? (
+                    <DateTime date={operations.oldestDue} />
+                  ) : (
+                    "No overdue jobs"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted">Deletion jobs with retries</dt>
+                <dd>{operations.retrying}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Unresolved reports / appeals</dt>
+                <dd>
+                  {operations.reports} / {operations.appeals}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted">Oldest unresolved report</dt>
+                <dd>
+                  {operations.oldestReport ? (
+                    <DateTime date={operations.oldestReport} />
+                  ) : (
+                    "None waiting"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted">Oldest unresolved appeal</dt>
+                <dd>
+                  {operations.oldestAppeal ? (
+                    <DateTime date={operations.oldestAppeal} />
+                  ) : (
+                    "None waiting"
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        )}
+        {operations && <DomainQueue requests={operations.domainRequests} />}
         <section>
           <h2 className="text-[18px] font-semibold">
             Are students getting useful help?

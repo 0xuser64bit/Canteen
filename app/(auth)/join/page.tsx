@@ -1,17 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { SignIn } from "@/components/sign-in";
 import { isEmailEnabled, isGoogleEnabled } from "@/lib/auth";
 import { getAccountViewer } from "@/lib/session";
+import { safeReturnTo } from "@/lib/return-to";
 
 export const metadata: Metadata = { title: "Join" };
 
 export default async function JoinPage({ searchParams }: PageProps<"/join">) {
   const account = await getAccountViewer();
-  if (account) redirect(account.bannedAt ? "/account-status" : "/campus");
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  const returnTo = safeReturnTo(next);
+  if (account)
+    redirect(account.bannedAt ? "/account-status" : (returnTo as Route));
 
   return (
     <main className="wallpaper flex min-h-dvh flex-col items-center px-4 py-8 sm:justify-center">
@@ -32,6 +35,7 @@ export default async function JoinPage({ searchParams }: PageProps<"/join">) {
           you.
         </p>
         <SignIn
+          returnTo={returnTo}
           emailEnabled={isEmailEnabled}
           googleEnabled={isGoogleEnabled}
           initialError={typeof error === "string" ? error : undefined}

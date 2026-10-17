@@ -31,8 +31,10 @@ export default function CommunityPage() {
           Students see a different alias for you in every thread. Your email,
           account identifier, saved posts and followed threads are not shared
           with other students. Small campuses are unnamed outside their own
-          campus until five members join. Campus-only posts and photos require
-          an authorized signed-in account.
+          campus until five members join. Campus-only posts and photos are
+          visible to your university and to explicitly assigned Canteen campus
+          hosts. Host contributions are labeled; other universities cannot load
+          these posts. Moderators can review reported content.
         </p>
       </section>
       <section>
@@ -43,13 +45,18 @@ export default function CommunityPage() {
           follows. The service can connect these records internally; per-thread
           aliases do not make the database anonymous. Moderation screens show
           content and appeals without author or reporter identities. Authorized
-          service operators have database access.
+          service operators have database access. Sign-in provider tokens, real
+          names and profile photos are not retained by Canteen.
         </p>
         <p className="mt-2 text-muted">
           One activity mark per account and UTC day supports aggregate campus
           measures. It contains no page history or text and expires after 90
           days. These measures stay within Canteen; no external analytics
-          service receives them.
+          service receives them. Publication limiter records contain account,
+          kind and time, expire after 24 hours, and are erased with the account.
+          Domain correction requests contain only a domain and official homepage
+          and expire after 90 days. Scheduled maintenance enforces these time
+          limits.
         </p>
       </section>
       <section>
@@ -57,11 +64,15 @@ export default function CommunityPage() {
           Protect yourself and others
         </h2>
         <p className="mt-2 text-muted">
-          Do not post names, contact details, identifying photos, harassment,
-          hate or scams. Text checks catch some contact details; they cannot
-          identify every personal detail. Photos lose location and camera
-          metadata, but faces, screenshots and the scene itself can identify
-          someone. Check what is visible before sharing.
+          Browser drafts belong to your current sign-in session and clear on
+          successful sign-out or account deletion. Draft text remains on this
+          device until then; someone with device access may be able to read it.
+          Image bytes are not saved in drafts. Do not post names, contact
+          details, identifying photos, harassment, hate or scams. Text checks
+          catch some contact details; they cannot identify every personal
+          detail. Photos lose location and camera metadata, but faces,
+          screenshots and the scene itself can identify someone. Check what is
+          visible before sharing.
         </p>
       </section>
       <section>

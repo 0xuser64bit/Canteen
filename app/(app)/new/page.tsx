@@ -1,16 +1,25 @@
 import type { Metadata } from "next";
 import { Composer } from "@/components/composer";
-import { requireViewer } from "@/lib/session";
+import { getDraftOwner, requireViewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
+import { notFound } from "next/navigation";
 
 export const metadata: Metadata = { title: "New post" };
 
 export default async function NewPostPage({ searchParams }: PageProps<"/new">) {
   const viewer = await requireViewer();
-  const { topic } = await searchParams;
+  const draftOwner = await getDraftOwner();
+  const { topic, campus } = await searchParams;
+  const hostCampus = campus
+    ? viewer.hostCampuses?.find((item) => item.slug === campus)
+    : undefined;
+  if (campus && !hostCampus) notFound();
   return (
     <Composer
-      university={viewer.university.name}
+      key={`${draftOwner}:${hostCampus?.slug ?? ""}`}
+      draftOwner={draftOwner}
+      university={hostCampus?.name ?? viewer.university.name}
+      hostCampus={hostCampus?.slug}
       initialTopic={
         topicBySlug(typeof topic === "string" ? topic : undefined)?.id ??
         "GENERAL"

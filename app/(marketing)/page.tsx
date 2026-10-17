@@ -159,9 +159,9 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
                 Choose who hears it.
               </h3>
               <p className="mt-3 max-w-[32rem] text-[17px] leading-relaxed text-muted">
-                Post to every university, or keep it between classmates.
-                Campus-only posts are invisible to everyone outside your
-                university.
+                Post to every university, or choose your campus. Campus posts
+                are visible to your university and explicitly assigned Canteen
+                hosts. Moderators can review reported content.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 rounded-[28px] bg-surface p-6 shadow-soft ring-1 ring-line">
@@ -169,7 +169,7 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
                 <Globe className="size-4" /> Every university
               </span>
               <span className="flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-[14px] font-semibold text-background">
-                <Lock className="size-4" /> Only Maplewood University
+                <Lock className="size-4" /> Maplewood campus
               </span>
             </div>
           </div>
