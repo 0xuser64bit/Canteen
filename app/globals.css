@@ -242,6 +242,17 @@
   }
 }
 
+/* The mark's conversation dots carry the only motion in the splash. */
+.brand-loader circle {
+  animation: typing 1.2s ease-in-out infinite;
+}
+.brand-loader circle:nth-of-type(2) {
+  animation-delay: 140ms;
+}
+.brand-loader circle:nth-of-type(3) {
+  animation-delay: 280ms;
+}
+
 @utility animate-bubble-pop {
   animation: bubble-pop 360ms var(--ease-out-expo) both;
   transform-origin: bottom right;
