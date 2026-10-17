@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import Link from "next/link";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import type { ReactNode } from "react";
 import { LogoMark } from "@/components/logo";
 import { SearchButton } from "@/components/search-button";
@@ -104,6 +104,7 @@ export function QuestionFilter({
     >
       <Link
         href={all}
+        scroll={false}
         aria-current={!active ? "page" : undefined}
         className={!active ? "font-bold text-ink" : "text-muted"}
       >
@@ -111,6 +112,7 @@ export function QuestionFilter({
       </Link>
       <Link
         href={`${base}?${params}` as "/campus"}
+        scroll={false}
         aria-current={active ? "page" : undefined}
         className={active ? "font-bold text-ink" : "text-muted"}
       >

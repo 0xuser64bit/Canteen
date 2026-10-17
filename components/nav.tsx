@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import Link from "next/link";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ComponentType, type SVGProps } from "react";
 import { Logo } from "@/components/logo";

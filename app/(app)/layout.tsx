@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { after } from "next/server";
 import { Discover } from "@/components/discover";
 import { DraftBoundary } from "@/components/draft-boundary";
 import { MobileNav, SideNav } from "@/components/nav";
@@ -10,7 +11,7 @@ import { getModQueueSize, getUnreadCount, isModerator } from "@/server/queries";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const viewer = await requireViewer();
-  await recordActivity(viewer);
+  after(() => recordActivity(viewer));
   const [unread, modQueue] = await Promise.all([
     getUnreadCount(viewer),
     isModerator(viewer) ? getModQueueSize() : undefined,
