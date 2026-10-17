@@ -8,6 +8,7 @@ import {
   Plus,
   School,
   Search,
+  Settings2,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -183,6 +184,12 @@ export function SideNav({
         </Link>
       </Button>
       <div className="mt-auto flex flex-col gap-3">
+        <Link
+          href="/settings"
+          className="flex min-h-11 items-center gap-3 rounded-2xl px-3.5 text-[14px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+        >
+          <Settings2 aria-hidden className="size-[18px]" /> Settings
+        </Link>
         <button
           type="button"
           onClick={openSearch}

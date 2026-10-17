@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeProvider, useTheme } from "next-themes";
+import { Tooltip } from "radix-ui";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
 import { PreferenceSync } from "@/components/preferences";
@@ -31,9 +32,11 @@ export function Providers({ children }: { children: ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <PreferenceSync />
-      {children}
-      <ThemedToaster />
+      <Tooltip.Provider delayDuration={250}>
+        <PreferenceSync />
+        {children}
+        <ThemedToaster />
+      </Tooltip.Provider>
     </ThemeProvider>
   );
 }

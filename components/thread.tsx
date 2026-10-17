@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
 import { HelplineNote } from "@/components/helpline";
 import { PollView } from "@/components/poll";
+import { reducedMotion } from "@/components/preferences";
 import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
@@ -103,7 +104,7 @@ function ReplyBubble({
     // Jump to the newest message first (chat apps do), so the bubble lands
     // just above the composer instead of behind it.
     window.scrollTo({ top: document.documentElement.scrollHeight });
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (reducedMotion()) return;
     const composer = document
       .getElementById(REPLY_BAR_ID)
       ?.getBoundingClientRect();

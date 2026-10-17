@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowUp, Lock } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
+import { useReducedMotion } from "@/components/preferences";
 import { AliasAvatar, AliasName } from "@/components/alias";
 import { cn } from "@/lib/utils";
 
@@ -44,20 +45,6 @@ const SCRIPT: Line[] = [
     text: "Okay, this thread helped more than my advisor did.",
   },
 ];
-
-const subscribeMotion = (onChange: () => void) => {
-  const query = matchMedia("(prefers-reduced-motion: reduce)");
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-};
-
-function useReducedMotion() {
-  return useSyncExternalStore(
-    subscribeMotion,
-    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => false,
-  );
-}
 
 function Typing({ line }: { line: Line }) {
   return (

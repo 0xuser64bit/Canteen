@@ -3,15 +3,12 @@ import {
   EyeOff,
   ImageOff,
   ShieldCheck,
+  Settings2,
   Shuffle,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  DeleteAccountButton,
-  SignOutButton,
-  ThemeChooser,
-} from "@/components/account";
+import { DeleteAccountButton, SignOutButton } from "@/components/account";
 import { Feed } from "@/components/feed";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -136,15 +133,13 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
         <Link href="/community" className="text-[14px] font-semibold underline">
           Community rules and how your data is used
         </Link>
-        <section
-          aria-labelledby="appearance"
-          className="flex flex-wrap items-center justify-between gap-3"
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-4 text-[15px] font-semibold ring-1 ring-line transition-colors hover:bg-surface-2"
         >
-          <h2 id="appearance" className="text-[15px] font-bold">
-            Appearance
-          </h2>
-          <ThemeChooser />
-        </section>
+          <Settings2 aria-hidden className="size-5" />
+          Settings & appearance
+        </Link>
 
         <section aria-labelledby="your-posts">
           <h2 id="your-posts" className="text-[15px] font-bold">

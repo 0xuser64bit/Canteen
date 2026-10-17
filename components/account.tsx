@@ -1,9 +1,8 @@
 "use client";
 
-import { LogOut, Monitor, Moon, Sun, Trash2 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { LogOut, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,52 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/field";
 import { authClient } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
 import { DELETE_CONFIRMATION } from "@/lib/validation";
 import { deleteAccount } from "@/server/actions";
-
-const noop = () => () => {};
-
-export function ThemeChooser() {
-  const { theme, setTheme } = useTheme();
-  // The stored theme only exists in the browser; render neutral on the server.
-  const hydrated = useSyncExternalStore(
-    noop,
-    () => true,
-    () => false,
-  );
-  const options = [
-    { id: "system", label: "Auto", icon: Monitor },
-    { id: "light", label: "Light", icon: Sun },
-    { id: "dark", label: "Dark", icon: Moon },
-  ];
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Theme"
-      className="inline-flex rounded-full bg-surface-2 p-1 ring-1 ring-line"
-    >
-      {options.map((option) => {
-        const checked = hydrated && theme === option.id;
-        return (
-          <button
-            key={option.id}
-            type="button"
-            role="radio"
-            aria-checked={checked}
-            onClick={() => setTheme(option.id)}
-            className={cn(
-              "flex h-9 cursor-pointer items-center gap-2 rounded-full px-3.5 text-[13px] font-semibold text-muted transition-colors hover:text-ink",
-              checked && "bg-surface text-ink shadow-soft ring-1 ring-line",
-            )}
-          >
-            <option.icon className="size-4" /> {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function SignOutButton() {
   const router = useRouter();
