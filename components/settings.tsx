@@ -54,7 +54,7 @@ function Choices({
               onChange={() => onChange(option.id)}
               className="peer sr-only"
             />
-            <span className="flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 text-[13px] font-semibold text-muted ring-1 ring-line transition-colors ring-inset peer-checked:bg-ink peer-checked:text-background peer-checked:ring-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring hover:text-ink">
+            <span className="flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 text-[13px] font-semibold text-muted ring-1 ring-line transition-colors ring-inset peer-checked:bg-ink peer-checked:text-background peer-checked:ring-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring hover:text-ink peer-checked:hover:text-background">
               {option.label}
             </span>
           </label>
