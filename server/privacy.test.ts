@@ -106,7 +106,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "Maintenance", "UniversityRequest", "Publication", "DailyActivity", "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
+      'TRUNCATE "Maintenance", "SignInBudget", "UniversityRequest", "Publication", "DailyActivity", "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -1319,6 +1319,16 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
           },
         ],
       });
+      await db.signInBudget.createMany({
+        data: [
+          {
+            key: "try:lapsed",
+            count: 4,
+            windowStart: new Date(Date.now() - 61 * 60_000),
+          },
+          { key: "try:current", count: 4, windowStart: new Date() },
+        ],
+      });
       const request = () =>
         new Request("http://localhost/api/maintenance", {
           headers: { authorization: "Bearer a-test-secret" },
@@ -1330,6 +1340,9 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       ).not.toBeNull();
       expect(await db.publication.count()).toBe(1);
       expect(await db.rateLimit.count()).toBe(1);
+      expect(
+        (await db.signInBudget.findMany()).map((budget) => budget.key),
+      ).toEqual(["try:current"]);
       vi.spyOn(db.publication, "deleteMany").mockRejectedValueOnce(
         new Error("Database unavailable"),
       );
@@ -1568,6 +1581,96 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
           })
         ).status,
       ).toBe(200);
+    });
+
+    // A different code of the same length, whatever the real one is.
+    const wrong = (code: string) =>
+      (code.startsWith("0") ? "1" : "0").repeat(code.length);
+
+    it("caps codes per address, even across lockouts and cooldowns", async () => {
+      const email = "target@stanford.edu";
+      for (let sent = 0; sent < 5; sent++) {
+        await codeFor(email);
+        // Let the 30-second resend cooldown pass.
+        await db.verification.updateMany({
+          data: { updatedAt: new Date(Date.now() - 31_000) },
+        });
+      }
+      const response = await request("/email-otp/send-verification-otp", {
+        email,
+        type: "sign-in",
+      });
+      expect(response.status).toBe(429);
+      expect(await response.json()).toMatchObject({ code: "SIGN_IN_LIMIT" });
+      expect(sendSignInCode).toHaveBeenCalledTimes(5);
+      // Other addresses at the campus are unaffected.
+      await codeFor("someone-else@stanford.edu");
+    });
+
+    it("caps sign-in tries per address across fresh codes", async () => {
+      const email = "ada@stanford.edu";
+      let otp = await codeFor(email);
+      for (let tries = 0; tries < 5; tries++)
+        expect(
+          (await request("/sign-in/email-otp", { email, otp: wrong(otp) }))
+            .status,
+        ).toBe(400);
+      // Locked out; this used to clear the cooldown and allow five more guesses.
+      expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
+        403,
+      );
+      otp = await codeFor(email);
+      for (let tries = 0; tries < 4; tries++)
+        expect(
+          (await request("/sign-in/email-otp", { email, otp: wrong(otp) }))
+            .status,
+        ).toBe(400);
+      // The eleventh try in an hour is refused, even with the right code.
+      const response = await request("/sign-in/email-otp", { email, otp });
+      expect(response.status).toBe(429);
+      expect(await response.json()).toMatchObject({ code: "SIGN_IN_LIMIT" });
+      expect(await db.session.count()).toBe(0);
+    });
+
+    it("caps sign-in tries per campus, so random addresses can't be guessed into", async () => {
+      const email = "new-student@stanford.edu";
+      await db.signInBudget.create({
+        data: {
+          key: "try-campus:stanford.edu",
+          count: 300,
+          windowStart: new Date(),
+        },
+      });
+      const otp = await codeFor(email);
+      expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
+        429,
+      );
+      expect(await db.user.count({ where: { email } })).toBe(0);
+
+      // Other campuses are unaffected, and the budget renews after an hour.
+      const mit = await codeFor("new-student@mit.edu");
+      expect(
+        (
+          await request("/sign-in/email-otp", {
+            email: "new-student@mit.edu",
+            otp: mit,
+          })
+        ).status,
+      ).toBe(200);
+      await db.signInBudget.update({
+        where: { key: "try-campus:stanford.edu" },
+        data: { windowStart: new Date(Date.now() - 61 * 60_000) },
+      });
+      expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
+        200,
+      );
+    });
+
+    it("keeps no email address in sign-in budgets", async () => {
+      await codeFor("ada@stanford.edu");
+      const keys = (await db.signInBudget.findMany()).map(({ key }) => key);
+      expect(keys).toHaveLength(2);
+      expect(keys.join(" ")).not.toContain("ada");
     });
 
     it("allows verified suspended students a restricted session for appeals", async () => {

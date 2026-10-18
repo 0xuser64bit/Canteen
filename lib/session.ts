@@ -1,10 +1,10 @@
 import "server-only";
-import { createHmac } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { keyedHash } from "@/lib/pseudonym";
 import { safeReturnTo } from "@/lib/return-to";
 import { campusHostDomains } from "@/lib/campus-hosts";
 import { isTeamEmail, TEAM } from "@/lib/universities";
@@ -16,13 +16,7 @@ const getSession = cache(async () =>
 /** Opaque and session-scoped: a new sign-in cannot adopt an old browser draft. */
 export const getDraftOwner = cache(async () => {
   const session = await getSession();
-  if (!session) return "";
-  const secret = process.env.BETTER_AUTH_SECRET;
-  if (!secret && process.env.NODE_ENV === "production")
-    throw new Error("BETTER_AUTH_SECRET is required in production");
-  return createHmac("sha256", secret ?? "canteen-development-secret")
-    .update(`draft:${session.session.id}`)
-    .digest("hex");
+  return session ? keyedHash(`draft:${session.session.id}`) : "";
 });
 
 /**

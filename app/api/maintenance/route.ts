@@ -43,6 +43,9 @@ export async function GET(request: Request) {
     await db.rateLimit.deleteMany({
       where: { lastRequest: { lt: BigInt(Date.now() - 24 * 60 * 60_000) } },
     });
+    await db.signInBudget.deleteMany({
+      where: { windowStart: { lt: new Date(Date.now() - 60 * 60_000) } },
+    });
     await db.maintenance.update({
       where: { id: "scheduled" },
       data: { succeededAt: new Date() },

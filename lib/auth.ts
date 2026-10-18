@@ -7,6 +7,7 @@ import { emailOTP } from "better-auth/plugins/email-otp";
 import { db } from "@/lib/db";
 import { sendSignInCode } from "@/lib/email";
 import { withoutProviderTokens } from "@/lib/auth-privacy";
+import { keyedHash } from "@/lib/pseudonym";
 import {
   isTeamEmail,
   TEAM,
@@ -29,6 +30,34 @@ const RESEND_COOLDOWN_MS = 30_000;
 
 // Where Better Auth's email-otp plugin stores a sign-in code for an address.
 const codeIdentifier = (email: string) => `sign-in-otp-${email}`;
+
+// Hourly budgets. Each code allows five guesses, and lockouts or new IP
+// addresses used to reset that; these bound guessing for an address and campus.
+const SIGN_IN_BUDGET = {
+  codesPerAddress: 5,
+  codesPerCampus: 300,
+  triesPerAddress: 10,
+  triesPerCampus: 300,
+};
+
+const SIGN_IN_LIMIT = {
+  code: "SIGN_IN_LIMIT",
+  message: "Too many sign-in attempts for now. Try again in an hour.",
+};
+
+/** Spends one attempt from an hourly budget; false once it's used up. */
+async function spend(key: string, limit: number) {
+  const now = new Date();
+  const lapsed = new Date(now.getTime() - 60 * 60_000);
+  const [budget] = await db.$queryRaw<{ count: number }[]>`
+    INSERT INTO "SignInBudget" ("key", "count", "windowStart") VALUES (${key}, 1, ${now})
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE WHEN "SignInBudget"."windowStart" <= ${lapsed} THEN 1 ELSE "SignInBudget"."count" + 1 END,
+      "windowStart" = CASE WHEN "SignInBudget"."windowStart" <= ${lapsed} THEN ${now} ELSE "SignInBudget"."windowStart" END
+    RETURNING "count"
+  `;
+  return budget !== undefined && budget.count <= limit;
+}
 
 function baseURL(): BetterAuthOptions["baseURL"] {
   if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
@@ -196,11 +225,32 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/email-otp/send-verification-otp") return;
+      if (
+        ctx.path !== "/email-otp/send-verification-otp" &&
+        ctx.path !== "/sign-in/email-otp"
+      )
+        return;
 
       const body = ctx.body as { email?: unknown; type?: unknown } | undefined;
       const email =
         typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+      const university = universityForSignIn(email);
+      const address = keyedHash(`sign-in:${email}`);
+
+      if (ctx.path === "/sign-in/email-otp") {
+        // The address budget goes first, so one address can't drain its campus.
+        if (
+          !(await spend(`try:${address}`, SIGN_IN_BUDGET.triesPerAddress)) ||
+          (university &&
+            !(await spend(
+              `try-campus:${university.domain}`,
+              SIGN_IN_BUDGET.triesPerCampus,
+            )))
+        )
+          throw APIError.from("TOO_MANY_REQUESTS", SIGN_IN_LIMIT);
+        return;
+      }
+
       if (body?.type !== "sign-in") {
         throw APIError.from("BAD_REQUEST", {
           code: "UNSUPPORTED_OTP_TYPE",
@@ -208,7 +258,7 @@ export const auth = betterAuth({
         });
       }
       // Never send mail to addresses that can't join.
-      if (!universityForSignIn(email)) {
+      if (!university) {
         throw APIError.from("BAD_REQUEST", UNIVERSITY_EMAIL_REQUIRED);
       }
       // Per-address cooldown; the IP rate limit alone can't stop inbox flooding
@@ -227,6 +277,14 @@ export const auth = betterAuth({
             "We just sent you a code. Give it a few seconds before asking again.",
         });
       }
+      if (
+        !(await spend(`code:${address}`, SIGN_IN_BUDGET.codesPerAddress)) ||
+        !(await spend(
+          `code-campus:${university.domain}`,
+          SIGN_IN_BUDGET.codesPerCampus,
+        ))
+      )
+        throw APIError.from("TOO_MANY_REQUESTS", SIGN_IN_LIMIT);
     }),
     // The plugin reports success even when sending failed, because Better Auth
     // only logs a sender's error. The sender deletes an undelivered code, so a

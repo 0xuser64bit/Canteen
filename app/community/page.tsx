@@ -54,9 +54,11 @@ export default function CommunityPage() {
           days. These measures stay within Canteen; no external analytics
           service receives them. Publication limiter records contain account,
           kind and time, expire after 24 hours, and are erased with the account.
-          Domain correction requests contain only a domain and official homepage
-          and expire after 90 days. Scheduled maintenance enforces these time
-          limits.
+          Email sign-in attempt counters hold a one-way hash of the address or a
+          campus domain, never the address or code, and are removed once their
+          hour has passed. Domain correction requests contain only a domain and
+          official homepage and expire after 90 days. Scheduled maintenance
+          enforces these time limits.
         </p>
       </section>
       <section>

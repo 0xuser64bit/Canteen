@@ -96,6 +96,15 @@ model RateLimit {
   lastRequest BigInt
 }
 
+// Hourly email-code sign-in budgets, keyed by a keyed hash of the address or by
+// campus domain. No address, code or network detail; maintenance removes rows
+// once their hour has passed. (Better Auth prunes RateLimit within a minute.)
+model SignInBudget {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+}
+
 // ---------------------------------------------------------------------------
 // Canteen
 // ---------------------------------------------------------------------------

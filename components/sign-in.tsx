@@ -29,6 +29,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     "That account isn't from a university we recognize. Use the Google account your university gave you.",
   account_not_linked: "That email is already linked to another sign-in method.",
   ACCOUNT_SUSPENDED: "This account was suspended for breaking Canteen's rules.",
+  SIGN_IN_LIMIT: "Too many sign-in attempts for now. Try again in an hour.",
 };
 
 function GoogleIcon() {
@@ -138,7 +139,9 @@ export function SignIn({
             : error.code === "OTP_EXPIRED"
               ? "That code expired. Ask for a new one."
               : ((error.code && ERROR_MESSAGES[error.code]) ??
-                "That code didn't match. Check the email and try again."),
+                (error.status === 429
+                  ? "Too many tries in a row. Wait a minute, then try again."
+                  : "That code didn't match. Check the email and try again.")),
         );
       }
       router.replace(returnTo as Route);

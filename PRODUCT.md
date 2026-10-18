@@ -42,7 +42,7 @@ University-email verification with per-thread aliases. Other students see an ali
 - Community guidance explains verification, privacy limits, reporting, deletion and safe sharing. Campus launch prompts use actual campus membership rather than invented adoption claims.
 - Display settings let students choose color mode, one of six accents coordinated with the logo, quieter or vivid dark accents, reduced motion, plain or doodle wallpaper, and local timestamp and clock formats. Preferences apply immediately in this browser; they do not sync to the account. Reset changes display settings only.
 - Real-name and profile-photo fields remain empty; provider tokens are discarded after sign-in. There are no public profiles or follower counts.
-- Publication limiter events contain only account, kind and time, survive content erasure for the quota window, expire after 24 hours through maintenance and are erased with the account. Maintenance also expires domain requests after 90 days and exposes its success/failure heartbeat to the team.
+- Publication limiter events contain only account, kind and time, survive content erasure for the quota window, expire after 24 hours through maintenance and are erased with the account. Email sign-in codes have hourly per-address and per-campus budgets keyed without storing the address. Maintenance also expires domain requests after 90 days and exposes its success/failure heartbeat to the team.
 - Universities come from a bundled dataset of about 10,000 institutions and their email domains. A campus starts when its first member joins, with cross-campus visibility restricted until five members join.
 
 ## Brand Commitments

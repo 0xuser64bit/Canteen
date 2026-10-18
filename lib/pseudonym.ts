@@ -114,6 +114,11 @@ function secret() {
   return "canteen-development-secret";
 }
 
+/** A keyed one-way hash for server-side records that must not hold the raw value. */
+export function keyedHash(value: string) {
+  return createHmac("sha256", secret()).update(value).digest("hex");
+}
+
 /**
  * A stable alias for `userId` inside one thread, like "Quiet Otter".
  * The same student keeps one alias per post (so conversations stay readable)
