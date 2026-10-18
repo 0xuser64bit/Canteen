@@ -39,9 +39,12 @@ export function hasContactInfo(value: string) {
 }
 
 // Collapses runs of blank lines and trims, so "   " can't pass as content.
+// Raw input is capped first: the contact check is quadratic on long input,
+// and Zod still runs refinements after a failed .max().
 const text = (min: number, max: number, field: string) =>
   z
     .string()
+    .max(max * 2, `${field} can be at most ${max} characters.`)
     .transform((value) =>
       value
         .replace(/\r\n/g, "\n")

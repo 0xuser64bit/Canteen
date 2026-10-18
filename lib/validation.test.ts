@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CONTACT_INFO_MESSAGE,
+  appealInput,
   commentInput,
   hasContactInfo,
   postInput,
@@ -130,6 +131,34 @@ describe("commentInput", () => {
     });
     expect(reply.success).toBe(false);
     expect(reply.error?.issues[0]?.message).toBe(CONTACT_INFO_MESSAGE);
+  });
+
+  it("still accepts text that only fits once line endings are normalized", () => {
+    const body = `${"a\r\n\r\n\r\n".repeat(400)}a`; // 2801 raw characters
+    expect(commentInput.parse({ postId: "p", body }).body).toHaveLength(1201);
+  });
+});
+
+describe("oversized input", () => {
+  // The contact check is quadratic: 100k characters took seconds before the cap.
+  it("is rejected before contact checks run", () => {
+    const huge = "a".repeat(100_000);
+    const started = performance.now();
+    const results = [
+      commentInput.safeParse({ postId: "p", body: huge }),
+      postInput.safeParse({
+        title: "A fine title",
+        body: huge,
+        topic: "GENERAL",
+        audience: "EVERYONE",
+      }),
+      appealInput.safeParse({ id: "x", body: huge }),
+    ];
+    expect(performance.now() - started).toBeLessThan(500);
+    for (const result of results) {
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toMatch(/at most/);
+    }
   });
 });
 
