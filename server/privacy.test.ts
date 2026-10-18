@@ -1880,11 +1880,23 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       as("mod");
       expect((await reviewUniversityRequest(request.id, true)).ok).toBe(false);
       expect((await reviewUniversityRequest(request.id, false)).ok).toBe(true);
-      await db.rateLimit.update({
-        where: { key: "university-domain-requests" },
-        data: { count: 100 },
+
+      // The shared daily budget survives Better Auth pruning its RateLimit rows.
+      await db.universityRequest.createMany({
+        data: Array.from({ length: 99 }, (_, i) => ({
+          domain: `queued-${i}.example`,
+          website: `https://queued-${i}.example`,
+        })),
       });
+      form.set("domain", "one-more-campus.example");
+      form.set("website", "https://one-more-campus.example");
       expect(await requestUniversity(null, form)).toHaveProperty("error");
+      await db.rateLimit.deleteMany();
+      expect(await requestUniversity(null, form)).toHaveProperty("error");
+      await db.universityRequest.updateMany({
+        data: { createdAt: new Date(Date.now() - 25 * 60 * 60_000) },
+      });
+      expect(await requestUniversity(null, form)).toEqual({ ok: true });
     });
 
     it("is team-only and shows content, never identities", async () => {

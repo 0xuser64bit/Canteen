@@ -10,6 +10,8 @@ import { isModerator } from "@/server/queries";
 
 export type UniversityRequestState = { ok?: boolean; error?: string } | null;
 
+const DAILY_REQUESTS = 100;
+
 export async function requestUniversity(
   _: UniversityRequestState,
   form: FormData,
@@ -33,17 +35,14 @@ export async function requestUniversity(
     };
   try {
     return await db.$transaction(async (tx) => {
-      const now = BigInt(Date.now());
-      const cutoff = now - BigInt(24 * 60 * 60_000);
       // A bounded public queue budget; no email, IP address or account record.
-      const [budget] = await tx.$queryRaw<{ count: number }[]>`
-        INSERT INTO "RateLimit" ("id", "key", "count", "lastRequest") VALUES (${crypto.randomUUID()}, 'university-domain-requests', 1, ${now})
-        ON CONFLICT ("key") DO UPDATE SET
-          "count" = CASE WHEN "RateLimit"."lastRequest" < ${cutoff} THEN 1 ELSE "RateLimit"."count" + 1 END,
-          "lastRequest" = CASE WHEN "RateLimit"."lastRequest" < ${cutoff} THEN ${now} ELSE "RateLimit"."lastRequest" END
-        RETURNING "count"
-      `;
-      if (!budget || budget.count > 100)
+      // Counted from the queue itself: Better Auth prunes its RateLimit table
+      // within a minute, which would silently reset a counter kept there.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended('university-domain-requests', 0))::text`;
+      const today = await tx.universityRequest.count({
+        where: { createdAt: { gt: new Date(Date.now() - 24 * 60 * 60_000) } },
+      });
+      if (today >= DAILY_REQUESTS)
         return {
           error:
             "The review queue has received many requests today. Please try again tomorrow.",
