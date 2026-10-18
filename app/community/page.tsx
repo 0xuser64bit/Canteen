@@ -46,7 +46,9 @@ export default function CommunityPage() {
           aliases do not make the database anonymous. Moderation screens show
           content and appeals without author or reporter identities. Authorized
           service operators have database access. Sign-in provider tokens, real
-          names and profile photos are not retained by Canteen.
+          names and profile photos are not retained by Canteen. Sessions do not
+          record your IP address or device. Sign-in rate limits briefly keep
+          network addresses apart from accounts and delete them within a day.
         </p>
         <p className="mt-2 text-muted">
           One activity mark per account and UTC day supports aggregate campus

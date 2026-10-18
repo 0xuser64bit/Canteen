@@ -1329,6 +1329,25 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
           { key: "try:current", count: 4, windowStart: new Date() },
         ],
       });
+      const expired = new Date(Date.now() - 1_000);
+      const live = new Date(Date.now() + 60_000);
+      await db.session.createMany({
+        data: [
+          {
+            id: "expired",
+            token: "expired",
+            userId: "ada",
+            expiresAt: expired,
+          },
+          { id: "live", token: "live", userId: "ada", expiresAt: live },
+        ],
+      });
+      await db.verification.createMany({
+        data: [
+          { id: "expired", identifier: "a", value: "a", expiresAt: expired },
+          { id: "live", identifier: "b", value: "b", expiresAt: live },
+        ],
+      });
       const request = () =>
         new Request("http://localhost/api/maintenance", {
           headers: { authorization: "Bearer a-test-secret" },
@@ -1343,6 +1362,12 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(
         (await db.signInBudget.findMany()).map((budget) => budget.key),
       ).toEqual(["try:current"]);
+      expect((await db.session.findMany()).map(({ id }) => id)).toEqual([
+        "live",
+      ]);
+      expect((await db.verification.findMany()).map(({ id }) => id)).toEqual([
+        "live",
+      ]);
       vi.spyOn(db.publication, "deleteMany").mockRejectedValueOnce(
         new Error("Database unavailable"),
       );
@@ -1665,6 +1690,30 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
         200,
       );
+    });
+
+    it("keeps no network address or device description on sessions", async () => {
+      const email = "ada@stanford.edu";
+      const otp = await codeFor(email);
+      const response = await realAuth.handler(
+        new Request("http://localhost:3000/api/auth/sign-in/email-otp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Origin: "http://localhost:3000",
+            "x-forwarded-for": "198.51.100.23",
+            "user-agent":
+              "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+          },
+          body: JSON.stringify({ email, otp }),
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(
+        await db.session.findFirstOrThrow({
+          select: { ipAddress: true, userAgent: true },
+        }),
+      ).toEqual({ ipAddress: null, userAgent: null });
     });
 
     it("keeps no email address in sign-in budgets", async () => {

@@ -46,6 +46,12 @@ export async function GET(request: Request) {
     await db.signInBudget.deleteMany({
       where: { windowStart: { lt: new Date(Date.now() - 60 * 60_000) } },
     });
+    // Better Auth removes an expired session or code only when it is presented
+    // again; abandoned ones would otherwise stay until the account is erased.
+    await db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+    await db.verification.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
     await db.maintenance.update({
       where: { id: "scheduled" },
       data: { succeededAt: new Date() },

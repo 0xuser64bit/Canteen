@@ -177,6 +177,9 @@ export const auth = betterAuth({
             (user.university.slug === TEAM.slug && !isTeamEmail(user.email))
           )
             throw APIError.from("FORBIDDEN", UNIVERSITY_EMAIL_REQUIRED);
+          // Rate limits read the live request; a session keeps no network
+          // address or device description next to the account.
+          return { data: { ipAddress: null, userAgent: null } };
         },
       },
     },
