@@ -414,10 +414,10 @@ it("allows authorized staff OTP requests after an unrecognized university hint",
     type: "sign-in",
   });
   expect(container.textContent).toContain("staff@example.com");
-  await change("#code", "123456");
+  await change("#code", "12345678");
   expect(mocks.signIn).toHaveBeenCalledWith({
     email: "staff@example.com",
-    otp: "123456",
+    otp: "12345678",
   });
   expect(mocks.router.replace).toHaveBeenCalledWith("/p/shared-thread");
 });

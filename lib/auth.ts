@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { sendSignInCode } from "@/lib/email";
 import { withoutProviderTokens } from "@/lib/auth-privacy";
 import { keyedHash } from "@/lib/pseudonym";
+import { LIMITS } from "@/lib/validation";
 import {
   isTeamEmail,
   TEAM,
@@ -220,7 +221,7 @@ export const auth = betterAuth({
     storage: "database",
     customRules: {
       "/email-otp/send-verification-otp": { window: 60, max: 3 },
-      "/sign-in/email-otp": { window: 60, max: 10 },
+      "/sign-in/email-otp": { window: 60, max: 5 },
     },
   },
   hooks: {
@@ -309,7 +310,7 @@ export const auth = betterAuth({
   },
   plugins: [
     emailOTP({
-      otpLength: 6,
+      otpLength: LIMITS.signInCode,
       expiresIn: 10 * 60,
       allowedAttempts: 5,
       storeOTP: "hashed",

@@ -20,9 +20,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { authClient } from "@/lib/auth-client";
+import { LIMITS } from "@/lib/validation";
 import { lookupUniversity } from "@/server/actions";
 
 const RESEND_SECONDS = 30;
+const CODE_DIGITS = LIMITS.signInCode;
 
 const ERROR_MESSAGES: Record<string, string> = {
   UNIVERSITY_EMAIL_REQUIRED:
@@ -240,7 +242,7 @@ export function SignIn({
               </span>
             ) : (
               <span className="text-muted">
-                We&apos;ll email you a 6-digit code. No password needed.
+                We&apos;ll email you a sign-in code. No password needed.
               </span>
             )}
           </p>
@@ -260,7 +262,7 @@ export function SignIn({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (code.length === 6) verify(code);
+            if (code.length === CODE_DIGITS) verify(code);
           }}
           className="flex flex-col gap-3"
         >
@@ -273,7 +275,7 @@ export function SignIn({
             </span>
           </p>
           <label htmlFor="code" className="sr-only">
-            6-digit code
+            {CODE_DIGITS}-digit code
           </label>
           <Input
             ref={codeInput}
@@ -281,13 +283,15 @@ export function SignIn({
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]*"
-            maxLength={6}
-            placeholder="••••••"
+            maxLength={CODE_DIGITS}
+            placeholder={"•".repeat(CODE_DIGITS)}
             value={code}
             onChange={(event) => {
-              const digits = event.target.value.replace(/\D/g, "").slice(0, 6);
+              const digits = event.target.value
+                .replace(/\D/g, "")
+                .slice(0, CODE_DIGITS);
               setCode(digits);
-              if (digits.length === 6) verify(digits);
+              if (digits.length === CODE_DIGITS) verify(digits);
             }}
             className="h-16 text-center text-[28px] font-bold tracking-[0.45em] tabular"
           />
@@ -295,7 +299,7 @@ export function SignIn({
             type="submit"
             variant="primary"
             size="lg"
-            disabled={pending || code.length !== 6}
+            disabled={pending || code.length !== CODE_DIGITS}
           >
             {pending && <Loader2 className="animate-spin" />} Verify and enter
           </Button>

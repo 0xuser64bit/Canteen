@@ -20,7 +20,7 @@ University-email verification with per-thread aliases. Other students see an ali
 
 ## Operating Context
 
-- Sign in with a university Google account when configured, or a 6-digit email code (no passwords). Production email codes require an email provider key.
+- Sign in with a university Google account when configured, or an 8-digit email code (no passwords). Production email codes require an email provider key.
 - My campus is the signed-in starting point. Read by topic, oldest waiting, no replies, or Needs an answer; ask a question or start a conversation, reply, like, save privately, or follow replies. Question authors can mark another student's reply helpful and undo that choice.
 - Feeds: My campus (own university, including campus-only posts), Everyone (all universities), Opportunities (internships, jobs, hackathons, scholarships), and a page per visible university. New posts default to a campus-only question.
 - Thread replies update through periodic polling, with URL-backed earlier/latest reply pages that survive refresh and recheck visibility. Helpful answers and reply notifications link directly to their reading page. Notifications cover authors' replies and likes, plus reply alerts for followed threads, without exposing the actor's account identity.

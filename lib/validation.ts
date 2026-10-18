@@ -14,6 +14,8 @@ export const LIMITS = {
   pollChoices: { min: 2, max: 4 },
   imageBytes: 4 * 1024 * 1024,
   imageEdge: 2048,
+  // Digits in an email sign-in code: 100 million possibilities per code.
+  signInCode: 8,
 } as const;
 
 export const CONTACT_INFO_MESSAGE =

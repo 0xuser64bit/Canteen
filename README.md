@@ -71,7 +71,7 @@ bun run db:migrate
 bun run dev
 ```
 
-Open http://localhost:3000 and sign in with any address at a real university domain, such as `you@stanford.edu`. Without an email provider configured, the 6-digit code is printed in the terminal running `bun run dev`.
+Open http://localhost:3000 and sign in with any address at a real university domain, such as `you@stanford.edu`. Without an email provider configured, the 8-digit code is printed in the terminal running `bun run dev`.
 
 ### Configuration
 

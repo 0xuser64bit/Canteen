@@ -1493,6 +1493,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     it("verifies a university email without storing a name or photo", async () => {
       const email = "new-student@stanford.edu";
       const otp = await codeFor(email);
+      expect(otp).toMatch(/^\d{8}$/);
       const response = await request("/sign-in/email-otp", {
         email,
         otp,
@@ -1736,10 +1737,10 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     it("locks a code after five wrong guesses", async () => {
       const email = "ada@stanford.edu";
       const otp = await codeFor(email);
-      const wrong = otp === "000000" ? "111111" : "000000";
       for (let attempt = 0; attempt < 5; attempt++)
         expect(
-          (await request("/sign-in/email-otp", { email, otp: wrong })).status,
+          (await request("/sign-in/email-otp", { email, otp: wrong(otp) }))
+            .status,
         ).toBe(400);
       const response = await request("/sign-in/email-otp", { email, otp });
       expect(response.status).toBe(403);
