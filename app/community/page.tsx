@@ -41,14 +41,18 @@ export default function CommunityPage() {
         <h2 className="text-[20px] font-semibold">What Canteen stores</h2>
         <p className="mt-2 text-muted">
           Canteen stores your sign-in email, university, sessions, content and
-          account-linked activity needed for likes, views, reports, saves and
-          follows. The service can connect these records internally; per-thread
-          aliases do not make the database anonymous. Moderation screens show
-          content and appeals without author or reporter identities. Authorized
-          service operators have database access. Sign-in provider tokens, real
-          names and profile photos are not retained by Canteen. Sessions do not
-          record your IP address or device. Sign-in rate limits briefly keep
-          network addresses apart from accounts and delete them within a day.
+          account-linked activity needed for likes, poll votes, reports, saves
+          and follows. View counts keep a keyed one-way marker per thread
+          instead of your account, so there is no stored list of what you read;
+          only someone holding the server key could test one account against one
+          thread. The service can connect the other records internally;
+          per-thread aliases do not make the database anonymous. Moderation
+          screens show content and appeals without author or reporter
+          identities. Authorized service operators have database access. Sign-in
+          provider tokens, real names and profile photos are not retained by
+          Canteen. Sessions do not record your IP address or device. Sign-in
+          rate limits briefly keep network addresses apart from accounts and
+          delete them within a day.
         </p>
         <p className="mt-2 text-muted">
           One activity mark per account and UTC day supports aggregate campus

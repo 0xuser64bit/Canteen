@@ -605,8 +605,13 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     await actions.recordView(p.id);
     await actions.recordView(p.id);
     expect(await db.postView.count()).toBe(1);
-
+    // The marker can't be joined back to the student: no reading list is stored.
+    const marker = await db.postView.findFirstOrThrow();
+    expect(marker.viewer).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(marker)).not.toContain("grace");
     as("linus");
+    await actions.recordView(p.id);
+    expect(await db.postView.count()).toBe(2);
     await actions.setLike(p.id, true);
     await finishBackground();
     const notifications = await db.notification.findMany({

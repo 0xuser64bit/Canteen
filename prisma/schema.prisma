@@ -32,7 +32,6 @@ model User {
   posts           Post[]
   comments        Comment[]
   likes           Like[]
-  views           PostView[]
   reports         Report[]
   moderationCases ModerationCase[]
   notifications   Notification[]
@@ -269,17 +268,15 @@ model PollVote {
   @@index([optionId])
 }
 
-// One row per student who opened a post, so view counts can't be inflated by refreshing.
+// One marker per student who opened a post, so refreshing can't inflate view
+// counts. `viewer` is a keyed hash of account and post, never the account id,
+// so the database holds no reading list.
 model PostView {
-  createdAt DateTime @default(now())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewer String
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  @@id([userId, postId])
-  @@index([postId])
+  @@id([postId, viewer])
 }
 
 enum ReportReason {

@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { NotificationType, Topic } from "@/lib/generated/prisma/enums";
 import { preparePostImage } from "@/lib/images";
+import { keyedHash } from "@/lib/pseudonym";
 import {
   getViewer,
   getAccountViewer,
@@ -430,8 +431,9 @@ export async function recordView(postId: string): Promise<void> {
   if (!viewer) return;
   if (!idInput.safeParse(postId).success) return;
   if (!(await postVisibleTo(viewer, postId))) return;
+  // Counts each student once without storing who read what.
   await db.postView.createMany({
-    data: [{ userId: viewer.id, postId }],
+    data: [{ postId, viewer: keyedHash(`view:${viewer.id}:${postId}`) }],
     skipDuplicates: true,
   });
 }
