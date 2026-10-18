@@ -72,6 +72,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("next/server", () => ({
+  connection: async () => {},
   after: (task: Promise<unknown> | (() => unknown)) => {
     const pending = Promise.resolve().then(() =>
       typeof task === "function" ? task() : task,
@@ -1463,6 +1464,26 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         "maintenance failed",
       );
       alert.mockRestore();
+    });
+
+    it("reports maintenance health publicly, without details", async () => {
+      const { GET } = await import("@/app/api/health/route");
+      expect((await GET()).status).toBe(503);
+      await db.maintenance.create({
+        data: {
+          id: "scheduled",
+          startedAt: new Date(),
+          succeededAt: new Date(),
+        },
+      });
+      const healthy = await GET();
+      expect(healthy.status).toBe(200);
+      expect(await healthy.json()).toEqual({ maintenance: "ok" });
+      await db.maintenance.update({
+        where: { id: "scheduled" },
+        data: { succeededAt: new Date(Date.now() - 27 * 60 * 60_000) },
+      });
+      expect((await GET()).status).toBe(503);
     });
 
     it("rejects unauthenticated maintenance requests", async () => {

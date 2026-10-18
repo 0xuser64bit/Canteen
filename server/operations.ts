@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import type { Viewer } from "@/lib/session";
 import { isModerator, visibleTo } from "@/server/queries";
 
+/** A daily run plus slack: past this, maintenance counts as stale. */
+export const MAINTENANCE_STALE_MS = 26 * 60 * 60_000;
+
 /** Host-only waiting totals; small question groups are suppressed. */
 export async function getWaitingSummary(viewer: Viewer, universityId: string) {
   if (
@@ -75,7 +78,7 @@ export async function getOperations(viewer: Viewer) {
     lastFailure: maintenance?.failedAt ?? null,
     stale:
       !maintenance?.succeededAt ||
-      now.getTime() - maintenance.succeededAt.getTime() > 26 * 60 * 60_000,
+      now.getTime() - maintenance.succeededAt.getTime() > MAINTENANCE_STALE_MS,
     due,
     oldestDue: oldest?.dueAt ?? null,
     retrying,
