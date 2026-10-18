@@ -144,12 +144,14 @@ export function Composer({
   university,
   initialTopic,
   imagesEnabled,
+  emailEnabled,
   hostCampus,
 }: {
   draftOwner: string;
   university: string;
   initialTopic: Topic;
   imagesEnabled: boolean;
+  emailEnabled: boolean;
   hostCampus?: string;
 }) {
   const router = useRouter();
@@ -166,6 +168,7 @@ export function Composer({
   const [deadline, setDeadline] = useState("");
   const [image, setImage] = useState<PreparedImage | null>(null);
   const [imageAlt, setImageAlt] = useState("");
+  const [emailOnReply, setEmailOnReply] = useState(false);
   const submissionId = useRef("");
   const [poll, setPoll] = useState<string[] | null>(null);
   const [imageError, setImageError] = useState<string>();
@@ -192,6 +195,7 @@ export function Composer({
     if (draft.deadline) setDeadline(draft.deadline);
     if (draft.poll) setPoll(draft.poll);
     if (draft.imageAlt) setImageAlt(draft.imageAlt);
+    if (draft.emailOnReply) setEmailOnReply(true);
     setMissingImage(!!draft.imageAlt);
     submissionId.current = draft.submissionId ?? crypto.randomUUID();
     setRestored(true);
@@ -218,6 +222,7 @@ export function Composer({
         setPoll(null);
         setImage(null);
         setImageAlt("");
+        setEmailOnReply(false);
         setImageError(undefined);
         setMissingImage(false);
         setRestored(false);
@@ -246,6 +251,7 @@ export function Composer({
           deadline,
           poll,
           imageAlt,
+          emailOnReply,
           submissionId: submissionId.current,
         },
         hostCampus,
@@ -262,6 +268,7 @@ export function Composer({
     deadline,
     poll,
     imageAlt,
+    emailOnReply,
     state,
     restored,
   ]);
@@ -322,6 +329,8 @@ export function Composer({
       const date = parseLocalDateTime(deadline);
       form.set("deadline", date ? date.toISOString() : "");
     }
+    if (emailEnabled && emailOnReply && kind === "QUESTION")
+      form.set("emailOnReply", "on");
     poll?.forEach((choice) => form.append("pollChoice", choice));
     if (image) {
       form.set("image", image.file);
@@ -405,6 +414,25 @@ export function Composer({
             <p className="mt-2 text-[12px] text-muted">
               Questions stay open until you mark a helpful reply.
             </p>
+            {emailEnabled && kind === "QUESTION" && (
+              <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[13px]">
+                <input
+                  type="checkbox"
+                  checked={emailOnReply}
+                  onChange={(event) => setEmailOnReply(event.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-ink"
+                />
+                <span>
+                  <span className="font-semibold">
+                    Email me once when someone replies
+                  </span>
+                  <span className="block text-muted">
+                    One email to your sign-in address. It won&apos;t include
+                    your question or the reply.
+                  </span>
+                </span>
+              </label>
+            )}
           </fieldset>
         )}
         <fieldset className="min-w-0">

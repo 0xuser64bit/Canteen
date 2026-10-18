@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Composer } from "@/components/composer";
+import { isEmailEnabled } from "@/lib/auth";
 import { getDraftOwner, requireViewer } from "@/lib/session";
 import { topicBySlug } from "@/lib/topics";
 import { notFound } from "next/navigation";
@@ -25,6 +26,7 @@ export default async function NewPostPage({ searchParams }: PageProps<"/new">) {
         "GENERAL"
       }
       imagesEnabled={Boolean(process.env.BLOB_PRIVATE_READ_WRITE_TOKEN)}
+      emailEnabled={isEmailEnabled}
     />
   );
 }

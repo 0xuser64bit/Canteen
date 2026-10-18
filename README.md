@@ -36,6 +36,7 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - Campus invites: until five classmates join, a share link helps bring the rest in
 - Search across posts and universities (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd>)
 - Paginated notifications that acknowledge only delivered versions, with direct links to replies
+- An opt-in, one-time email when a question gets its first reply, without the question or reply text (when email is configured)
 - Campus-first navigation, oldest-waiting and no-reply question queues, author-marked helpful answers with direct navigation, and closing-soon saved opportunities
 - Explicitly assigned, labeled campus hosts and a private domain-only university correction queue
 - Account page with sign-out and full account deletion

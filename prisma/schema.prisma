@@ -176,6 +176,9 @@ model Post {
   deadline       DateTime?
   revision       Int            @default(0)
   kind           PostKind       @default(DISCUSSION)
+  // A question's author can ask for one email, without content, at the first reply.
+  emailOnReply   Boolean        @default(false)
+  replyEmailedAt DateTime?
   helpfulAnswer  HelpfulAnswer?
   topic          Topic          @default(GENERAL)
   audience       Audience       @default(EVERYONE)

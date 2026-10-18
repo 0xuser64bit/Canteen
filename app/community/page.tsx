@@ -55,6 +55,11 @@ export default function CommunityPage() {
           delete them within a day.
         </p>
         <p className="mt-2 text-muted">
+          If you ask to be emailed when someone replies to your question,
+          Canteen sends one email to your sign-in address with a link, never the
+          question or the reply.
+        </p>
+        <p className="mt-2 text-muted">
           One activity mark per account and UTC day supports aggregate campus
           measures. It contains no page history or text and expires after 90
           days. These measures stay within Canteen; no external analytics

@@ -15,7 +15,7 @@ import {
 } from "vitest";
 import { del, get, put } from "@vercel/blob";
 import sharp from "sharp";
-import { sendSignInCode } from "@/lib/email";
+import { sendReplyNotice, sendSignInCode } from "@/lib/email";
 import { getViewer } from "@/lib/session";
 import { TEAM } from "@/lib/universities";
 
@@ -60,7 +60,10 @@ vi.mock("@/lib/auth", () => ({
     },
   },
 }));
-vi.mock("@/lib/email", () => ({ sendSignInCode: vi.fn() }));
+vi.mock("@/lib/email", () => ({
+  sendSignInCode: vi.fn(),
+  sendReplyNotice: vi.fn(),
+}));
 vi.mock("next/cache", () => ({ refresh: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({
@@ -643,6 +646,52 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     });
     expect(notifications).toHaveLength(1);
     expect(Object.keys(notifications[0]!)).not.toContain("actorId");
+  });
+
+  it("emails a question's author once, without content, only when asked", async () => {
+    vi.mocked(sendReplyNotice).mockClear();
+    const ask = (kind: "QUESTION" | "DISCUSSION") => {
+      const form = new FormData();
+      for (const [key, value] of Object.entries({
+        title: "Which dorm is quietest?",
+        body: "Asking before housing opens",
+        topic: "CAMPUS_LIFE",
+        audience: "CAMPUS",
+        kind,
+        emailOnReply: "on",
+      }))
+        form.set(key, value);
+      return actions.createPost(null, form);
+    };
+    as("ada");
+    const { postedId } = (await ask("QUESTION")) as { postedId: string };
+    const conversation = (await ask("DISCUSSION")) as { postedId: string };
+    expect(
+      await db.post.findUniqueOrThrow({
+        where: { id: conversation.postedId },
+      }),
+    ).toMatchObject({ emailOnReply: false });
+
+    // The author's own reply doesn't count; the first reply from someone else does.
+    await actions.addComment(postedId, "Adding some context");
+    as("alan");
+    await actions.addComment(postedId, "The east dorms are quiet");
+    await actions.addComment(postedId, "Also the library annex");
+    await actions.addComment(conversation.postedId, "Hi");
+    await finishBackground();
+    expect(sendReplyNotice).toHaveBeenCalledOnce();
+    const [to, url] = vi.mocked(sendReplyNotice).mock.calls[0]!;
+    expect(to).toBe("ada@stanford.edu");
+    expect(url).toMatch(new RegExp(`^https?://[^/]+/p/${postedId}$`));
+  });
+
+  it("sends no reply email unless the author asked for one", async () => {
+    vi.mocked(sendReplyNotice).mockClear();
+    const p = await post("ada", { kind: "QUESTION" });
+    as("alan");
+    await actions.addComment(p.id, "A reply");
+    await finishBackground();
+    expect(sendReplyNotice).not.toHaveBeenCalled();
   });
 
   it("coalesces simultaneous likes into one unread notification", async () => {

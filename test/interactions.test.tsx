@@ -148,14 +148,49 @@ function deferred<T = unknown>() {
   });
   return { promise, resolve, reject };
 }
-const composer = () => (
+const composer = (emailEnabled = false) => (
   <Composer
     draftOwner="session-a"
     university="Stanford"
     initialTopic="GENERAL"
     imagesEnabled={false}
+    emailEnabled={emailEnabled}
   />
 );
+
+const replyEmail = () =>
+  document.querySelector<HTMLInputElement>("input[type=checkbox]");
+
+it("offers a question's one reply email only when email is configured", async () => {
+  mocks.create.mockResolvedValue({ postedId: "published-post" });
+  await render(composer());
+  expect(replyEmail()).toBeNull();
+  await render(composer(true));
+  await act(async () => replyEmail()!.click());
+  await change("#title", "A useful question");
+  await change("#body", "Some context");
+  await submit();
+  const form = mocks.create.mock.calls[0]![1] as FormData;
+  expect(form.get("kind")).toBe("QUESTION");
+  expect(form.get("emailOnReply")).toBe("on");
+});
+
+it("drops the reply email when a question becomes a conversation", async () => {
+  mocks.create.mockResolvedValue({ postedId: "published-post" });
+  await render(composer(true));
+  await act(async () => replyEmail()!.click());
+  const conversation = [
+    ...container.querySelectorAll<HTMLButtonElement>("button[role=radio]"),
+  ].find((button) => button.textContent === "Conversation")!;
+  await act(async () => conversation.click());
+  expect(replyEmail()).toBeNull();
+  await change("#title", "Let's talk");
+  await change("#body", "Some context");
+  await submit();
+  expect(
+    (mocks.create.mock.calls[0]![1] as FormData).get("emailOnReply"),
+  ).toBeNull();
+});
 
 it("recovers the same session after remount without adopting legacy text", async () => {
   localStorage.setItem(

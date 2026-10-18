@@ -8,6 +8,7 @@ import { campusHostDomains } from "@/lib/campus-hosts";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { NotificationType, Topic } from "@/lib/generated/prisma/enums";
+import { sendReplyNotice } from "@/lib/email";
 import { preparePostImage } from "@/lib/images";
 import {
   keyedHash,
@@ -20,6 +21,7 @@ import {
   getDraftOwner,
   type Viewer,
 } from "@/lib/session";
+import { siteUrl } from "@/lib/site";
 import { topicBySlug } from "@/lib/topics";
 import { findUniversityByEmail, TEAM } from "@/lib/universities";
 import {
@@ -321,6 +323,8 @@ export async function createPost(
           imageHeight,
           authorId: viewer.id,
           universityId: hostCampus?.id ?? viewer.university.id,
+          emailOnReply:
+            fields.kind === "QUESTION" && form.get("emailOnReply") === "on",
         },
         select: { id: true },
       });
@@ -459,7 +463,7 @@ export async function addComment(
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]!.message };
 
-  let result: ActionResult<{ authorId: string }>;
+  let result: ActionResult<{ authorId: string; emailAuthor: boolean }>;
   try {
     result = await db.$transaction(async (tx) => {
       const author = await lockAuthor(tx, viewer.id);
@@ -514,7 +518,17 @@ export async function addComment(
           continue;
         await notify(tx, recipient.id, postId, "COMMENT", comment.id);
       }
-      return ok(post);
+      // A question's one opt-in email, claimed here so retries and racing
+      // replies send it at most once.
+      const emailAuthor =
+        post.authorId !== viewer.id &&
+        (
+          await tx.post.updateMany({
+            where: { id: postId, emailOnReply: true, replyEmailedAt: null },
+            data: { replyEmailedAt: new Date() },
+          })
+        ).count === 1;
+      return ok({ authorId: post.authorId, emailAuthor });
     });
   } catch (error) {
     // P2002 is a reused client id; anything else is worth knowing about.
@@ -523,6 +537,20 @@ export async function addComment(
     return { ok: false, error: "That reply didn't go through. Try again." };
   }
   if (!result.ok) return result;
+  const { authorId, emailAuthor } = result.data;
+  if (emailAuthor)
+    after(async () => {
+      const author = await db.user.findUnique({
+        where: { id: authorId, bannedAt: null },
+        select: { email: true },
+      });
+      if (!author) return;
+      try {
+        await sendReplyNotice(author.email, `${siteUrl.origin}/p/${postId}`);
+      } catch {
+        console.error("Reply notice could not be sent");
+      }
+    });
   refresh();
   return ok(null);
 }

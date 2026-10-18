@@ -12,6 +12,7 @@ export type Draft = {
   poll?: string[] | null;
   submissionId?: string;
   imageAlt?: string;
+  emailOnReply?: boolean;
 };
 
 export function parseDraft(raw: string | null): Draft {
@@ -39,6 +40,9 @@ export function parseDraft(raw: string | null): Draft {
         ...(typeof context.submissionId === "string" &&
         /^[a-f0-9-]{36}$/i.test(context.submissionId)
           ? { submissionId: context.submissionId }
+          : {}),
+        ...(typeof context.emailOnReply === "boolean"
+          ? { emailOnReply: context.emailOnReply }
           : {}),
         ...(context.poll === null ||
         (Array.isArray(context.poll) &&
