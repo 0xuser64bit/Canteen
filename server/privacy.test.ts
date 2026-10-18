@@ -516,6 +516,30 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(thread!.comments[1]!.alias).toEqual(thread!.alias);
   });
 
+  it("leaves out a small campus's country when that would name the campus", async () => {
+    await db.university.create({
+      data: {
+        id: "u-luxembourg",
+        domain: "uni.lu",
+        slug: "university-of-luxembourg",
+        name: "University of Luxembourg",
+        country: "Luxembourg",
+        countryCode: "LU",
+      },
+    });
+    await db.user.create({
+      data: {
+        id: "lux",
+        email: "lux@uni.lu",
+        universityId: "u-luxembourg",
+        emailVerified: true,
+      },
+    });
+    const p = await post("lux");
+    const outsider = await queries.getThread(await viewer("grace"), p.id);
+    expect(outsider!.university).toEqual({ name: "A university", slug: null });
+  });
+
   it("names a university to outsiders only once it has enough members", async () => {
     const p = await post("ada");
     const outsider = await queries.getThread(await viewer("grace"), p.id);

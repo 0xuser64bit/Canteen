@@ -12,7 +12,7 @@ import type {
 } from "@/lib/generated/prisma/enums";
 import { pseudonym, type Pseudonym } from "@/lib/pseudonym";
 import type { Viewer } from "@/lib/session";
-import { isTeamEmail, TEAM } from "@/lib/universities";
+import { isTeamEmail, TEAM, universitiesInCountry } from "@/lib/universities";
 
 export const PAGE_SIZE = 20;
 
@@ -21,6 +21,12 @@ export const PAGE_SIZE = 20;
  * author down to a handful of people, so others see only the country.
  */
 export const MIN_MEMBERS_TO_NAME_UNIVERSITY = 5;
+
+/**
+ * In a country with fewer universities than this, "A university in <country>"
+ * would all but name the campus, so the label leaves the country out too.
+ */
+export const MIN_UNIVERSITIES_TO_NAME_COUNTRY = 10;
 
 const EXCERPT_LENGTH = 420;
 
@@ -83,12 +89,15 @@ function publicUniversity(
     university.id === viewer.university.id ||
     viewer.hostCampuses?.some((campus) => campus.id === university.id) ||
     university._count.users >= MIN_MEMBERS_TO_NAME_UNIVERSITY;
-  return nameable
-    ? { name: university.name, slug: university.slug }
-    : {
-        name: `A university in ${inCountry(university.countryCode)}`,
-        slug: null,
-      };
+  if (nameable) return { name: university.name, slug: university.slug };
+  return {
+    name:
+      universitiesInCountry(university.countryCode) >=
+      MIN_UNIVERSITIES_TO_NAME_COUNTRY
+        ? `A university in ${inCountry(university.countryCode)}`
+        : "A university",
+    slug: null,
+  };
 }
 
 // Keyset pagination: "<iso date>_<id>". Stable under inserts and deletes.

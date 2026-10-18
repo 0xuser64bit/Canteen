@@ -69,6 +69,21 @@ function index() {
   return byDomain;
 }
 
+let perCountry: Map<string, number> | undefined;
+
+/** How many dataset universities share a country code. */
+export function universitiesInCountry(countryCode: string) {
+  perCountry ??= (dataset as DatasetEntry[]).reduce(
+    (counts, entry) =>
+      counts.set(
+        entry.alpha_two_code,
+        (counts.get(entry.alpha_two_code) ?? 0) + 1,
+      ),
+    new Map<string, number>(),
+  );
+  return perCountry.get(countryCode) ?? 0;
+}
+
 /**
  * Staff accounts (TEAM_EMAILS) join this instead of a university. Everything
  * they post is labeled "Canteen team", so students can always tell it's staff.
