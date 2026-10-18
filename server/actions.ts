@@ -38,6 +38,7 @@ import {
   postInput,
   reportInput,
 } from "@/lib/validation";
+import { alertTeam } from "@/server/alerts";
 import * as queries from "@/server/queries";
 import {
   attachImage,
@@ -575,7 +576,7 @@ export async function reportContent(input: {
   if (item.authorId === viewer.id)
     return { ok: false, error: "You can delete your own content instead." };
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     // Match moderation's author lock; sorted acquisition also covers reporter suspension.
     const authors = await tx.$queryRaw<{ id: string; bannedAt: Date | null }[]>`
       SELECT "id", "bannedAt" FROM "User" WHERE "id" IN (${viewer.id}, ${item.authorId}) ORDER BY "id" FOR NO KEY UPDATE
@@ -595,14 +596,22 @@ export async function reportContent(input: {
           });
     if (!current) return NOT_FOUND;
     const key = target === "post" ? { postId: id } : { commentId: id };
-    await tx.report.createMany({
+    const { count: created } = await tx.report.createMany({
       data: [{ reporterId: viewer.id, reason, ...key }],
       skipDuplicates: true,
     });
     const reports = await tx.report.count({
       where: { ...key, resolvedAt: null },
     });
-    if (reports >= HIDE_AFTER_REPORTS) {
+    // Only the first open at-risk report on an item pages the team.
+    const atRisk =
+      created === 1 &&
+      reason === "SELF_HARM" &&
+      (await tx.report.count({
+        where: { ...key, resolvedAt: null, reason: "SELF_HARM" },
+      })) === 1;
+    const hidden = reports >= HIDE_AFTER_REPORTS;
+    if (hidden) {
       if (target === "post") {
         await tx.post.update({
           where: { id },
@@ -620,8 +629,24 @@ export async function reportContent(input: {
         });
       }
     }
-    return ok(null);
+    return ok({ atRisk, hidden });
   });
+  if (!result.ok) return result;
+  if (result.data.atRisk)
+    after(() =>
+      alertTeam(
+        "A report says someone may be at risk. Please review it now.",
+        "/mod",
+      ),
+    );
+  else if (result.data.hidden)
+    after(() =>
+      alertTeam(
+        "Reports hid a post or reply. It stays hidden until the team decides.",
+        "/mod",
+      ),
+    );
+  return ok(null);
 }
 
 /** Decisions preserve the content for its author's appeal; author deletion still erases it. */
@@ -775,6 +800,7 @@ export async function submitAppeal(
       ok: false,
       error: "That decision is unavailable or already appealed.",
     };
+  after(() => alertTeam("An appeal is waiting for a decision.", "/mod"));
   refresh();
   return ok(null);
 }

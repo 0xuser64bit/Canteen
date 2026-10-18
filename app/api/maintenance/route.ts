@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { timingSafeEqual } from "node:crypto";
+import { alertTeam } from "@/server/alerts";
 import { migrateLegacyImages, processImageDeletions } from "@/server/media";
 
 export const maxDuration = 60;
@@ -69,6 +70,10 @@ export async function GET(request: Request) {
       data: { failedAt: new Date() },
     });
     console.error("Scheduled maintenance failed");
+    await alertTeam(
+      "Scheduled maintenance failed. Check operations.",
+      "/launch",
+    );
     return Response.json(
       {
         error:

@@ -1376,11 +1376,20 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       vi.spyOn(db.publication, "deleteMany").mockRejectedValueOnce(
         new Error("Database unavailable"),
       );
+      vi.stubEnv("OPS_ALERT_WEBHOOK_URL", "https://hooks.example.test/ops");
+      const alert = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response(null, { status: 200 }));
       expect((await GET(request())).status).toBe(503);
       expect(
         (await db.maintenance.findUniqueOrThrow({ where: { id: "scheduled" } }))
           .failedAt,
       ).not.toBeNull();
+      expect(alert).toHaveBeenCalledOnce();
+      expect(String(alert.mock.calls[0]![1]?.body)).toContain(
+        "maintenance failed",
+      );
+      alert.mockRestore();
     });
 
     it("rejects unauthenticated maintenance requests", async () => {
@@ -2142,6 +2151,103 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         data: { createdAt: new Date(Date.now() - 25 * 60 * 60_000) },
       });
       expect(await requestUniversity(null, form)).toEqual({ ok: true });
+    });
+
+    it("pages the team about urgent reports, hidden content and appeals, without content", async () => {
+      vi.stubEnv("OPS_ALERT_WEBHOOK_URL", "https://hooks.example.test/ops");
+      const sent: string[] = [];
+      const webhook = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async (_url, init) => {
+          sent.push(String(init?.body));
+          return new Response(null, { status: 200 });
+        });
+      try {
+        const p = await post("ada", { title: "A very private title" });
+        as("grace");
+        await actions.reportContent({
+          target: "post",
+          id: p.id,
+          reason: "SELF_HARM",
+        });
+        as("linus");
+        await actions.reportContent({
+          target: "post",
+          id: p.id,
+          reason: "SELF_HARM",
+        });
+        await finishBackground();
+        // One page per item, however many students flag it.
+        expect(sent).toHaveLength(1);
+        expect(sent[0]).toContain("may be at risk");
+        expect(JSON.parse(sent[0]!).text).toMatch(/\/mod$/);
+
+        as("margaret");
+        await actions.reportContent({
+          target: "post",
+          id: p.id,
+          reason: "SPAM",
+        });
+        await finishBackground();
+        expect(sent).toHaveLength(2);
+        expect(sent[1]).toContain("hid a post or reply");
+
+        as("mod");
+        await actions.moderate({
+          target: "post",
+          id: p.id,
+          decision: "remove",
+        });
+        const decision = await db.moderationCase.findFirstOrThrow();
+        as("ada");
+        await actions.submitAppeal(
+          decision.id,
+          "Please look at this decision again.",
+        );
+        await finishBackground();
+        expect(sent).toHaveLength(3);
+        expect(sent[2]).toContain("appeal is waiting");
+
+        for (const body of sent) {
+          expect(body).not.toContain("private title");
+          expect(body).not.toContain(p.id);
+          expect(body).not.toContain("stanford");
+          expect(body).not.toMatch(/grace|linus|margaret/);
+        }
+      } finally {
+        webhook.mockRestore();
+      }
+    });
+
+    it("sends no alert without a configured webhook", async () => {
+      const webhook = vi.spyOn(globalThis, "fetch");
+      const p = await post("ada");
+      as("grace");
+      await actions.reportContent({
+        target: "post",
+        id: p.id,
+        reason: "SELF_HARM",
+      });
+      await finishBackground();
+      expect(webhook).not.toHaveBeenCalled();
+      webhook.mockRestore();
+    });
+
+    it("lists reports about someone at risk before everything else", async () => {
+      const urgent = await post("ada");
+      const loud = await post("alan");
+      await report("grace", "post", loud.id);
+      await report("linus", "post", loud.id);
+      as("margaret");
+      await actions.reportContent({
+        target: "post",
+        id: urgent.id,
+        reason: "SELF_HARM",
+      });
+      const queue = await queries.getModQueue(await viewer("mod"));
+      expect(queue.map((item) => item.id)).toEqual([urgent.id, loud.id]);
+      expect(queue[0]).toMatchObject({ urgent: true });
+      expect(queue[1]).toMatchObject({ urgent: false });
     });
 
     it("is team-only and shows content, never identities", async () => {

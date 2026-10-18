@@ -724,6 +724,8 @@ export type ModItem = {
   threadId: string | null;
   reasons: { reason: ReportReason; count: number }[];
   reportCount: number;
+  /** A report says someone may be at risk: reviewed before anything else. */
+  urgent: boolean;
 };
 
 const OPEN_REPORTS = { reports: { some: { resolvedAt: null } } };
@@ -821,6 +823,7 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
       threadId: openable(post) ? post.id : null,
       reasons: tally(post.reports),
       reportCount: post.reports.length,
+      urgent: post.reports.some(({ reason }) => reason === "SELF_HARM"),
     })),
     ...comments.map((comment) => ({
       target: "comment" as const,
@@ -835,11 +838,13 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
       threadId: openable(comment.post) ? comment.post.id : null,
       reasons: tally(comment.reports),
       reportCount: comment.reports.length,
+      urgent: comment.reports.some(({ reason }) => reason === "SELF_HARM"),
     })),
   ];
-  // Hidden content first: it's already off the feeds, waiting on a decision.
+  // Someone at risk first, then hidden content: it's already off the feeds.
   return items.sort(
     (a, b) =>
+      Number(b.urgent) - Number(a.urgent) ||
       Number(b.hidden) - Number(a.hidden) ||
       b.reportCount - a.reportCount ||
       b.createdAt.getTime() - a.createdAt.getTime(),

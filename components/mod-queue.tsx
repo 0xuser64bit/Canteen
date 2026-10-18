@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowUpRight, Ban, Check, EyeOff, Trash2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  Ban,
+  Check,
+  EyeOff,
+  LifeBuoy,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -57,6 +64,11 @@ function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
         <span className="rounded-full bg-surface-2 px-2.5 py-1 text-muted ring-1 ring-line">
           {item.target === "post" ? "Post" : "Reply"}
         </span>
+        {item.urgent && (
+          <span className="flex items-center gap-1 rounded-full bg-danger px-2.5 py-1 text-white">
+            <LifeBuoy className="size-3.5" /> Someone may be at risk
+          </span>
+        )}
         {item.hidden && (
           <span className="flex items-center gap-1 rounded-full bg-danger-surface px-2.5 py-1 text-danger">
             <EyeOff className="size-3.5" /> Hidden from feeds
