@@ -27,12 +27,21 @@ function baseURL(): BetterAuthOptions["baseURL"] {
   if (process.env.VERCEL_ENV === "production") {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
-  // Preview deployments are reachable through several *.vercel.app aliases.
-  if (process.env.VERCEL_ENV === "preview") {
-    return { allowedHosts: ["*.vercel.app"], protocol: "https" };
+  // A preview answers on its own deployment and branch aliases. "*.vercel.app"
+  // would also trust every other Vercel site as an origin and redirect target.
+  const previewHosts = [
+    process.env.VERCEL_URL,
+    process.env.VERCEL_BRANCH_URL,
+  ].filter((host): host is string => Boolean(host));
+  if (process.env.VERCEL_ENV === "preview" && previewHosts.length > 0) {
+    return { allowedHosts: previewHosts, protocol: "https" };
   }
   return "http://localhost:3000";
 }
+
+// Development prints codes to the console, so email sign-in always works locally.
+export const isEmailEnabled =
+  Boolean(process.env.RESEND_API_KEY) || process.env.NODE_ENV !== "production";
 
 // Creates the university row the first time someone from it signs up.
 async function ensureUniversity(match: UniversityMatch) {
@@ -164,6 +173,11 @@ export const auth = betterAuth({
     "/email-otp/reset-password",
     "/email-otp/request-email-change",
     "/email-otp/change-email",
+    // Better Auth stores a code before it tries to send it. Without a provider
+    // nobody receives the code, but it could still be guessed.
+    ...(isEmailEnabled
+      ? []
+      : ["/email-otp/send-verification-otp", "/sign-in/email-otp"]),
   ],
   rateLimit: {
     storage: "database",
@@ -232,6 +246,3 @@ export const auth = betterAuth({
 });
 
 export const isGoogleEnabled = Boolean(google);
-// Development prints codes to the console, so email sign-in always works locally.
-export const isEmailEnabled =
-  Boolean(process.env.RESEND_API_KEY) || process.env.NODE_ENV !== "production";

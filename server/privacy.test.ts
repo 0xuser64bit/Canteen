@@ -1641,6 +1641,58 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(response.status).toBe(404);
       expect(sendSignInCode).not.toHaveBeenCalled();
     });
+
+    // Configuration is read when lib/auth loads, so these build a fresh instance.
+    const freshAuth = async () => {
+      vi.resetModules();
+      return vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+    };
+
+    it("closes email-code sign-in when production has no email provider", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("RESEND_API_KEY", "");
+      vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3000");
+      const { auth: production, isEmailEnabled } = await freshAuth();
+      expect(isEmailEnabled).toBe(false);
+      for (const path of [
+        "/email-otp/send-verification-otp",
+        "/sign-in/email-otp",
+      ]) {
+        const response = await production.handler(
+          new Request(`http://localhost:3000/api/auth${path}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Origin: "http://localhost:3000",
+            },
+            body: JSON.stringify({
+              email: "ada@stanford.edu",
+              type: "sign-in",
+              otp: "000000",
+            }),
+          }),
+        );
+        expect(response.status).toBe(404);
+      }
+      // No code was stored that someone could guess.
+      expect(await db.verification.count()).toBe(0);
+      expect(await db.session.count()).toBe(0);
+    });
+
+    it("trusts only a preview deployment's own aliases", async () => {
+      vi.stubEnv("BETTER_AUTH_URL", "");
+      vi.stubEnv("VERCEL_ENV", "preview");
+      vi.stubEnv("VERCEL_URL", "canteen-abc123-team.vercel.app");
+      vi.stubEnv("VERCEL_BRANCH_URL", "canteen-git-fix-team.vercel.app");
+      const { auth: preview } = await freshAuth();
+      expect(preview.options.baseURL).toEqual({
+        allowedHosts: [
+          "canteen-abc123-team.vercel.app",
+          "canteen-git-fix-team.vercel.app",
+        ],
+        protocol: "https",
+      });
+    });
   });
 
   describe("moderation", () => {
