@@ -97,10 +97,13 @@ export default function CommunityPage() {
         <p className="mt-2 text-muted">
           Team removal retains content for review and appeal. Deleting your own
           post erases its text and replies; account deletion erases your account
-          and related records. Stored images are queued for erasure and retried
-          if storage is unavailable. Old public image links remain accessible
-          until their migration and erasure finish. Hosting, database backups
-          and sign-in providers may retain their own operational records.
+          and related records. If a suspended account is deleted, Canteen keeps
+          only a one-way hash of its email for 12 months, so the suspension
+          can&apos;t be escaped by rejoining. Stored images are queued for
+          erasure and retried if storage is unavailable. Old public image links
+          remain accessible until their migration and erasure finish. Hosting,
+          database backups and sign-in providers may retain their own
+          operational records.
         </p>
       </section>
       <section>

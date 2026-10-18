@@ -52,6 +52,9 @@ export async function GET(request: Request) {
     await db.verification.deleteMany({
       where: { expiresAt: { lt: new Date() } },
     });
+    await db.suspendedEmail.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
     await db.maintenance.update({
       where: { id: "scheduled" },
       data: { succeededAt: new Date() },

@@ -32,9 +32,19 @@ export default async function AccountStatusPage() {
         </Link>
       )}
       <Appeals items={items} />
-      <footer className="mt-auto flex flex-wrap justify-between gap-3 border-t border-line pt-6">
-        <SignOutButton />
-        <DeleteAccountButton />
+      <footer className="mt-auto border-t border-line pt-6">
+        {viewer.bannedAt && (
+          <p className="mb-4 text-[13px] leading-relaxed text-muted">
+            Deleting a suspended account erases it and everything it posted.
+            Canteen keeps only a one-way hash of its email for 12 months, so
+            that address can&apos;t rejoin until then. An appeal is the way
+            back.
+          </p>
+        )}
+        <div className="flex flex-wrap justify-between gap-3">
+          <SignOutButton />
+          <DeleteAccountButton />
+        </div>
       </footer>
     </main>
   );

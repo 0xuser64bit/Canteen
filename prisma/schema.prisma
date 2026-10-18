@@ -341,6 +341,13 @@ model BlobDeletion {
   @@index([dueAt])
 }
 
+// A suspended account that erased itself leaves only a keyed hash of its email,
+// so the same address can't rejoin unsuspended before the block expires.
+model SuspendedEmail {
+  hash      String   @id
+  expiresAt DateTime
+}
+
 // Operational heartbeat only: no student identifiers or content.
 model Maintenance {
   id          String    @id

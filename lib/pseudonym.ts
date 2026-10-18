@@ -119,6 +119,13 @@ export function keyedHash(value: string) {
   return createHmac("sha256", secret()).update(value).digest("hex");
 }
 
+/** The only trace a suspended account leaves when its owner erases it. */
+export const suspendedEmailKey = (email: string) =>
+  keyedHash(`suspended:${email.trim().toLowerCase()}`);
+
+/** How long an erased suspended account's email stays unable to rejoin. */
+export const SUSPENSION_MEMORY_MS = 365 * 24 * 60 * 60_000;
+
 /**
  * A stable alias for `userId` inside one thread, like "Quiet Otter".
  * The same student keeps one alias per post (so conversations stay readable)

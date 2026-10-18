@@ -106,7 +106,7 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
 
   beforeEach(async () => {
     await db.$executeRawUnsafe(
-      'TRUNCATE "Maintenance", "SignInBudget", "UniversityRequest", "Publication", "DailyActivity", "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
+      'TRUNCATE "Maintenance", "SignInBudget", "SuspendedEmail", "UniversityRequest", "Publication", "DailyActivity", "ModerationCase", "Follow", "Bookmark", "HelpfulAnswer", "BlobDeletion", "Notification", "Report", "PostView", "Like", "Comment", "Post", "Session", "Account", "Verification", "RateLimit", "User", "University" CASCADE',
     );
     await db.university.createMany({
       data: [
@@ -1695,6 +1695,55 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect((await request("/sign-in/email-otp", { email, otp })).status).toBe(
         200,
       );
+    });
+
+    it("keeps a suspension when the suspended account erases itself", async () => {
+      await db.user.update({
+        where: { id: "ada" },
+        data: { bannedAt: new Date() },
+      });
+      as("ada");
+      expect((await actions.deleteAccount("delete my account")).ok).toBe(true);
+      as(null);
+      const blocks = await db.suspendedEmail.findMany();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]!.hash).toMatch(/^[0-9a-f]{64}$/);
+
+      const email = "ada@stanford.edu";
+      const rejoin = await request("/sign-in/email-otp", {
+        email,
+        otp: await codeFor(email),
+      });
+      expect(rejoin.status).toBe(403);
+      expect(await rejoin.json()).toMatchObject({ code: "ACCOUNT_SUSPENDED" });
+      expect(await db.user.count({ where: { email } })).toBe(0);
+
+      // A student who leaves in good standing can come back.
+      as("alan");
+      expect((await actions.deleteAccount("delete my account")).ok).toBe(true);
+      as(null);
+      expect(
+        (
+          await request("/sign-in/email-otp", {
+            email: "alan@stanford.edu",
+            otp: await codeFor("alan@stanford.edu"),
+          })
+        ).status,
+      ).toBe(200);
+      expect(await db.suspendedEmail.count()).toBe(1);
+
+      // The block lapses after its time.
+      await db.suspendedEmail.updateMany({
+        data: { expiresAt: new Date(Date.now() - 1_000) },
+      });
+      expect(
+        (
+          await request("/sign-in/email-otp", {
+            email,
+            otp: await codeFor(email),
+          })
+        ).status,
+      ).toBe(200);
     });
 
     it("keeps no network address or device description on sessions", async () => {

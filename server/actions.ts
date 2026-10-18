@@ -9,7 +9,11 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { NotificationType, Topic } from "@/lib/generated/prisma/enums";
 import { preparePostImage } from "@/lib/images";
-import { keyedHash } from "@/lib/pseudonym";
+import {
+  keyedHash,
+  SUSPENSION_MEMORY_MS,
+  suspendedEmailKey,
+} from "@/lib/pseudonym";
 import {
   getViewer,
   getAccountViewer,
@@ -1060,7 +1064,17 @@ export async function deleteAccount(
   }
 
   await db.$transaction(async (tx) => {
-    await lockAuthor(tx, viewer.id);
+    const account = await lockAuthor(tx, viewer.id);
+    // Erasure can't be used to rejoin unsuspended: only a keyed hash of the
+    // email outlives a suspended account, until the block expires.
+    if (account?.bannedAt) {
+      const expiresAt = new Date(Date.now() + SUSPENSION_MEMORY_MS);
+      await tx.suspendedEmail.upsert({
+        where: { hash: suspendedEmailKey(viewer.email) },
+        create: { hash: suspendedEmailKey(viewer.email), expiresAt },
+        update: { expiresAt },
+      });
+    }
     // Lock owned and replied-to posts together, in one order, before media snapshots
     // and revision updates. Two students erasing cross-replies cannot invert this order.
     await tx.$queryRaw`SELECT "id" FROM "Post" WHERE "authorId" = ${viewer.id}

@@ -7,7 +7,7 @@ import { emailOTP } from "better-auth/plugins/email-otp";
 import { db } from "@/lib/db";
 import { sendSignInCode } from "@/lib/email";
 import { withoutProviderTokens } from "@/lib/auth-privacy";
-import { keyedHash } from "@/lib/pseudonym";
+import { keyedHash, suspendedEmailKey } from "@/lib/pseudonym";
 import { LIMITS } from "@/lib/validation";
 import {
   isTeamEmail,
@@ -122,7 +122,7 @@ export const auth = betterAuth({
     },
     // Runs on every sign-up and Google sign-in. Removing someone from
     // TEAM_EMAILS also ends their open sessions (lib/session.ts).
-    validateUserInfo: ({ user }) => {
+    validateUserInfo: async ({ user }) => {
       if (
         !user.email ||
         !user.emailVerified ||
@@ -133,6 +133,19 @@ export const auth = betterAuth({
           errorDescription: UNIVERSITY_EMAIL_REQUIRED.message,
         };
       }
+      const suspended = await db.suspendedEmail.findFirst({
+        where: {
+          hash: suspendedEmailKey(user.email),
+          expiresAt: { gt: new Date() },
+        },
+        select: { hash: true },
+      });
+      if (suspended)
+        return {
+          error: "ACCOUNT_SUSPENDED",
+          errorDescription:
+            "This email belongs to a suspended account that was deleted. It can't rejoin yet.",
+        };
     },
   },
   databaseHooks: {
