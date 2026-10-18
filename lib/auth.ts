@@ -1,7 +1,7 @@
 import "server-only";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { db } from "@/lib/db";
@@ -20,7 +20,15 @@ const UNIVERSITY_EMAIL_REQUIRED = {
     "That doesn't look like a university email. Use the address your university gave you.",
 };
 
+const EMAIL_DELIVERY_FAILED = {
+  code: "EMAIL_DELIVERY_FAILED",
+  message: "We couldn't send the email just now. Try again in a minute.",
+};
+
 const RESEND_COOLDOWN_MS = 30_000;
+
+// Where Better Auth's email-otp plugin stores a sign-in code for an address.
+const codeIdentifier = (email: string) => `sign-in-otp-${email}`;
 
 function baseURL(): BetterAuthOptions["baseURL"] {
   if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
@@ -207,7 +215,7 @@ export const auth = betterAuth({
       // from many IPs.
       const recent = await db.verification.findFirst({
         where: {
-          identifier: `sign-in-otp-${email}`,
+          identifier: codeIdentifier(email),
           updatedAt: { gt: new Date(Date.now() - RESEND_COOLDOWN_MS) },
         },
         select: { id: true },
@@ -220,6 +228,26 @@ export const auth = betterAuth({
         });
       }
     }),
+    // The plugin reports success even when sending failed, because Better Auth
+    // only logs a sender's error. The sender deletes an undelivered code, so a
+    // missing code here means the student must hear that nothing was sent.
+    after: createAuthMiddleware(async (ctx) => {
+      if (
+        ctx.path !== "/email-otp/send-verification-otp" ||
+        isAPIError(ctx.context.returned)
+      )
+        return;
+      const { email } = ctx.body as { email: string };
+      const stored = await db.verification.findFirst({
+        where: {
+          identifier: codeIdentifier(email.toLowerCase()),
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      });
+      if (!stored)
+        throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_FAILED);
+    }),
   },
   plugins: [
     emailOTP({
@@ -231,12 +259,11 @@ export const auth = betterAuth({
         try {
           await sendSignInCode(email, otp);
         } catch {
-          console.error("Failed to send sign-in code");
-          throw APIError.from("SERVICE_UNAVAILABLE", {
-            code: "EMAIL_DELIVERY_FAILED",
-            message:
-              "We couldn't send the email just now. Try again in a minute.",
+          // The code is already stored. Nobody received it, so nobody may guess it.
+          await db.verification.deleteMany({
+            where: { identifier: codeIdentifier(email) },
           });
+          console.error("Failed to send sign-in code");
         }
       },
     }),

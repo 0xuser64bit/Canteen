@@ -1532,6 +1532,44 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(sendSignInCode).toHaveBeenCalledTimes(1);
     });
 
+    it("fails closed and says so when a code can't be delivered", async () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      let undelivered = "";
+      vi.mocked(sendSignInCode).mockImplementation(async (_email, otp) => {
+        undelivered = otp;
+        throw new Error("Email provider unavailable");
+      });
+      const email = "new-student@stanford.edu";
+      const response = await request("/email-otp/send-verification-otp", {
+        email,
+        type: "sign-in",
+      });
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        code: "EMAIL_DELIVERY_FAILED",
+      });
+      // The undelivered code was erased, so it can't be guessed or redeemed.
+      expect(await db.verification.count()).toBe(0);
+      expect(
+        (await request("/sign-in/email-otp", { email, otp: undelivered }))
+          .status,
+      ).toBe(400);
+      expect(await db.user.count({ where: { email } })).toBe(0);
+      expect(log).toHaveBeenCalledWith("Failed to send sign-in code");
+      log.mockRestore();
+
+      // No cooldown is left behind: the student can simply try again.
+      vi.mocked(sendSignInCode).mockResolvedValue(undefined);
+      expect(
+        (
+          await request("/email-otp/send-verification-otp", {
+            email,
+            type: "sign-in",
+          })
+        ).status,
+      ).toBe(200);
+    });
+
     it("allows verified suspended students a restricted session for appeals", async () => {
       await db.user.update({
         where: { id: "ada" },
