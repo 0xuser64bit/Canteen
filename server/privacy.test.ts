@@ -25,51 +25,38 @@ const TEST_DATABASE_URL = vi.hoisted(() => {
   return url;
 });
 
-const state = vi.hoisted(() => ({
-  viewerId: null as string | null,
-  background: [] as Promise<unknown>[],
-}));
-
-vi.mock("@/lib/session", async () => {
-  const { db } = await import("@/lib/db");
+const state = vi.hoisted(() => {
+  const { AsyncLocalStorage } = process.getBuiltinModule("node:async_hooks");
   return {
+    viewerId: null as string | null,
+    background: [] as Promise<unknown>[],
+    // The signed-in student of one simulated request, pinned before its first await.
+    request: new AsyncLocalStorage<{ viewerId: string | null }>(),
+  };
+});
+
+// The real session-to-viewer mapping (suspension, staff and host checks) runs on
+// top of the mocked Better Auth session below; only the draft owner is stubbed.
+vi.mock("@/lib/session", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/session")>();
+  const perRequest = <T>(load: () => Promise<T>) =>
+    vi.fn(() => state.request.run({ viewerId: state.viewerId }, load));
+  return {
+    ...real,
     getDraftOwner: vi.fn(async () => `draft-owner:${state.viewerId}`),
-    getAccountViewer: vi.fn(async () =>
-      state.viewerId
-        ? db.user.findUnique({
-            where: { id: state.viewerId },
-            select: {
-              id: true,
-              email: true,
-              bannedAt: true,
-              createdAt: true,
-              university: { select: { id: true, slug: true, name: true } },
-            },
-          })
-        : null,
-    ),
-    getViewer: vi.fn(async () =>
-      state.viewerId
-        ? db.user.findUnique({
-            where: { id: state.viewerId, bannedAt: null },
-            select: {
-              id: true,
-              email: true,
-              createdAt: true,
-              university: { select: { id: true, slug: true, name: true } },
-            },
-          })
-        : null,
-    ),
+    getAccountViewer: perRequest(real.getAccountViewer),
+    getViewer: perRequest(real.getViewer),
   };
 });
 vi.mock("@/lib/auth", () => ({
   auth: {
     api: {
       signOut: vi.fn(),
-      getSession: vi.fn(async () =>
-        state.viewerId ? { user: { id: state.viewerId } } : null,
-      ),
+      getSession: vi.fn(async () => {
+        const pinned = state.request.getStore();
+        const viewerId = pinned ? pinned.viewerId : state.viewerId;
+        return viewerId ? { user: { id: viewerId } } : null;
+      }),
     },
   },
 }));
@@ -1691,6 +1678,65 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
           "canteen-git-fix-team.vercel.app",
         ],
         protocol: "https",
+      });
+    });
+  });
+
+  describe("account access", () => {
+    beforeEach(async () => {
+      vi.stubEnv("TEAM_EMAILS", "staff@example.org");
+      await db.university.create({ data: { ...TEAM, id: "u-team" } });
+      await db.user.create({
+        data: {
+          id: "staff",
+          email: "staff@example.org",
+          universityId: "u-team",
+          emailVerified: true,
+        },
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("ends staff access when TEAM_EMAILS drops the address mid-session", async () => {
+      const { getAccountViewer, requireViewer } = await import("@/lib/session");
+      as("staff");
+      expect(await getViewer()).toMatchObject({ id: "staff" });
+
+      vi.stubEnv("TEAM_EMAILS", "");
+      expect(await getAccountViewer()).toBeNull();
+      expect(await getViewer()).toBeNull();
+      // Signed-out, not bounced between /join and the app.
+      await expect(requireViewer()).rejects.toMatchObject({
+        url: "/join?next=%2Fcampus",
+      });
+      const form = new FormData();
+      for (const [key, value] of Object.entries({
+        title: "Official notice",
+        body: "Posted after leaving the team",
+        topic: "GENERAL",
+        audience: "EVERYONE",
+      }))
+        form.set(key, value);
+      expect(await actions.createPost(null, form)).toEqual({
+        error: "Your session ended. Sign in again to continue.",
+      });
+      expect(await db.post.count()).toBe(0);
+    });
+
+    it("limits suspended students to their account pages", async () => {
+      const { getAccountViewer, requireViewer } = await import("@/lib/session");
+      await db.user.update({
+        where: { id: "ada" },
+        data: { bannedAt: new Date() },
+      });
+      as("ada");
+      expect(await getAccountViewer()).toMatchObject({ id: "ada" });
+      expect(await getViewer()).toBeNull();
+      await expect(requireViewer()).rejects.toMatchObject({
+        url: "/account-status",
       });
     });
   });

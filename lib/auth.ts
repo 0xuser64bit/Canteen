@@ -82,8 +82,8 @@ export const auth = betterAuth({
       // Always set by the create hook below; never accepted from the client.
       universityId: { type: "string", required: false, input: false },
     },
-    // Runs on every sign-up and Google sign-in, so removing someone from
-    // TEAM_EMAILS locks them out at their next sign-in.
+    // Runs on every sign-up and Google sign-in. Removing someone from
+    // TEAM_EMAILS also ends their open sessions (lib/session.ts).
     validateUserInfo: ({ user }) => {
       if (
         !user.email ||

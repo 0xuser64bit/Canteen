@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { safeReturnTo } from "@/lib/return-to";
 import { campusHostDomains } from "@/lib/campus-hosts";
-import { TEAM } from "@/lib/universities";
+import { isTeamEmail, TEAM } from "@/lib/universities";
 
 const getSession = cache(async () =>
   auth.api.getSession({ headers: await headers() }),
@@ -32,7 +32,7 @@ export const getDraftOwner = cache(async () => {
 export const getAccountViewer = cache(async () => {
   const session = await getSession();
   if (!session) return null;
-  return db.user.findUnique({
+  const account = await db.user.findUnique({
     where: { id: session.user.id },
     select: {
       id: true,
@@ -42,6 +42,12 @@ export const getAccountViewer = cache(async () => {
       university: { select: { id: true, slug: true, name: true } },
     },
   });
+  // Staff access ends as soon as TEAM_EMAILS drops the address, even mid-session:
+  // a staff account has no student identity to fall back to. Checked here, not
+  // only in getViewer, so /join can't bounce a signed-in account back and forth.
+  if (account?.university.slug === TEAM.slug && !isTeamEmail(account.email))
+    return null;
+  return account;
 });
 
 // Suspension still denies every normal app read and write, including stale cookies.

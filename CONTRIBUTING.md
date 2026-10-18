@@ -37,6 +37,6 @@ Universities and their email domains come from `data/universities.json`, a copy 
 
 ## Regression checks
 
-The database suite includes publication quotas after erasure, post retry IDs, delivered notification revisions/ownership, historical and helpful-reply navigation, report/KEEP serialization, provider-token create/update hooks, campus-host revocation, domain review, maintenance retention, and migration/erasure commit ordering. Run it against native PostgreSQL for meaningful concurrency coverage; single-backend embedded engines cannot establish multi-session lock behavior. External email and Blob calls stay mocked.
+The database suite runs the real session-to-viewer checks (suspension, current staff, host campuses) and includes publication quotas after erasure, post retry IDs, delivered notification revisions/ownership, historical and helpful-reply navigation, report/KEEP serialization, provider-token create/update hooks, campus-host revocation, domain review, maintenance retention, and migration/erasure commit ordering. Run it against native PostgreSQL for meaningful concurrency coverage; single-backend embedded engines cannot establish multi-session lock behavior. External email and Blob calls stay mocked.
 
 Browser review should include two accounts in one browser, cross-tab draft invalidation, continued typing during delayed/failed replies, refreshed poll props, and earlier reply pages during moderation. Keep draft text through failed transport and clear it only on confirmed publication; never persist image bytes or adopt an unowned legacy draft.
