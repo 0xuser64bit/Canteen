@@ -235,7 +235,9 @@ export function MobileNav({ unread: serverUnread }: { unread: number }) {
   const [feed, campus, , alerts, you] = ITEMS as [Item, Item, Item, Item, Item];
   const tab = (item: Item) => {
     const active =
-      isActive(item) || (item.href === "/me" && pathname === "/settings");
+      isActive(item) ||
+      (item.href === "/home" && pathname === "/home") ||
+      (item.href === "/me" && pathname === "/settings");
     return (
       <Link
         key={item.href}

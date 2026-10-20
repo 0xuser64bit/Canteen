@@ -103,7 +103,7 @@ export function InviteCard({
         <p className="min-w-0 flex-1 text-[13px] leading-snug font-semibold text-pretty">
           {headline}
         </p>
-        <Button size="sm" variant="primary" onClick={invite}>
+        <Button variant="secondary" onClick={invite} className="min-h-11 px-3">
           <UserPlus /> Invite
         </Button>
         <button
@@ -117,7 +117,7 @@ export function InviteCard({
             }
             window.dispatchEvent(new Event(DISMISSED_EVENT));
           }}
-          className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+          className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
         >
           <X className="size-4" />
         </button>
@@ -137,7 +137,7 @@ export function InviteCard({
         when it would narrow things down too much. With only a few classmates
         here, what you share can still make you recognizable.
       </p>
-      <Button variant="primary" className="mt-4" onClick={invite}>
+      <Button variant="secondary" className="mt-4 min-h-11" onClick={invite}>
         <UserPlus /> Invite classmates
       </Button>
     </section>

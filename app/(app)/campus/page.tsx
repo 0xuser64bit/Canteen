@@ -84,8 +84,9 @@ export default async function CampusPage({
           sort={sort}
         />
       </PageHeader>
-      {small && (
+      {small && page.items.length > 0 && (
         <InviteCard
+          compact
           university={viewer.university.name}
           members={university?.memberCount ?? 1}
           goal={MIN_MEMBERS_TO_NAME_UNIVERSITY}
@@ -101,8 +102,6 @@ export default async function CampusPage({
         topic={topic?.slug}
         empty={
           <EmptyState
-            // Keep one primary invitation while the campus is small.
-            action={!small}
             title={
               noReplies
                 ? "No questions without replies"
@@ -141,6 +140,13 @@ export default async function CampusPage({
           />
         }
       />
+      {small && page.items.length === 0 && (
+        <InviteCard
+          university={viewer.university.name}
+          members={university?.memberCount ?? 1}
+          goal={MIN_MEMBERS_TO_NAME_UNIVERSITY}
+        />
+      )}
     </>
   );
 }

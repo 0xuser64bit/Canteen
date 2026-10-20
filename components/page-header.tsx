@@ -78,7 +78,7 @@ export function TopicChips({
       aria-current={on ? "page" : undefined}
       scroll={false}
       className={cn(
-        "shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
+        "inline-flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-[13px] font-semibold transition-colors",
         on
           ? "bg-ink text-background"
           : "bg-surface text-muted ring-1 ring-line ring-inset hover:text-ink",
@@ -90,7 +90,7 @@ export function TopicChips({
   return (
     <nav
       aria-label="Topics"
-      className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3 lg:px-6"
+      className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2 lg:px-6"
     >
       {chip(undefined, "All", !active)}
       {TOPICS.map((topic) =>
@@ -115,13 +115,16 @@ export function QuestionFilter({
   return (
     <nav
       aria-label="Questions"
-      className="flex gap-4 px-4 pb-3 text-[13px] lg:px-6"
+      className="flex gap-4 px-4 pb-1 text-[13px] lg:px-6"
     >
       <Link
         href={all}
         scroll={false}
         aria-current={!active ? "page" : undefined}
-        className={!active ? "font-bold text-ink" : "text-muted"}
+        className={cn(
+          "inline-flex min-h-11 items-center rounded-lg px-1 transition-colors hover:text-ink",
+          !active ? "font-bold text-ink" : "text-muted",
+        )}
       >
         All posts
       </Link>
@@ -129,7 +132,10 @@ export function QuestionFilter({
         href={`${base}?${params}` as "/campus"}
         scroll={false}
         aria-current={active ? "page" : undefined}
-        className={active ? "font-bold text-ink" : "text-muted"}
+        className={cn(
+          "inline-flex min-h-11 items-center rounded-lg px-1 transition-colors hover:text-ink",
+          active ? "font-bold text-ink" : "text-muted",
+        )}
       >
         Needs an answer
       </Link>
@@ -152,6 +158,8 @@ export function FeedControls({
   sort: FeedSort;
   collection?: string;
 }) {
+  if (!unanswered && !noReplies && topic !== "opportunities") return null;
+
   const params = new URLSearchParams();
   if (topic) params.set("topic", topic);
   if (unanswered) params.set("unanswered", "1");
@@ -167,7 +175,7 @@ export function FeedControls({
         scroll={false}
         aria-current={sort === value ? "page" : undefined}
         className={cn(
-          "rounded-full px-3 py-1.5",
+          "inline-flex min-h-11 items-center rounded-full px-3",
           sort === value
             ? "bg-ink font-semibold text-background"
             : "text-muted hover:bg-surface-3",
@@ -184,18 +192,18 @@ export function FeedControls({
   return (
     <nav
       aria-label="Feed order"
-      className="flex flex-wrap items-center gap-2 px-4 pb-3 text-[13px] lg:px-6"
+      className="flex flex-wrap items-center gap-2 px-4 pb-2 text-[13px] lg:px-6"
     >
       {link("newest", "Latest")}
       {unanswered && link("oldest", "Oldest waiting")}
       {topic === "opportunities" && link("closing", "Closing soon")}
-      {unanswered && (
+      {(unanswered || noReplies) && (
         <Link
           href={`${base}?${toggle}` as "/campus"}
           scroll={false}
           aria-current={noReplies ? "page" : undefined}
           className={cn(
-            "rounded-full px-3 py-1.5 ring-1 ring-line",
+            "inline-flex min-h-11 items-center rounded-full px-3 ring-1 ring-line",
             noReplies ? "bg-ink text-background" : "text-muted",
           )}
         >

@@ -5,20 +5,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CampusPage from "@/app/(app)/campus/page";
 import HomePage from "@/app/(app)/home/page";
 import { Feed } from "@/components/feed";
-import { TopicChips } from "@/components/page-header";
+import { FeedControls, TopicChips } from "@/components/page-header";
 import type { PostSummary } from "@/server/queries";
 
 const mocks = vi.hoisted(() => ({
   loadMore: vi.fn(),
   getFeed: vi.fn(),
+  members: 6,
   visible: [] as (() => void)[],
 }));
 
 vi.mock("@/server/actions", () => ({ loadMore: mocks.loadMore }));
 vi.mock("@/server/queries", () => ({
   getFeed: mocks.getFeed,
-  getCampusSize: async () => 6,
-  getUniversityPage: async () => ({ memberCount: 6 }),
+  getCampusSize: async () => mocks.members,
+  getUniversityPage: async () => ({ memberCount: mocks.members }),
   MIN_MEMBERS_TO_NAME_UNIVERSITY: 5,
 }));
 vi.mock("@/lib/session", () => ({
@@ -60,6 +61,8 @@ let container: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  mocks.members = 6;
   mocks.visible = [];
   mocks.getFeed.mockResolvedValue({ items: [], nextCursor: null });
   vi.stubGlobal(
@@ -183,6 +186,70 @@ describe("feed recovery", () => {
 });
 
 describe("feed filters", () => {
+  it("omits a redundant order row but keeps question and opportunity choices", async () => {
+    await render(<FeedControls base="/home" sort="newest" />);
+    expect(container.querySelector('[aria-label="Feed order"]')).toBeNull();
+    await render(
+      <FeedControls base="/home" sort="oldest" unanswered noReplies />,
+    );
+    expect(href("Latest").searchParams.get("unanswered")).toBe("1");
+    expect(href("Latest").searchParams.get("noReplies")).toBe("1");
+    expect(href("Oldest waiting").searchParams.get("sort")).toBe("oldest");
+    expect(href("No replies yet").searchParams.has("noReplies")).toBe(false);
+    await render(
+      <FeedControls base="/home" topic="opportunities" sort="newest" />,
+    );
+    expect(href("Closing soon").searchParams.get("sort")).toBe("closing");
+  });
+
+  it("keeps a directly linked no-replies filter visible and removable", async () => {
+    await render(<FeedControls base="/home" sort="newest" noReplies />);
+    expect(href("No replies yet").searchParams.has("noReplies")).toBe(false);
+  });
+
+  it("puts a first-question action before the small-campus invitation", async () => {
+    mocks.members = 1;
+    await render(
+      await CampusPage({
+        params: Promise.resolve({}),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    const ask = container.querySelector<HTMLAnchorElement>('a[href="/new"]');
+    expect(ask?.textContent).toContain("Start a thread");
+    const invite = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Invite classmates"),
+    );
+    expect(invite).toBeDefined();
+    expect(
+      ask!.compareDocumentPosition(invite!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(container.textContent).toContain(
+      "what you share can still make you recognizable",
+    );
+  });
+
+  it("keeps a populated small campus focused on posts with a compact invitation", async () => {
+    mocks.members = 2;
+    mocks.getFeed.mockResolvedValue({ items: [post("one")], nextCursor: null });
+    await render(
+      await CampusPage({
+        params: Promise.resolve({}),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(container.textContent).toContain("Post one");
+    expect(
+      [...container.querySelectorAll("button")].some((button) =>
+        button.textContent?.includes("Invite"),
+      ),
+    ).toBe(true);
+    expect(container.textContent).not.toContain("Until 5 students");
+    expect(
+      container.querySelector('[aria-label="Hide for now"]'),
+    ).not.toBeNull();
+  });
+
   it("keeps the question queue when changing topics and clears it for opportunities", async () => {
     await render(
       <TopicChips
