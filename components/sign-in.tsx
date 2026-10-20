@@ -68,11 +68,19 @@ function useUniversityHint(email: string) {
   useEffect(() => {
     if (!complete) return;
     const value = email.trim();
+    let active = true;
     const timer = setTimeout(async () => {
-      const match = await lookupUniversity(value);
-      setHint({ email: value, name: match?.name ?? null });
+      try {
+        const match = await lookupUniversity(value);
+        if (active) setHint({ email: value, name: match?.name ?? null });
+      } catch {
+        // A hint is optional; a failed lookup must not block sign-in.
+      }
     }, 250);
-    return () => clearTimeout(timer);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [email, complete]);
 
   // Only show a hint that belongs to what's typed right now.
@@ -102,6 +110,7 @@ export function SignIn({
   );
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
+  const inFlight = useRef(false);
   const codeInput = useRef<HTMLInputElement>(null);
   const hint = useUniversityHint(email);
 
@@ -111,11 +120,27 @@ export function SignIn({
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  const sendCode = () =>
+  const run = (task: () => Promise<void>, failure: string) => {
+    // Autofill and form submission can fire before pending has rendered.
+    if (inFlight.current) return;
+    inFlight.current = true;
     startTransition(async () => {
       setError(undefined);
+      try {
+        await task();
+      } catch {
+        setError(failure);
+      } finally {
+        inFlight.current = false;
+      }
+    });
+  };
+
+  const sendCode = () => {
+    const address = email.trim();
+    run(async () => {
       const { error } = await authClient.emailOtp.sendVerificationOtp({
-        email: email.trim(),
+        email: address,
         type: "sign-in",
       });
       if (error)
@@ -124,11 +149,11 @@ export function SignIn({
       setCode("");
       setCooldown(RESEND_SECONDS);
       requestAnimationFrame(() => codeInput.current?.focus());
-    });
+    }, "Couldn't request a code. Check your connection and try again.");
+  };
 
   const verify = (otp: string) =>
-    startTransition(async () => {
-      setError(undefined);
+    run(async () => {
       const { error } = await authClient.signIn.emailOtp({
         email: email.trim(),
         otp,
@@ -148,7 +173,7 @@ export function SignIn({
       }
       router.replace(returnTo as Route);
       router.refresh();
-    });
+    }, "Couldn't confirm your code. Check your connection and try again.");
 
   const onEmailSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -156,14 +181,15 @@ export function SignIn({
   };
 
   const google = () =>
-    startTransition(async () => {
-      setError(undefined);
-      await authClient.signIn.social({
+    run(async () => {
+      const { error } = await authClient.signIn.social({
         provider: "google",
         callbackURL: returnTo,
         errorCallbackURL: `/join?next=${encodeURIComponent(returnTo)}`,
       });
-    });
+      if (error)
+        setError(error.message ?? "Couldn't open Google sign-in. Try again.");
+    }, "Couldn't open Google sign-in. Check your connection and try again.");
 
   if (!emailEnabled && !googleEnabled) {
     return (
@@ -184,6 +210,7 @@ export function SignIn({
       </Link>
       {error && (
         <p
+          id="sign-in-error"
           role="alert"
           className="flex gap-2.5 rounded-2xl bg-danger-surface px-4 py-3 text-[14px] leading-snug font-medium text-danger"
         >
@@ -227,6 +254,9 @@ export function SignIn({
             autoCapitalize="off"
             spellCheck={false}
             required
+            disabled={pending}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "sign-in-error" : undefined}
             placeholder="you@university.edu"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -284,6 +314,9 @@ export function SignIn({
             autoComplete="one-time-code"
             pattern="[0-9]*"
             maxLength={CODE_DIGITS}
+            disabled={pending}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "sign-in-error" : undefined}
             placeholder={"•".repeat(CODE_DIGITS)}
             value={code}
             onChange={(event) => {
@@ -306,11 +339,12 @@ export function SignIn({
           <div className="flex items-center justify-between px-1 text-[13px]">
             <button
               type="button"
+              disabled={pending}
               onClick={() => {
                 setStep("email");
                 setError(undefined);
               }}
-              className="cursor-pointer font-semibold text-muted hover:text-ink"
+              className="min-h-11 cursor-pointer font-semibold text-muted hover:text-ink disabled:cursor-default"
             >
               Use a different email
             </button>
@@ -318,7 +352,7 @@ export function SignIn({
               type="button"
               onClick={sendCode}
               disabled={cooldown > 0 || pending}
-              className="cursor-pointer font-semibold text-muted tabular hover:text-ink disabled:cursor-default disabled:opacity-60"
+              className="min-h-11 cursor-pointer font-semibold text-muted tabular hover:text-ink disabled:cursor-default disabled:opacity-60"
             >
               {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
             </button>

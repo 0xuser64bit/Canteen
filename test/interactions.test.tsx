@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => {
     hint: request(),
     sendCode: request(),
     signIn: request(),
+    social: request(),
     signOut: request(),
     deleteAccount: request(),
     toast: vi.fn(),
@@ -55,7 +56,7 @@ vi.mock("@/server/actions", () => ({
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     emailOtp: { sendVerificationOtp: mocks.sendCode },
-    signIn: { emailOtp: mocks.signIn },
+    signIn: { emailOtp: mocks.signIn, social: mocks.social },
     signOut: mocks.signOut,
   },
 }));
@@ -456,3 +457,78 @@ it("allows authorized staff OTP requests after an unrecognized university hint",
   });
   expect(mocks.router.replace).toHaveBeenCalledWith("/p/shared-thread");
 });
+
+it("keeps the requested email fixed while sending a code", async () => {
+  const request = deferred();
+  mocks.sendCode.mockReturnValue(request.promise);
+  await render(<SignIn emailEnabled googleEnabled={false} />);
+  await change("#email", "first@stanford.edu");
+  await submit();
+  await submit();
+  expect(mocks.sendCode).toHaveBeenCalledOnce();
+  expect(field("#email").disabled).toBe(true);
+  await act(async () => request.resolve({}));
+  expect(container.textContent).toContain("first@stanford.edu");
+  expect(field("#code").disabled).toBe(false);
+});
+
+it("verifies autofilled codes once and prevents address switching until it finishes", async () => {
+  const request = deferred();
+  mocks.signIn.mockReturnValue(request.promise);
+  await render(<SignIn emailEnabled googleEnabled={false} />);
+  await change("#email", "first@stanford.edu");
+  await submit();
+  await change("#code", "12345678");
+  await submit();
+  expect(mocks.signIn).toHaveBeenCalledOnce();
+  expect(field("#code").disabled).toBe(true);
+  const switchEmail = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "Use a different email",
+  )!;
+  expect(switchEmail.disabled).toBe(true);
+  await act(async () => request.reject(new Error("Offline")));
+  expect(container.querySelector('[role="alert"]')!.textContent).toContain(
+    "Check your connection",
+  );
+  expect(field("#code").value).toBe("12345678");
+  expect(field("#code").disabled).toBe(false);
+  expect(switchEmail.disabled).toBe(false);
+  mocks.signIn.mockResolvedValue({});
+  await submit();
+  expect(mocks.router.replace).toHaveBeenCalledWith("/campus");
+});
+
+it("recovers from an offline code request without losing the address", async () => {
+  mocks.sendCode.mockRejectedValue(new Error("Offline"));
+  await render(<SignIn emailEnabled googleEnabled={false} />);
+  await change("#email", "student@mit.edu");
+  await submit();
+  expect(field("#email").value).toBe("student@mit.edu");
+  expect(field("#email").disabled).toBe(false);
+  expect(container.querySelector('[role="alert"]')!.textContent).toContain(
+    "Check your connection",
+  );
+  mocks.sendCode.mockResolvedValue({});
+  await submit();
+  expect(field("#code")).toBeDefined();
+});
+
+it.each(["returned", "thrown"])(
+  "shows recoverable Google sign-in errors (%s)",
+  async (mode) => {
+    if (mode === "returned")
+      mocks.social.mockResolvedValue({
+        error: { message: "Google unavailable" },
+      });
+    else mocks.social.mockRejectedValue(new Error("Offline"));
+    await render(<SignIn emailEnabled={false} googleEnabled />);
+    const button = Array.from(container.querySelectorAll("button")).find(
+      (item) => item.textContent?.includes("Continue with Google"),
+    )!;
+    await act(async () => button.click());
+    expect(container.querySelector('[role="alert"]')!.textContent).toContain(
+      mode === "returned" ? "Google unavailable" : "Check your connection",
+    );
+    expect(button.disabled).toBe(false);
+  },
+);
