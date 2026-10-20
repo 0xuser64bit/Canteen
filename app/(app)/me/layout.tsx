@@ -35,25 +35,37 @@ export default async function MeLayout({ children }: LayoutProps<"/me">) {
 
   return (
     <>
-      <PageHeader title="You" subtitle="Only you can see this page" />
-      <div className="flex flex-col gap-8 px-4 py-6 lg:px-6">
-        <section className="rounded-[28px] bg-surface p-5 shadow-soft ring-1 ring-line sm:p-6">
+      <PageHeader
+        title="You"
+        subtitle="Only you can see this page"
+        actions={
+          <Button asChild variant="ghost" size="icon" className="size-11">
+            <Link href="/settings" aria-label="Settings and appearance">
+              <Settings2 aria-hidden />
+            </Link>
+          </Button>
+        }
+      />
+      <div className="flex flex-col gap-6 px-4 py-5 lg:px-6">
+        <section className="rounded-[28px] bg-surface p-4 shadow-soft ring-1 ring-line sm:p-5">
           <p className="flex items-center gap-2 text-[13px] font-semibold text-muted">
             <BadgeCheck className="size-[18px] text-ink" />{" "}
             {isTeam ? "Team account" : "University email verified"}
           </p>
           <Link
             href={`/u/${viewer.university.slug}`}
-            className="mt-2 block text-[24px] leading-tight font-display hover:underline sm:text-[28px]"
+            className="mt-2 block text-[22px] leading-tight font-display hover:underline sm:text-[26px]"
           >
             {viewer.university.name}
           </Link>
-          <p className="mt-2 text-[14px] text-muted">
+          <p className="mt-2 text-[13px] text-muted">
             Signed in as{" "}
-            <span className="font-medium text-ink">{viewer.email}</span> ·
-            joined {joined.format(viewer.createdAt)}
+            <span className="font-medium break-all text-ink">
+              {viewer.email}
+            </span>{" "}
+            · joined {joined.format(viewer.createdAt)}
           </p>
-          <dl className="mt-5 flex gap-8 border-t border-line pt-5">
+          <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3">
             {[
               ["Posts", stats.posts],
               ["Replies", stats.comments],
@@ -63,22 +75,34 @@ export default async function MeLayout({ children }: LayoutProps<"/me">) {
                 <dt className="text-[12px] font-semibold text-muted">
                   {label}
                 </dt>
-                <dd className="mt-0.5 text-[22px] font-bold tabular">
+                <dd className="mt-0.5 text-[20px] font-bold tabular">
                   {compactNumber(Number(value))}
                 </dd>
               </div>
             ))}
           </dl>
-          {modQueue !== undefined && (
-            <Button asChild className="mt-5">
-              <Link href="/mod">
-                <ShieldCheck /> Moderation queue
-                {modQueue > 0 && ` · ${modQueue} waiting`}
-              </Link>
-            </Button>
-          )}
+          <div className="mt-3 flex justify-end">
+            <SignOutButton />
+          </div>
         </section>
 
+        {children}
+
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-4 text-[15px] font-semibold ring-1 ring-line transition-colors hover:bg-surface-2"
+        >
+          <Settings2 aria-hidden className="size-5" />
+          Settings & appearance
+        </Link>
+        {modQueue !== undefined && (
+          <Button asChild>
+            <Link href="/mod">
+              <ShieldCheck /> Moderation queue
+              {modQueue > 0 && ` · ${modQueue} waiting`}
+            </Link>
+          </Button>
+        )}
         <Button asChild>
           <Link href="/account-status">Moderation decisions and appeals</Link>
         </Button>
@@ -124,19 +148,7 @@ export default async function MeLayout({ children }: LayoutProps<"/me">) {
         <Link href="/community" className="text-[14px] font-semibold underline">
           Community rules and how your data is used
         </Link>
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-4 text-[15px] font-semibold ring-1 ring-line transition-colors hover:bg-surface-2"
-        >
-          <Settings2 aria-hidden className="size-5" />
-          Settings & appearance
-        </Link>
-
-        {children}
-
-        <section className="flex flex-wrap items-center gap-2 border-t border-line pt-6">
-          <SignOutButton />
-          <span className="flex-1" />
+        <section className="flex justify-end border-t border-line pt-6">
           <DeleteAccountButton />
         </section>
       </div>

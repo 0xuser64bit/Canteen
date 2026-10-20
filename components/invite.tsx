@@ -132,9 +132,10 @@ export function InviteCard({
         {headline}
       </h2>
       <p className="mt-1.5 max-w-prose text-[14px] leading-relaxed text-pretty text-muted">
-        Until {goal} students from {university} join, other universities see
-        your posts as coming from a university in your country, and anonymity on
-        this page is thin. A few classmates fixes both.
+        Until {goal} students from {university} join, other universities see a
+        general university label on your posts. We also leave out your country
+        when it would narrow things down too much. With only a few classmates
+        here, what you share can still make you recognizable.
       </p>
       <Button variant="primary" className="mt-4" onClick={invite}>
         <UserPlus /> Invite classmates
