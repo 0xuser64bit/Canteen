@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/empty";
 import { Feed } from "@/components/feed";
@@ -72,11 +73,31 @@ export default async function UniversityPage({
         topic={topic?.slug}
         empty={
           <EmptyState
-            title={`No posts from ${university.name} yet`}
+            title={
+              topic
+                ? `Nothing in ${topic.label} from this campus yet`
+                : `No posts from ${university.name} yet`
+            }
             body={
-              university.isMine
-                ? "You could be the first. Campus posts are visible to this university and explicitly assigned Canteen hosts."
-                : "When its students post for everyone, you'll find them here."
+              <>
+                {topic
+                  ? topic.id === "OPPORTUNITIES"
+                    ? "No open opportunities match this campus right now."
+                    : "No posts match this topic right now. Try another topic."
+                  : university.isMine
+                    ? "You could be the first. Campus posts are visible to this university and explicitly assigned Canteen hosts."
+                    : "When its students post for everyone, you'll find them here."}
+                {topic && (
+                  <span className="mt-3 block">
+                    <Link
+                      href={`/u/${university.slug}`}
+                      className="font-semibold text-ink underline"
+                    >
+                      Clear filters
+                    </Link>
+                  </span>
+                )}
+              </>
             }
             action={university.isMine}
             topic={topic?.slug}
