@@ -4,6 +4,7 @@ import { ThemeProvider, useTheme } from "next-themes";
 import { Tooltip } from "radix-ui";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
+import { OfflineSupport } from "@/components/offline-support";
 import { PreferenceSync } from "@/components/preferences";
 
 function ThemedToaster() {
@@ -33,6 +34,7 @@ export function Providers({ children }: { children: ReactNode }) {
       disableTransitionOnChange
     >
       <Tooltip.Provider delayDuration={250}>
+        <OfflineSupport />
         <PreferenceSync />
         {children}
         <ThemedToaster />
