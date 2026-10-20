@@ -117,6 +117,10 @@ out through Canteen when using a shared device.
   through development email-code authentication, with external mail disabled.
   They exercised campus isolation, a public reply, filter retention and sign-out.
   They are not a substitute for native keyboard, picker or physical-phone tests.
+- The founder installed the signed APK on a physical Android device and reported
+  that it seems fine. Device/browser versions and individual flow results were
+  not recorded; the detailed hardware review below remains open. Web UI updates
+  reach the installed TWA through its hosted site without rebuilding the shell.
 
 Review the signed binary on a real Android phone before a public release, in
 addition to emulator checks:

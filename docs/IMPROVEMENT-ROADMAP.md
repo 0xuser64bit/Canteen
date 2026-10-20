@@ -6,6 +6,18 @@ observed student journeys and concrete defects.
 
 ## Completed implementation: October 2026
 
+- Soft dark accents use dark tinted message surfaces and light text across posts,
+  replies, polls and the live Settings preview. Primary controls retain a clear
+  accent; swatches follow intensity. Sending replies keep full text contrast.
+- Default feeds omit the redundant Latest-only row. Filters and post menus have
+  44px tap targets. Campus invitations use quieter secondary actions and leave
+  the first-conversation prompt visible.
+- Notifications retain New/Earlier grouping while being read, acknowledge exact
+  delivered revisions and offer a bounded explicit retry after connection errors.
+  Saved collection filters show selection and useful empty-state recovery.
+- Reports, deletions, saves and follows recover from transport errors. Report
+  reasons use native radios and retain selection. Cancelling native sharing does
+  not copy a link; clipboard failures receive feedback.
 - Sign-in keeps the requested email fixed during delivery, prevents overlapping
   verification, and recovers from failed requests without discarding useful input.
 - Campus and Everyone preserve relevant topic, question and ordering filters.
@@ -29,13 +41,16 @@ observed student journeys and concrete defects.
 ### Validation and delivery record
 
 Integrated checks on 20 October 2026 used separate disposable databases for browser
-journeys and destructive database tests. Real student inboxes were not used.
+journeys and destructive database tests. Real student inboxes were not used. The subsequent appearance and recovery pass
+passed the integrated checks below. Its live visual review remains with the
+founder on Android because connected browser use is disabled; the earlier phone
+captures describe the prior implementation.
 
 | Check                                           | Result / evidence                                                                                                                                                             |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Formatting and lint                             | Passed                                                                                                                                                                        |
 | Type checking                                   | Passed                                                                                                                                                                        |
-| Unit, interaction and native PostgreSQL tests   | 257 passed across 25 files; 20-second test timeout under concurrent build load                                                                                                |
+| Unit, interaction and native PostgreSQL tests   | 309 passed across 31 files; 20-second test timeout under concurrent build load                                                                                                |
 | Native PostgreSQL privacy and concurrency tests | Included above, no skipped database suite                                                                                                                                     |
 | Production web build                            | Passed                                                                                                                                                                        |
 | Visual review                                   | Phone at 390px, dark theme: campus, composer, thread and account reviewed; final desktop/light and real-device checks remain                                                  |
@@ -47,7 +62,7 @@ journeys and destructive database tests. Real student inboxes were not used.
 
 | Priority | Area                                  | Evidence to collect and completion criteria                                                                                                                                                                                                                     |
 | -------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1        | Android on real hardware              | Install the signed APK on a real phone. Exercise sign-in, keyboard, photo picker, deep links, gestures, text scaling and app updates. Record device/browser versions and observed defects before public distribution.                                           |
+| 1        | Android on real hardware              | Founder installed the signed APK and reported basic use seems fine. Continue sign-in, keyboard, photo picker, deep links, gestures, text scaling and app updates. Record device/browser versions and observed defects before public distribution.               |
 | 2        | Offline and installation experience   | Network-only recovery is implemented and covered by worker and registration tests. Finish real-browser offline/reconnection, cold launch and verified fullscreen review. Avoid caching private discussions without an explicit design.                          |
 | 3        | Large moderation queues               | Measure query time and rendered volume with large disposable report/appeal queues. Design bounded pagination that preserves urgent-first ordering and current permission checks.                                                                                |
 | 4        | Trending relevance                    | Review how likes, replies, recency and unanswered questions affect the current ranking. Compare useful conversations with repetitive or stale posts using fixtures and observed aggregate behavior before changing the score.                                   |

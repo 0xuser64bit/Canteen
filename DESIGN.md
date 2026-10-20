@@ -8,6 +8,12 @@ colors:
   you-hover-dark: "color-mix(in oklch, var(--you), white 8%)"
   you-ink: "oklch(0.2 0.025 var(--accent-h))"
   you-muted: "oklch(0.34 0.035 var(--accent-h))"
+  you-surface: "var(--you)"
+  you-surface-dark: "color-mix(in oklab, var(--you) 28%, var(--surface))"
+  you-surface-ink: "var(--you-ink)"
+  you-surface-ink-dark: "oklch(0.94 0.035 var(--accent-h))"
+  you-surface-muted: "var(--you-muted)"
+  you-surface-muted-dark: "oklch(0.8 0.035 var(--accent-h))"
   accent-yellow: "oklch(0.885 0.165 96)"
   accent-blue: "oklch(0.8 0.13 250)"
   accent-green: "oklch(0.83 0.13 160)"
@@ -110,15 +116,15 @@ components:
     backgroundColor: "{colors.you}"
     textColor: "{colors.you-ink}"
     rounded: "{rounded.full}"
-    size: "40px"
+    size: "44px"
   bubble-others:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
     rounded: "{rounded.bubble}"
     padding: "14px 16px 8px"
   bubble-mine:
-    backgroundColor: "{colors.you}"
-    textColor: "{colors.you-ink}"
+    backgroundColor: "{colors.you-surface}"
+    textColor: "{colors.you-surface-ink}"
     rounded: "{rounded.bubble}"
     padding: "14px 16px 8px"
   chip:
@@ -169,7 +175,8 @@ One selected accent over cool, slightly blue-tinted neutrals, plus a per-alias h
 
 ### Primary
 
-- **Your Accent** (`you`): the student's own bubbles, primary buttons (New post, Join, Start a thread), the round send button, the mobile tab bar's center plus, the Canteen mark and text selection. In dark mode it also becomes the focus ring and the focused-field ring. Text on it uses **Accent Ink** (`you-ink`), with **Accent Ink Muted** (`you-muted`) for meta text such as timestamps, view counts and the Campus marker inside an accent bubble. Both ink colors follow the selected hue. Hover mixes in 5% black in light mode (`you-hover`) or 8% white in dark mode (`you-hover-dark`).
+- **Your Accent** (`you`): primary buttons (New post, Join, Start a thread), the round send button, the mobile tab bar's center plus, the Canteen mark and text selection. In dark mode it also becomes the focus ring and the focused-field ring. Text on these controls uses **Accent Ink** (`you-ink`). Hover mixes in 5% black in light mode (`you-hover`) or 8% white in dark mode (`you-hover-dark`).
+- **Your Message** (`you-surface`): the student's own bubbles and the Settings chat preview. Text and metadata use `you-surface-ink` and `you-surface-muted`. In light and Vivid dark mode these resolve to the solid accent and dark accent inks. Soft dark mode uses a dark tinted surface with light text. Nested tags, poll bars and action hovers use the message ink, so they remain readable in either treatment.
 
 | Palette in Settings | Stored accent | Hue | Light/vivid L / C | Soft dark C |
 | ------------------- | ------------- | --- | ----------------- | ----------- |
@@ -180,7 +187,7 @@ One selected accent over cool, slightly blue-tinted neutrals, plus a per-alias h
 | Lilac               | `violet`      | 300 | 0.82 / 0.11       | 0.075       |
 | Apricot             | `orange`      | 60  | 0.85 / 0.13       | 0.085       |
 
-Soft dark mode uses L 0.76 with the palette's soft chroma and hue. Vivid dark mode uses the same L/C as the light palette. These are accents within the existing neutral system, not separate visual identities.
+Soft dark controls use L 0.76 with the palette's soft chroma and hue. Large message surfaces mix 28% of that accent with 72% dark `surface` in Oklab; body ink uses L 0.94 and metadata L 0.8. This reduces the brightness of the background without fading the text or controls. Vivid dark mode uses the same L/C and dark inks as the light palette. These are accents within the existing neutral system, not separate visual identities.
 
 ### Neutral
 
@@ -281,7 +288,7 @@ Chunky, rounded and quick to press.
 
 - **Topic filter:** a pill at 13px semibold. Inactive chips use `surface` with an inset `line` ring and `muted` text. The active chip is `ink` with `background` text.
 - **Composer choices** (topic, audience) use the same inverted-ink selected state with `role="radio"`.
-- **Tags inside bubbles:** a 12px pill on `surface-2` with a ring. On an accent bubble, the tag is a 10% `you-ink` tint instead.
+- **Tags inside bubbles:** a 12px pill on `surface-2` with a ring. On an accent bubble, the tag is a 10% `you-surface-ink` tint instead.
 
 ### Cards / Containers
 
@@ -307,12 +314,12 @@ Chunky, rounded and quick to press.
 ### Message bubbles (signature)
 
 - **Others:** left-aligned, `surface` + ring + soft shadow, with the top-left corner as the tail. The meta line above shows the alias name in its hue, the university and the time. On `sm` and up, feed posts show an initials avatar. In threads, the avatar appears only on the last bubble of a group.
-- **Yours:** right-aligned selected accent with Accent Ink. The top-right corner is the tail. The meta line reads "You". Actions inside an accent bubble hover to a 10% `you-ink` tint.
-- **OP badge:** a 10px uppercase bold tag, ink on background (a 10% `you-ink` tint on an accent bubble). It is a functional label, not a heading.
+- **Yours:** right-aligned `you-surface` with `you-surface-ink`, using a dark tint with light text in Soft dark mode. The top-right corner is the tail. The meta line reads "You". Actions inside an accent bubble hover to a 10% `you-surface-ink` tint.
+- **OP badge:** a 10px uppercase bold tag above the reply, `ink` fill with `background` text. It is a functional label, not a heading.
 
 ### Reply bar and the send rise
 
-The reply bar is a 26px-radius `surface` shell holding an auto-growing textarea and a 40px round accent send button with an up arrow (2.6 stroke). Focus thickens the shell ring to 2px (ink in light, selected accent in dark). Under the shell, a line reads "You appear as [alias] in this thread." When you send, the page scrolls to the newest reply. The new accent bubble rises from the composer's position into its slot, starting at 0.9 scale and 0.3 opacity, over 520ms with ease-out-quart. The motion is skipped when either the device or the local preference requests reduced motion.
+The reply bar is a 26px-radius `surface` shell holding an auto-growing textarea and a 44px round accent send button with an up arrow (2.6 stroke). Focus thickens the shell ring to 2px (ink in light, selected accent in dark). Under the shell, a line reads "You appear as [alias] in this thread." When you send, the page scrolls to the newest reply. The new accent bubble rises from the composer's position into its slot, starting at 0.9 scale and 0.3 opacity, over 520ms with ease-out-quart. The motion is skipped when either the device or the local preference requests reduced motion.
 
 ### Dialogs, menus and search
 
@@ -325,6 +332,8 @@ A 400px phone-style card (36px radius, pop shadow) replays an example thread tha
 ### Settings and reading preferences
 
 The authenticated `/settings` surface uses the existing page header, neutral sections, native radio groups with visible focus, and a live logo-and-chat preview. Color mode remains Device / Light / Dark through `next-themes`; the accent is a separate choice. Display settings stay in this browser and update immediately, including across tabs when storage is available. Stored values are validated before first paint; blocked storage falls back to the current visit and reports that it could not save.
+
+The Soft / Vivid control sits above the preview. Accent swatches reflect the selected intensity in dark mode, so a bright palette sample does not contradict its quieter message treatment.
 
 Defaults are Original yellow, Soft dark accents, Follow device motion, Doodles, Time ago and Device clock. Alternatives are Vivid dark accents, Reduce motion, Plain wallpaper, Date & time, and 12-hour / 24-hour clocks. Reset restores these display defaults and Device color mode. It does not change account content. Device reduced motion always wins over decorative motion; both CSS and scripted motion honor it.
 
@@ -344,6 +353,10 @@ Feed and search failures use a quiet inline message with an explicit Retry actio
 Loaded posts and the current search query stay available. Filtered empty states
 describe the actual queue and offer Clear filters; topic changes retain applicable
 reading choices. Thread return controls preserve the originating reading route.
+
+Default feeds omit the redundant single-option Latest row. Topic, question and ordering controls have at least 44px tap targets. On small campuses, the first conversation comes before the full invitation; feeds with posts use a compact, secondary invitation.
+
+Notifications group New and Earlier with neutral surfaces. New means unread when delivered during this visit; acknowledging delivery does not erase the visual cue while the student is reading. A failed acknowledgement offers an explicit retry. Exact notification revisions keep later replies unread until delivered. Private saved filters use wrapping 44px pills and filtered empty states link back to the full collection.
 
 The private account opens with a compact summary, wrapping email, three-column
 stats and sign-out, followed by collections. Its sticky header keeps a 44px
@@ -365,7 +378,7 @@ renders or caches student content; reconnection reloads the requested page.
 
 ### Do:
 
-- **Do** place the student's own content on the right in the selected accent with Accent Ink, and everyone else's on the left in neutral `surface` bubbles.
+- **Do** place the student's own content on the right with `you-surface` and its matching message inks, and everyone else's on the left in neutral `surface` bubbles.
 - **Do** use exactly one accent primary action per surface region, such as New post in the rail, the plus in the tab bar, or the send button in a thread.
 - **Do** colour aliases through `--hue` with the theme's L/C tokens, so both themes stay legible.
 - **Do** check every new surface in both light and dark mode, including soft and vivid accents, before it ships.

@@ -30,6 +30,61 @@ export default function UpdatesPage() {
       </header>
 
       <article
+        aria-labelledby="appearance-update"
+        className="mt-8 border-t border-line pt-7"
+      >
+        <header>
+          <h2
+            id="appearance-update"
+            className="text-[24px] leading-tight font-semibold tracking-tight"
+          >
+            Quieter nights, clearer conversations.
+          </h2>
+          <time
+            dateTime="2026-10-20"
+            className="mt-2 block text-[13px] text-muted"
+          >
+            20 October 2026
+          </time>
+        </header>
+        <div className="mt-7 space-y-6">
+          <section>
+            <h3 className="text-[20px] font-semibold">
+              A softer accent after dark
+            </h3>
+            <p className="mt-2 text-muted">
+              Soft mode now gives your messages a dark tint with light text,
+              keeping long conversations easier on the eyes. Vivid keeps the
+              full color. Choose either above the live preview in Settings;
+              palette samples follow your choice too.
+            </p>
+          </section>
+          <section>
+            <h3 className="text-[20px] font-semibold">
+              Less clutter, easier taps
+            </h3>
+            <p className="mt-2 text-muted">
+              Feed filters have more room to tap, and a lone Latest control no
+              longer takes up a row. Campus invitations leave more room for
+              conversations. Saved filters make the current view clearer and
+              help you return to the full collection when it is empty.
+            </p>
+          </section>
+          <section>
+            <h3 className="text-[20px] font-semibold">
+              Activity you can read at your pace
+            </h3>
+            <p className="mt-2 text-muted">
+              Notifications separate New from Earlier and keep that distinction
+              while you read. Failed read-status updates offer Retry. Reporting,
+              deleting, saving and following also explain connection failures;
+              report choices stay in place so you can try again.
+            </p>
+          </section>
+        </div>
+      </article>
+
+      <article
         aria-labelledby="october-update"
         className="mt-8 border-t border-line pt-7"
       >
