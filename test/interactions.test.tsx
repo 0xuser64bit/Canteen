@@ -430,6 +430,11 @@ it.each(["returned", "thrown"])(
     await render(<ThreadView thread={thread} />);
     await change("textarea", "First reply");
     await submit("#reply-bar");
+    const sending = [...container.querySelectorAll("span")].find(
+      (span) => span.textContent === "Sending…",
+    );
+    expect(sending).toBeDefined();
+    expect(sending!.closest(".opacity-80")).toBeNull();
     await change("textarea", "Newer draft");
     await act(async () => {
       if (mode === "returned") request.resolve({ ok: false, error: "Failed" });

@@ -2,7 +2,7 @@
 
 import { Check, Monitor, Moon, RotateCcw, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { Logo } from "@/components/logo";
 import { savePreferences, usePreferences } from "@/components/preferences";
@@ -143,8 +143,8 @@ export function Settings() {
                 />
                 <span className="flex min-h-22 flex-col items-center justify-center gap-2 rounded-2xl bg-surface px-1 text-[12px] font-semibold text-muted ring-1 ring-line transition-colors ring-inset peer-checked:text-ink peer-checked:ring-2 peer-checked:ring-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring hover:text-ink">
                   <span
-                    className="grid size-8 place-items-center rounded-full text-[#16181d] ring-1 ring-black/10 ring-inset"
-                    style={{ background: accent.color }}
+                    className="accent-swatch grid size-8 place-items-center rounded-full ring-1 ring-current/15 ring-inset"
+                    style={{ "--swatch-color": accent.color } as CSSProperties}
                   >
                     {preferences.accent === accent.id && (
                       <Check aria-hidden className="size-4 stroke-[2.5]" />
@@ -157,26 +157,10 @@ export function Settings() {
           </div>
         </fieldset>
 
-        <div
-          aria-label="Live appearance preview"
-          className="wallpaper overflow-hidden rounded-[26px] bg-surface-2 p-5 ring-1 ring-line"
-        >
-          <Logo className="mb-5" />
-          <div className="max-w-[85%] rounded-[22px] rounded-tl-md bg-surface px-4 py-3 text-[14px] shadow-soft ring-1 ring-line">
-            Same table. Your kind of color.
-          </div>
-          <div className="mt-3 ml-auto w-fit max-w-[85%] rounded-[22px] rounded-tr-md bg-you px-4 py-3 text-[14px] font-medium text-you-ink">
-            Feels like me.
-          </div>
-          <p className="mt-3 text-right text-[12px] text-muted">
-            <TimeAgo date={previewTime} /> · Preview
-          </p>
-        </div>
-
         <Choices
           name="intensity"
           title="Dark-mode accents"
-          description="Soft keeps bright colors quieter at night. Vivid keeps their daytime color."
+          description="Soft gives your messages a dark tint with light text. Vivid fills them with your accent color."
           value={preferences.intensity}
           options={[
             { id: "soft", label: "Soft" },
@@ -186,6 +170,22 @@ export function Settings() {
             update({ intensity: intensity as Preferences["intensity"] })
           }
         />
+
+        <div
+          aria-label="Live appearance preview"
+          className="wallpaper overflow-hidden rounded-[26px] bg-surface-2 p-5 ring-1 ring-line"
+        >
+          <Logo className="mb-5" />
+          <div className="max-w-[85%] rounded-[22px] rounded-tl-md bg-surface px-4 py-3 text-[14px] shadow-soft ring-1 ring-line">
+            Same table. Your kind of color.
+          </div>
+          <div className="mt-3 ml-auto w-fit max-w-[85%] rounded-[22px] rounded-tr-md bg-you-surface px-4 py-3 text-[14px] font-medium text-you-surface-ink">
+            Feels like me.
+          </div>
+          <p className="mt-3 text-right text-[12px] text-muted">
+            <TimeAgo date={previewTime} /> · Preview
+          </p>
+        </div>
       </section>
 
       <section

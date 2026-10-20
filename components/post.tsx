@@ -78,7 +78,7 @@ export function LikeButton({
       className={cn(
         "relative z-10 flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors",
         onYellow
-          ? "hover:bg-you-ink/10"
+          ? "hover:bg-you-surface-ink/10"
           : "text-muted hover:bg-surface-3 hover:text-ink",
         state.liked && !onYellow && "text-danger hover:text-danger",
       )}
@@ -96,7 +96,7 @@ export function LikeButton({
 }
 
 function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
-  const quiet = onYellow ? "text-you-muted" : "text-muted";
+  const quiet = onYellow ? "text-you-surface-muted" : "text-muted";
   return (
     <div className="relative z-10 mt-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -104,7 +104,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
           className={cn(
             "mr-1 shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap",
             onYellow
-              ? "bg-you-ink/10"
+              ? "bg-you-surface-ink/10"
               : "bg-surface-2 text-muted ring-1 ring-line",
           )}
         >
@@ -144,7 +144,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
           className={cn(
             "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors",
             onYellow
-              ? "hover:bg-you-ink/10"
+              ? "hover:bg-you-surface-ink/10"
               : "text-muted hover:bg-surface-3 hover:text-ink",
           )}
           aria-label={`${post.commentCount} ${post.commentCount === 1 ? "reply" : "replies"}`}
@@ -234,7 +234,7 @@ export function PostCard({
           className={cn(
             "group/bubble relative w-full rounded-[24px] px-4 pt-3.5 pb-2 transition-[box-shadow,transform] duration-200 has-[a.stretched:hover]:shadow-pop",
             mine
-              ? "rounded-tr-md bg-you text-you-ink"
+              ? "rounded-tr-md bg-you-surface text-you-surface-ink"
               : "rounded-tl-md bg-surface shadow-soft ring-1 ring-line",
           )}
         >
@@ -256,7 +256,7 @@ export function PostCard({
             <p
               className={cn(
                 "mt-1 line-clamp-4 text-[15px] leading-relaxed whitespace-pre-line",
-                mine ? "text-you-ink" : "text-ink/85",
+                mine ? "text-you-surface-ink" : "text-ink/85",
               )}
             >
               {post.excerpt}

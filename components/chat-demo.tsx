@@ -57,7 +57,7 @@ function Typing({ line }: { line: Line }) {
       <div
         className={cn(
           "flex gap-1 rounded-[18px] px-4 py-3",
-          line.mine ? "bg-you" : "bg-surface ring-1 ring-line",
+          line.mine ? "bg-you-surface" : "bg-surface ring-1 ring-line",
         )}
       >
         {[0, 150, 300].map((delay) => (
@@ -65,7 +65,7 @@ function Typing({ line }: { line: Line }) {
             key={delay}
             className={cn(
               "size-1.5 animate-typing rounded-full",
-              line.mine ? "bg-you-ink" : "bg-muted",
+              line.mine ? "bg-you-surface-ink" : "bg-muted",
             )}
             style={{ animationDelay: `${delay}ms` }}
           />
@@ -106,7 +106,7 @@ function Bubble({ line, animate }: { line: Line; animate: boolean }) {
           className={cn(
             "rounded-[18px] px-3.5 py-2 text-[14px] leading-snug",
             line.mine
-              ? "rounded-tr-md bg-you text-you-ink"
+              ? "rounded-tr-md bg-you-surface text-you-surface-ink"
               : "rounded-tl-md bg-surface shadow-soft ring-1 ring-line",
           )}
         >

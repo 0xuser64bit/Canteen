@@ -58,9 +58,10 @@ export function PollView({
             className={cn(
               "relative flex min-h-11 w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl px-4 py-2.5 text-left text-[15px] font-semibold transition-shadow ring-inset",
               onYellow
-                ? "ring-1 ring-you-ink/20 hover:ring-you-ink/40"
+                ? "ring-1 ring-you-surface-ink/20 hover:ring-you-surface-ink/40"
                 : "bg-surface ring-1 ring-line hover:ring-line-strong",
-              chosen && (onYellow ? "ring-2 ring-you-ink" : "ring-2 ring-ink"),
+              chosen &&
+                (onYellow ? "ring-2 ring-you-surface-ink" : "ring-2 ring-ink"),
             )}
           >
             {revealed && (
@@ -71,11 +72,11 @@ export function PollView({
                   "absolute inset-y-0 left-0 transition-[width] duration-500 ease-out-quart",
                   chosen
                     ? onYellow
-                      ? "bg-you-ink/15"
-                      : // Light text can't sit on solid yellow, so dark mode tints it.
+                      ? "bg-you-surface-ink/15"
+                      : // Light text needs a tinted accent bar in dark mode.
                         "bg-you dark:bg-you/25"
                     : onYellow
-                      ? "bg-you-ink/[0.07]"
+                      ? "bg-you-surface-ink/[0.07]"
                       : "bg-surface-3",
                 )}
               />
@@ -93,7 +94,7 @@ export function PollView({
       <p
         className={cn(
           "px-1 text-[12px] font-medium",
-          onYellow ? "text-you-muted" : "text-muted",
+          onYellow ? "text-you-surface-muted" : "text-muted",
         )}
         aria-live="polite"
       >

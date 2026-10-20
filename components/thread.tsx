@@ -62,13 +62,10 @@ function BackButton() {
   );
 }
 
-function OpBadge({ mine }: { mine?: boolean }) {
+function OpBadge() {
   return (
     <span
-      className={cn(
-        "rounded-md px-1.5 py-px text-[10px] font-bold tracking-wide uppercase",
-        mine ? "bg-you-ink/10 text-you-ink" : "bg-ink text-background",
-      )}
+      className="rounded-md bg-ink px-1.5 py-px text-[10px] font-bold tracking-wide text-background uppercase"
       title="Original poster"
     >
       OP
@@ -146,14 +143,14 @@ function ReplyBubble({
         )}
         {!grouped && mine && reply.isAuthor && (
           <div className="mb-1 px-1">
-            <OpBadge mine />
+            <OpBadge />
           </div>
         )}
         <div
           className={cn(
             "rounded-[22px] px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-wrap",
             mine
-              ? "bg-you text-you-ink"
+              ? "bg-you-surface text-you-surface-ink"
               : "bg-surface shadow-soft ring-1 ring-line",
             mine
               ? grouped
@@ -162,7 +159,6 @@ function ReplyBubble({
               : grouped
                 ? "rounded-tl-lg"
                 : "rounded-tl-md",
-            reply.sending && "opacity-80",
           )}
         >
           {reply.hidden && (
@@ -175,7 +171,7 @@ function ReplyBubble({
           <span
             className={cn(
               "ml-3 inline-block translate-y-0.5 text-[11px] font-medium",
-              mine ? "text-you-muted" : "text-muted",
+              mine ? "text-you-surface-muted" : "text-muted",
             )}
           >
             {reply.sending ? "Sending…" : <TimeAgo date={reply.createdAt} />}
@@ -476,7 +472,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
               className={cn(
                 "w-full rounded-[26px] px-5 pt-4 pb-2.5",
                 mine
-                  ? "rounded-tr-md bg-you text-you-ink"
+                  ? "rounded-tr-md bg-you-surface text-you-surface-ink"
                   : "rounded-tl-md bg-surface shadow-soft ring-1 ring-line",
               )}
             >
@@ -547,7 +543,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
                   className={cn(
                     "ml-2 shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap",
                     mine
-                      ? "bg-you-ink/10"
+                      ? "bg-you-surface-ink/10"
                       : "bg-surface-2 text-muted ring-1 ring-line",
                   )}
                 >
@@ -564,7 +560,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
                 <span
                   className={cn(
                     "flex items-center gap-1.5 px-2.5 text-[13px] font-semibold tabular",
-                    mine ? "text-you-muted" : "text-muted",
+                    mine ? "text-you-surface-muted" : "text-muted",
                   )}
                   aria-label={`${thread.viewCount} views`}
                 >
