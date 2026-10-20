@@ -18,6 +18,7 @@ import type { Thread } from "@/server/queries";
 const mocks = vi.hoisted(() => {
   const request = () => vi.fn<(...args: unknown[]) => Promise<unknown>>();
   return {
+    search: "",
     router: {
       push: vi.fn(),
       replace: vi.fn(),
@@ -37,7 +38,11 @@ const mocks = vi.hoisted(() => {
     toast: vi.fn(),
   };
 });
-vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => mocks.router,
+  useSearchParams: () => new URLSearchParams(mocks.search),
+  usePathname: () => "/p/thread-test",
+}));
 vi.mock("next/link", () => ({
   default: ({ children, ...props }: ComponentProps<"a">) => (
     <a {...props}>{children}</a>
@@ -100,6 +105,7 @@ let container: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.search = "";
   localStorage.clear();
   activateDraftOwner("session-a");
   container = document.createElement("div");
@@ -456,6 +462,32 @@ it("allows authorized staff OTP requests after an unrecognized university hint",
     otp: "12345678",
   });
   expect(mocks.router.replace).toHaveBeenCalledWith("/p/shared-thread");
+});
+
+it("reuses a reply publication ID after a lost acknowledgement", async () => {
+  mocks.reply.mockRejectedValueOnce(new Error("Acknowledgement lost"));
+  mocks.reply.mockResolvedValue({ ok: true, data: null });
+  await render(<ThreadView thread={thread} />);
+  await change("textarea", "A helpful reply");
+  await submit("#reply-bar");
+  expect(field("textarea").value).toBe("A helpful reply");
+  await submit("#reply-bar");
+  expect(field("textarea").value).toBe("");
+  expect(mocks.reply.mock.calls[1]![2]).toBe(mocks.reply.mock.calls[0]![2]);
+  await change("textarea", "A helpful reply");
+  await submit("#reply-bar");
+  expect(mocks.reply.mock.calls[2]![2]).not.toBe(mocks.reply.mock.calls[0]![2]);
+});
+
+it("returns from a thread to the original private collection", async () => {
+  mocks.search = new URLSearchParams({
+    from: "/me?collection=saved",
+  }).toString();
+  await render(<ThreadView thread={thread} />);
+  await act(async () =>
+    container.querySelector<HTMLButtonElement>('[aria-label="Back"]')!.click(),
+  );
+  expect(mocks.router.replace).toHaveBeenCalledWith("/me?collection=saved");
 });
 
 it("keeps the requested email fixed while sending a code", async () => {

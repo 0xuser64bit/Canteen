@@ -977,17 +977,102 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.postView.count()).toBe(0);
   });
 
-  it("accepts a client reply id only when it is a fresh UUID", async () => {
+  it("accepts exact reply retries and rejects reused ids with a different payload or author", async () => {
     const p = await post("ada");
+    const other = await post("alan");
     as("grace");
     const id = crypto.randomUUID();
     expect((await actions.addComment(p.id, "first", id)).ok).toBe(true);
     expect(await db.comment.findUnique({ where: { id } })).not.toBeNull();
+    expect((await actions.addComment(p.id, "  first  ", id)).ok).toBe(true);
     expect((await actions.addComment(p.id, "again", id)).ok).toBe(false);
+    expect((await actions.addComment(other.id, "first", id)).ok).toBe(false);
+    as("linus");
+    expect((await actions.addComment(p.id, "first", id)).ok).toBe(false);
     expect((await actions.addComment(p.id, "bad", "not-a-uuid")).ok).toBe(
       false,
     );
     expect(await db.comment.count()).toBe(1);
+  });
+
+  it("acknowledges simultaneous reply retries once without repeating quota or notifications", async () => {
+    vi.mocked(sendReplyNotice).mockClear();
+    const p = await post("ada", { kind: "QUESTION" });
+    await db.post.update({
+      where: { id: p.id },
+      data: { emailOnReply: true },
+    });
+    as("alan");
+    const id = crypto.randomUUID();
+    expect(
+      await Promise.all([
+        actions.addComment(p.id, "A useful reply", id),
+        actions.addComment(p.id, "A useful reply", id),
+      ]),
+    ).toEqual([
+      { ok: true, data: null },
+      { ok: true, data: null },
+    ]);
+    await finishBackground();
+    expect(sendReplyNotice).toHaveBeenCalledOnce();
+    expect(await db.comment.count()).toBe(1);
+    expect(await db.publication.count({ where: { kind: "COMMENT" } })).toBe(1);
+    expect(await db.notification.findMany()).toMatchObject([
+      { userId: "ada", replyId: id, revision: 0 },
+    ]);
+
+    // An acknowledgement still succeeds when the original reply used the last slot.
+    await db.publication.createMany({
+      data: Array.from({ length: 19 }, () => ({
+        userId: "alan",
+        kind: "COMMENT" as const,
+      })),
+    });
+    expect((await actions.addComment(p.id, "A useful reply", id)).ok).toBe(
+      true,
+    );
+    expect((await actions.addComment(p.id, "A new reply")).ok).toBe(false);
+    await finishBackground();
+    expect(sendReplyNotice).toHaveBeenCalledOnce();
+    expect(await db.comment.count()).toBe(1);
+    expect(await db.publication.count({ where: { kind: "COMMENT" } })).toBe(20);
+    expect(await db.notification.count()).toBe(1);
+    expect(
+      (await db.post.findUniqueOrThrow({ where: { id: p.id } })).revision,
+    ).toBe(1);
+  });
+
+  it("rechecks authentication, suspension and post visibility before acknowledging a reply retry", async () => {
+    const p = await post("ada", { audience: "CAMPUS" });
+    const id = crypto.randomUUID();
+    as("alan");
+    expect((await actions.addComment(p.id, "A campus reply", id)).ok).toBe(
+      true,
+    );
+    const beforeBan = await viewer("alan");
+    await db.user.update({
+      where: { id: "alan" },
+      data: { bannedAt: new Date() },
+    });
+    vi.mocked(getViewer).mockResolvedValueOnce(beforeBan);
+    expect((await actions.addComment(p.id, "A campus reply", id)).ok).toBe(
+      false,
+    );
+    as(null);
+    expect((await actions.addComment(p.id, "A campus reply", id)).ok).toBe(
+      false,
+    );
+    await db.user.update({ where: { id: "alan" }, data: { bannedAt: null } });
+    await db.post.update({
+      where: { id: p.id },
+      data: { hiddenAt: new Date() },
+    });
+    as("alan");
+    expect((await actions.addComment(p.id, "A campus reply", id)).ok).toBe(
+      false,
+    );
+    expect(await db.comment.count()).toBe(1);
+    expect(await db.publication.count()).toBe(1);
   });
 
   it("enforces the reply limit across simultaneous requests", async () => {

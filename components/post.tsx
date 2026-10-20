@@ -9,6 +9,7 @@ import { AliasAvatar, AliasName } from "@/components/alias";
 import { PollView } from "@/components/poll";
 import { PostMenu } from "@/components/post-menu";
 import { TimeAgo } from "@/components/time";
+import { ThreadLink } from "@/components/thread-link";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
 import { setLike } from "@/server/actions";
@@ -138,7 +139,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
           count={post.likeCount}
           onYellow={onYellow}
         />
-        <Link
+        <ThreadLink
           href={`/p/${post.id}`}
           className={cn(
             "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors",
@@ -150,7 +151,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
         >
           <MessageCircle className="size-[18px]" />
           {post.commentCount > 0 && compactNumber(post.commentCount)}
-        </Link>
+        </ThreadLink>
         <span
           className={cn(
             "hidden items-center gap-1.5 px-2 text-[13px] font-semibold tabular sm:flex",
@@ -244,12 +245,12 @@ export function PostCard({
             </p>
           )}
           <h2 className="text-[17px] leading-snug font-semibold tracking-tight text-pretty">
-            <Link
+            <ThreadLink
               href={`/p/${post.id}`}
               className="stretched after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ring"
             >
               {post.title}
-            </Link>
+            </ThreadLink>
           </h2>
           {post.excerpt && (
             <p

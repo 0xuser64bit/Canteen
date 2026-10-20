@@ -475,6 +475,22 @@ export async function addComment(
       if (!author || author.bannedAt) return SIGNED_OUT;
       const post = await postVisibleTo(viewer, postId, tx);
       if (!post) return NOT_FOUND;
+      // A lost acknowledgement must not spend another slot or notify twice.
+      if (parsed.data.id) {
+        const existing = await tx.comment.findUnique({
+          where: { id: parsed.data.id },
+          select: { authorId: true, postId: true, body: true },
+        });
+        if (existing)
+          return existing.authorId === viewer.id &&
+            existing.postId === postId &&
+            existing.body === parsed.data.body
+            ? ok({ authorId: post.authorId, emailAuthor: false })
+            : {
+                ok: false as const,
+                error: "That reply didn't go through. Try again.",
+              };
+      }
       if (await postingTooFast("comment", viewer.id, tx))
         return {
           ok: false as const,

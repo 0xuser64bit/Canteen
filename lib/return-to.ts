@@ -22,3 +22,19 @@ export function safeReturnTo(value: unknown): string {
     return "/campus";
   }
 }
+
+/** A thread's return action goes to a reading surface, never another thread. */
+export function threadReturnTo(value: unknown): string {
+  const safe = safeReturnTo(value);
+  return /^\/(?:campus|home|me|notifications|host|u\/[a-z0-9-]+)\/?(?:[?#]|$)/.test(
+    safe,
+  )
+    ? safe
+    : "/campus";
+}
+
+export function threadHref(href: `/p/${string}`, from: string): `/p/${string}` {
+  const url = new URL(href, "https://canteen.invalid");
+  url.searchParams.set("from", threadReturnTo(from));
+  return `${url.pathname}${url.search}${url.hash}` as `/p/${string}`;
+}

@@ -1,10 +1,10 @@
 "use client";
 
 import { Heart, MessageCircle } from "lucide-react";
-import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TimeAgo } from "@/components/time";
+import { ThreadLink } from "@/components/thread-link";
 import { cn } from "@/lib/utils";
 import { markNotificationsRead } from "@/server/actions";
 import type { NotificationItem } from "@/server/queries";
@@ -29,7 +29,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
         const comment = item.type === "COMMENT";
         return (
           <li key={item.id}>
-            <Link
+            <ThreadLink
               href={
                 item.replyId
                   ? `/p/${item.post.id}?reply=${item.replyId}#reply-${item.replyId}`
@@ -76,7 +76,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
                   aria-label="Unread"
                 />
               )}
-            </Link>
+            </ThreadLink>
           </li>
         );
       })}

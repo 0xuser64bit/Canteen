@@ -1,5 +1,6 @@
 import { Flame, GitFork, School } from "lucide-react";
 import Link from "next/link";
+import { ThreadLink } from "@/components/thread-link";
 import { requireViewer } from "@/lib/session";
 import { repoUrl } from "@/lib/site";
 import { plural } from "@/lib/utils";
@@ -29,7 +30,7 @@ export async function Discover() {
           <ol className="flex flex-col gap-1">
             {trending.map((post, index) => (
               <li key={post.id}>
-                <Link
+                <ThreadLink
                   href={`/p/${post.id}`}
                   className="group -mx-2.5 flex gap-3 rounded-2xl p-2.5 transition-colors hover:bg-surface-3"
                 >
@@ -45,7 +46,7 @@ export async function Discover() {
                       {plural(post.commentCount, "reply", "replies")}
                     </span>
                   </span>
-                </Link>
+                </ThreadLink>
               </li>
             ))}
           </ol>

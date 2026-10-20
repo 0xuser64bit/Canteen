@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { countryName } from "@/lib/countries";
+import { threadHref } from "@/lib/return-to";
 import { TOPICS, topicLabel } from "@/lib/topics";
 import { searchCanteen } from "@/server/actions";
 import type { SearchResults } from "@/server/queries";
@@ -27,17 +29,16 @@ export function openSearch() {
 const itemClass =
   "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] data-[selected=true]:bg-surface-3 [&>svg]:size-[18px] [&>svg]:shrink-0 [&>svg]:text-muted";
 
+type SearchState =
+  | { query: string; status: "loading" | "error" }
+  | (SearchResults & { query: string; status: "ready" });
+
 export function SearchPalette() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResults & { query: string }>({
-    query: "",
-    universities: [],
-    posts: [],
-  });
-  const [pending, startTransition] = useTransition();
-  const latest = useRef("");
+  const [results, setResults] = useState<SearchState | null>(null);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -57,26 +58,38 @@ export function SearchPalette() {
 
   const trimmed = query.trim();
   useEffect(() => {
-    if (trimmed.length < 2) return;
-    latest.current = trimmed;
-    const timer = setTimeout(() => {
-      startTransition(async () => {
+    if (!open || trimmed.length < 2) return;
+    let active = true;
+    const timer = setTimeout(async () => {
+      setResults({ query: trimmed, status: "loading" });
+      try {
         const next = await searchCanteen(trimmed);
-        // Ignore responses that arrive after the query changed.
-        if (latest.current === trimmed) setResults({ query: trimmed, ...next });
-      });
+        if (active) setResults({ query: trimmed, status: "ready", ...next });
+      } catch {
+        if (active) setResults({ query: trimmed, status: "error" });
+      }
     }, 180);
-    return () => clearTimeout(timer);
-  }, [trimmed]);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [open, trimmed, retry]);
 
   const go = <T extends string>(href: Route<T>) => {
     setOpen(false);
     setQuery("");
-    router.push(href);
+    if (href.startsWith("/p/")) {
+      const from = location.pathname.startsWith("/p/")
+        ? (new URLSearchParams(location.search).get("from") ?? "/campus")
+        : `${location.pathname}${location.search}`;
+      router.push(threadHref(href as `/p/${string}`, from));
+    } else router.push(href);
   };
 
   const searching = trimmed.length >= 2;
-  const current = searching && results.query === trimmed ? results : null;
+  const current = searching && results?.query === trimmed ? results : null;
+  const pending = searching && (!current || current.status === "loading");
+  const matches = current?.status === "ready" ? current : null;
 
   return (
     <Command.Dialog
@@ -103,19 +116,44 @@ export function SearchPalette() {
       <Command.List className="max-h-[min(60dvh,440px)] overflow-y-auto overscroll-contain p-2">
         {searching ? (
           <>
-            {current &&
-              current.posts.length === 0 &&
-              current.universities.length === 0 && (
+            {pending && (
+              <p
+                role="status"
+                className="px-3 py-8 text-center text-[14px] text-muted"
+              >
+                Searching…
+              </p>
+            )}
+            {current?.status === "error" && (
+              <div className="flex flex-col items-center gap-3 px-3 py-6 text-center">
+                <p role="status" className="max-w-sm text-[14px] text-muted">
+                  Search couldn&apos;t load. Check your connection and try
+                  again.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setResults({ query: trimmed, status: "loading" });
+                    setRetry((value) => value + 1);
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+            {matches &&
+              matches.posts.length === 0 &&
+              matches.universities.length === 0 && (
                 <p className="px-3 py-8 text-center text-[14px] text-muted">
                   Nothing matches &ldquo;{trimmed}&rdquo; yet.
                 </p>
               )}
-            {current && current.posts.length > 0 && (
+            {matches && matches.posts.length > 0 && (
               <Command.Group
                 heading="Posts"
                 className="mb-1 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted"
               >
-                {current.posts.map((post) => (
+                {matches.posts.map((post) => (
                   <Command.Item
                     key={post.id}
                     value={`post-${post.id}`}
@@ -131,12 +169,12 @@ export function SearchPalette() {
                 ))}
               </Command.Group>
             )}
-            {current && current.universities.length > 0 && (
+            {matches && matches.universities.length > 0 && (
               <Command.Group
                 heading="Universities"
                 className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted"
               >
-                {current.universities.map((u) => (
+                {matches.universities.map((u) => (
                   <Command.Item
                     key={u.slug}
                     value={`uni-${u.slug}`}

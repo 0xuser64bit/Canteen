@@ -9,8 +9,8 @@ import {
   Lock,
   ShieldAlert,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 import {
   useEffect,
   useLayoutEffect,
@@ -30,11 +30,13 @@ import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
 import { DateTime, TimeAgo } from "@/components/time";
+import { ThreadLink } from "@/components/thread-link";
 import { Button } from "@/components/ui/button";
 import { Counter } from "@/components/ui/field";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
 import { LIMITS } from "@/lib/validation";
+import { threadHref, threadReturnTo } from "@/lib/return-to";
 import { addComment, recordView, markHelpful } from "@/server/actions";
 import type { Thread, ThreadComment } from "@/server/queries";
 
@@ -45,18 +47,15 @@ const REPLY_BAR_ID = "reply-bar";
 
 function BackButton() {
   const router = useRouter();
+  const search = useSearchParams();
   return (
     <button
       type="button"
       aria-label="Back"
-      onClick={() => {
-        const cameFromHere =
-          document.referrer &&
-          new URL(document.referrer).origin === location.origin;
-        if (cameFromHere && history.length > 1) router.back();
-        else router.push("/campus");
-      }}
-      className="-ml-2 grid size-10 shrink-0 cursor-pointer place-items-center rounded-full transition-colors hover:bg-surface-3"
+      onClick={() =>
+        router.replace(threadReturnTo(search.get("from")) as Route)
+      }
+      className="-ml-2 grid size-11 shrink-0 cursor-pointer place-items-center rounded-full transition-colors hover:bg-surface-3"
     >
       <ArrowLeft className="size-5" />
     </button>
@@ -252,7 +251,7 @@ function ReplyBar({
         sent = await onSend(text);
       } catch {
         toast.error(
-          "Your reply wasn't sent. Check your connection and try again.",
+          "Couldn't confirm your reply. Check your connection and try again.",
         );
       }
       if (!sent) {
@@ -287,7 +286,7 @@ function ReplyBar({
     >
       {failed !== null && (
         <details className="mb-2 rounded-xl bg-surface-2 p-3 text-[13px]">
-          <summary>A previous reply wasn&apos;t sent</summary>
+          <summary>A previous reply needs confirmation</summary>
           <p className="my-2 break-words whitespace-pre-wrap">{failed}</p>
           <button
             type="button"
@@ -320,7 +319,7 @@ function ReplyBar({
           onKeyDown={onKeyDown}
           placeholder="Write a reply"
           maxLength={LIMITS.comment.max + 200}
-          className="[field-sizing:content] max-h-40 min-h-10 flex-1 resize-none bg-transparent px-3 py-2 text-[15px] leading-relaxed outline-none placeholder:text-muted"
+          className="[field-sizing:content] max-h-40 min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-[16px] leading-relaxed outline-none placeholder:text-muted"
         />
         <span className="self-center">
           <Counter value={body.length} max={LIMITS.comment.max} />
@@ -329,7 +328,7 @@ function ReplyBar({
           type="submit"
           disabled={empty || body.length > LIMITS.comment.max}
           aria-label="Send reply"
-          className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full bg-you text-you-ink transition-[transform,background-color,color] duration-150 active:scale-90 disabled:cursor-default disabled:bg-surface-3 disabled:text-muted"
+          className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-you text-you-ink transition-[transform,background-color,color] duration-150 active:scale-90 disabled:cursor-default disabled:bg-surface-3 disabled:text-muted"
         >
           <ArrowUp className="size-5 stroke-[2.6]" />
         </button>
@@ -343,6 +342,8 @@ function ReplyBar({
 
 export function ThreadView({ thread }: { thread: Thread }) {
   const router = useRouter();
+  const search = useSearchParams();
+  const unconfirmedReplies = useRef(new Map<string, string>());
   const [replies, addReply] = useOptimistic<Reply[], Reply>(
     thread.comments,
     (current, reply) =>
@@ -400,7 +401,9 @@ export function ThreadView({ thread }: { thread: Thread }) {
   const send = async (body: string) => {
     // Same id for the optimistic bubble and the saved reply: React keeps the
     // node, so the rise animation isn't cut short when the server is fast.
-    const id = crypto.randomUUID();
+    const text = body.trim();
+    const id = unconfirmedReplies.current.get(text) ?? crypto.randomUUID();
+    unconfirmedReplies.current.set(text, id);
     addReply({
       id,
       body,
@@ -413,8 +416,16 @@ export function ThreadView({ thread }: { thread: Thread }) {
       sending: true,
     });
     const result = await addComment(thread.id, body, id);
+    // A lost acknowledgement retries the same publication, rather than duplicating it.
+    unconfirmedReplies.current.delete(text);
     if (!result.ok) toast.error(result.error);
-    else if (thread.historical) router.push(`/p/${thread.id}#reply-${id}`);
+    else if (thread.historical)
+      router.push(
+        threadHref(
+          `/p/${thread.id}#reply-${id}`,
+          search.get("from") ?? "/campus",
+        ),
+      );
     return result.ok;
   };
 
@@ -586,12 +597,12 @@ export function ThreadView({ thread }: { thread: Thread }) {
             <div className="mt-2 text-[15px] break-words whitespace-pre-wrap">
               <Linkified text={thread.helpfulReply.body} />
             </div>
-            <Link
+            <ThreadLink
               href={`/p/${thread.id}?reply=${thread.helpfulReply.id}#reply-${thread.helpfulReply.id}`}
               className="mt-3 inline-block text-[13px] font-semibold underline"
             >
               Read in conversation
-            </Link>
+            </ThreadLink>
           </section>
         )}
         <div className="my-8 flex items-center gap-3 text-[12px] font-semibold text-muted">
@@ -608,19 +619,19 @@ export function ThreadView({ thread }: { thread: Thread }) {
         >
           {thread.earlierCursor && (
             <Button asChild variant="ghost">
-              <Link
+              <ThreadLink
                 href={`/p/${thread.id}?before=${encodeURIComponent(thread.earlierCursor)}`}
                 scroll={false}
               >
                 Earlier replies
-              </Link>
+              </ThreadLink>
             </Button>
           )}
           {thread.historical && (
             <Button asChild variant="ghost">
-              <Link href={`/p/${thread.id}`} scroll={false}>
+              <ThreadLink href={`/p/${thread.id}`} scroll={false}>
                 Latest replies
-              </Link>
+              </ThreadLink>
             </Button>
           )}
         </nav>

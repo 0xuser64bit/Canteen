@@ -160,7 +160,7 @@ export const commentInput = z.object({
   postId: idInput,
   body: text(LIMITS.comment.min, LIMITS.comment.max, "Reply"),
   // Client-generated so the optimistic bubble and the saved reply share one
-  // identity (and one DOM node). A collision just fails the insert.
+  // identity (and one DOM node). Exact retries acknowledge the existing reply.
   id: z.uuid().optional(),
 });
 
