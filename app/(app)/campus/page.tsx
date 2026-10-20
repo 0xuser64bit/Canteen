@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { EmptyState } from "@/components/empty";
 import { Feed } from "@/components/feed";
 import { InviteCard } from "@/components/invite";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import {
   PageHeader,
   TopicChips,
@@ -29,15 +30,18 @@ export default async function CampusPage({
     noReplies: repliesFilter,
     sort: requestedSort,
   } = await searchParams;
-  const noReplies = repliesFilter === "1";
-  const unanswered = filter === "1";
-  const sort =
-    requestedSort === "closing" || requestedSort === "oldest"
-      ? requestedSort
-      : unanswered
-        ? "oldest"
-        : "newest";
   const topic = topicBySlug(typeof slug === "string" ? slug : undefined);
+  const opportunities = topic?.id === "OPPORTUNITIES";
+  const noReplies = !opportunities && repliesFilter === "1";
+  const unanswered = !opportunities && filter === "1";
+  const sort =
+    requestedSort === "newest"
+      ? "newest"
+      : requestedSort === "closing" && opportunities
+        ? "closing"
+        : unanswered
+          ? "oldest"
+          : "newest";
   const [page, university] = await Promise.all([
     getFeed(viewer, {
       scope: { kind: "campus" },
@@ -58,13 +62,17 @@ export default async function CampusPage({
         title="My campus"
         subtitle={`${viewer.university.name} · campus-only posts stay here`}
       >
-        <QuestionFilter
-          base="/campus"
-          active={unanswered}
-          topic={topic?.slug}
-        />
+        {!opportunities && (
+          <QuestionFilter
+            base="/campus"
+            active={unanswered}
+            topic={topic?.slug}
+          />
+        )}
         <TopicChips
           unanswered={unanswered}
+          noReplies={noReplies}
+          sort={sort}
           base="/campus"
           active={topic?.slug}
         />
@@ -96,12 +104,38 @@ export default async function CampusPage({
             // Keep one primary invitation while the campus is small.
             action={!small}
             title={
-              unanswered ? "No questions waiting" : "Your campus is waiting"
+              noReplies
+                ? "No questions without replies"
+                : unanswered
+                  ? "No questions waiting"
+                  : opportunities
+                    ? "No open opportunities"
+                    : topic
+                      ? `Nothing in ${topic.label} yet`
+                      : "Your campus is waiting"
             }
             body={
-              unanswered
-                ? "Every question here has a helpful reply, or nobody has asked yet. Start with something you need help with."
-                : `Nobody from ${viewer.university.name} has posted${topic ? ` in ${topic.label}` : ""} yet. Campus posts are visible to your university and explicitly assigned Canteen hosts.`
+              <>
+                {noReplies
+                  ? `No questions${topic ? ` in ${topic.label}` : ""} on your campus are waiting for their first reply right now.`
+                  : unanswered
+                    ? `No questions${topic ? ` in ${topic.label}` : ""} on your campus are waiting for a helpful reply right now.`
+                    : opportunities
+                      ? "No open opportunities match this topic on your campus. Share an internship, hackathon, or scholarship with your classmates."
+                      : topic
+                        ? "No campus posts match this topic right now. Try another topic or start a conversation."
+                        : `No posts to read yet. Campus posts are visible to ${viewer.university.name} and explicitly assigned Canteen hosts.`}
+                {(topic || unanswered || noReplies) && (
+                  <span className="mt-3 block">
+                    <Link
+                      href="/campus"
+                      className="font-semibold text-ink underline"
+                    >
+                      Clear filters
+                    </Link>
+                  </span>
+                )}
+              </>
             }
             topic={topic?.slug}
           />

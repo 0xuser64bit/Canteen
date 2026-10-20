@@ -8,7 +8,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import { toast } from "sonner";
 import { PostCard } from "@/components/post";
 import { POST_DELETED } from "@/components/post-menu";
 import { Button } from "@/components/ui/button";
@@ -37,8 +36,10 @@ export function Feed({
   const [more, setMore] = useState<PostSummary[]>([]);
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [removed, setRemoved] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const sentinel = useRef<HTMLDivElement>(null);
+  const loading = useRef(false);
 
   useEffect(() => {
     const onDeleted = (event: Event) => {
@@ -50,26 +51,38 @@ export function Feed({
   }, []);
 
   const fetchNext = () => {
-    if (!cursor || pending) return;
+    if (!cursor || loading.current || pending) return;
+    loading.current = true;
+    setError(null);
     startTransition(async () => {
-      const result = await loadMore({
-        scope,
-        topic,
-        cursor,
-        unanswered,
-        noReplies,
-        sort,
-      });
-      if (!result.ok) return void toast.error(result.error);
-      setMore((items) => [...items, ...result.data.items]);
-      setCursor(result.data.nextCursor);
+      try {
+        const result = await loadMore({
+          scope,
+          topic,
+          cursor,
+          unanswered,
+          noReplies,
+          sort,
+        });
+        if (!result.ok) return setError(result.error);
+        setMore((items) => [...items, ...result.data.items]);
+        setCursor(result.data.nextCursor);
+      } catch {
+        setError(
+          "Couldn't load more posts. Check your connection and try again.",
+        );
+      } finally {
+        loading.current = false;
+      }
     });
   };
 
-  const onVisible = useEffectEvent(fetchNext);
+  const onVisible = useEffectEvent(() => {
+    if (!error) fetchNext();
+  });
   useEffect(() => {
     const node = sentinel.current;
-    if (!node || !cursor) return;
+    if (!node || !cursor || error) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) onVisible();
@@ -78,7 +91,7 @@ export function Feed({
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [cursor]);
+  }, [cursor, error]);
 
   const seen = new Set<string>();
   const items = [...initial.items, ...more].filter((post) => {
@@ -94,11 +107,23 @@ export function Feed({
       {items.map((post, index) => (
         <PostCard key={post.id} post={post} priority={index < 2} />
       ))}
-      <div ref={sentinel} className="flex justify-center py-2">
+      <div
+        ref={sentinel}
+        aria-busy={pending}
+        className="flex flex-col items-center gap-2 py-2"
+      >
+        {error && (
+          <p
+            role="status"
+            className="max-w-sm text-center text-[13px] text-muted"
+          >
+            {error}
+          </p>
+        )}
         {cursor ? (
           <Button variant="ghost" onClick={fetchNext} disabled={pending}>
             {pending ? <Loader2 className="animate-spin" /> : null}
-            {pending ? "Loading" : "Load more"}
+            {pending ? "Loading" : error ? "Retry" : "Load more"}
           </Button>
         ) : (
           <p className="text-[13px] text-muted">You&apos;re all caught up.</p>

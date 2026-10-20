@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { EmptyState } from "@/components/empty";
 import { Feed } from "@/components/feed";
 import { InviteCard } from "@/components/invite";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import {
   PageHeader,
   TopicChips,
@@ -27,15 +28,18 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
     noReplies: repliesFilter,
     sort: requestedSort,
   } = await searchParams;
-  const noReplies = repliesFilter === "1";
-  const unanswered = filter === "1";
-  const sort =
-    requestedSort === "closing" || requestedSort === "oldest"
-      ? requestedSort
-      : unanswered
-        ? "oldest"
-        : "newest";
   const topic = topicBySlug(typeof slug === "string" ? slug : undefined);
+  const opportunities = topic?.id === "OPPORTUNITIES";
+  const noReplies = !opportunities && repliesFilter === "1";
+  const unanswered = !opportunities && filter === "1";
+  const sort =
+    requestedSort === "newest"
+      ? "newest"
+      : requestedSort === "closing" && opportunities
+        ? "closing"
+        : unanswered
+          ? "oldest"
+          : "newest";
   const [page, campusSize] = await Promise.all([
     getFeed(viewer, {
       scope: { kind: "everyone" },
@@ -46,7 +50,6 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
     }),
     viewer.university.slug === TEAM.slug ? null : getCampusSize(viewer),
   ]);
-  const opportunities = topic?.id === "OPPORTUNITIES";
 
   return (
     <>
@@ -58,8 +61,20 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
             : "Verified students from every university"
         }
       >
-        <QuestionFilter base="/home" active={unanswered} topic={topic?.slug} />
-        <TopicChips unanswered={unanswered} base="/home" active={topic?.slug} />
+        {!opportunities && (
+          <QuestionFilter
+            base="/home"
+            active={unanswered}
+            topic={topic?.slug}
+          />
+        )}
+        <TopicChips
+          unanswered={unanswered}
+          noReplies={noReplies}
+          sort={sort}
+          base="/home"
+          active={topic?.slug}
+        />
         <FeedControls
           base="/home"
           topic={topic?.slug}
@@ -87,18 +102,38 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
         empty={
           <EmptyState
             title={
-              unanswered
-                ? "No questions waiting"
-                : opportunities
-                  ? "No opportunities yet"
-                  : topic
-                    ? `Nothing in ${topic.label} yet`
-                    : "It's quiet in here"
+              noReplies
+                ? "No questions without replies"
+                : unanswered
+                  ? "No questions waiting"
+                  : opportunities
+                    ? "No open opportunities"
+                    : topic
+                      ? `Nothing in ${topic.label} yet`
+                      : "It's quiet in here"
             }
             body={
-              opportunities
-                ? "Spotted an internship, hackathon, or scholarship? Share it and help someone land it."
-                : "Ask the question you'd never ask under your own name. Students from every university can answer."
+              <>
+                {noReplies
+                  ? `No questions${topic ? ` in ${topic.label}` : ""} are waiting for their first reply right now.`
+                  : unanswered
+                    ? `No questions${topic ? ` in ${topic.label}` : ""} are waiting for a helpful reply right now.`
+                    : opportunities
+                      ? "Spotted an internship, hackathon, or scholarship? Share it and help someone land it."
+                      : topic
+                        ? "No posts match this topic right now. Try another topic or start a conversation."
+                        : "Ask the question you'd never ask under your own name. Choose Every university when posting to invite answers from across campuses."}
+                {(topic || unanswered || noReplies) && (
+                  <span className="mt-3 block">
+                    <Link
+                      href="/home"
+                      className="font-semibold text-ink underline"
+                    >
+                      Clear filters
+                    </Link>
+                  </span>
+                )}
+              </>
             }
             topic={topic?.slug}
           />

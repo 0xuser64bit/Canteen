@@ -47,19 +47,34 @@ export function TopicChips({
   base,
   active,
   unanswered,
+  noReplies,
+  sort,
 }: {
   base: "/home" | "/campus" | `/u/${string}`;
   active?: string;
   unanswered?: boolean;
+  noReplies?: boolean;
+  sort?: FeedSort;
 }) {
-  const chip = (href: string, label: string, on: boolean) => (
+  const href = (topic?: string) => {
+    const params = new URLSearchParams();
+    if (topic) params.set("topic", topic);
+    if (topic !== "opportunities") {
+      if (unanswered) params.set("unanswered", "1");
+      if (noReplies) params.set("noReplies", "1");
+    }
+    if (
+      sort &&
+      (sort !== "closing" || topic === "opportunities") &&
+      (sort !== "oldest" || topic !== "opportunities")
+    )
+      params.set("sort", sort);
+    return (params.size ? `${base}?${params}` : base) as "/home";
+  };
+  const chip = (topic: string | undefined, label: string, on: boolean) => (
     <Link
-      key={href}
-      href={
-        (unanswered
-          ? `${href}${href.includes("?") ? "&" : "?"}unanswered=1`
-          : href) as "/home"
-      }
+      key={topic ?? "all"}
+      href={href(topic)}
       aria-current={on ? "page" : undefined}
       scroll={false}
       className={cn(
@@ -77,9 +92,9 @@ export function TopicChips({
       aria-label="Topics"
       className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3 lg:px-6"
     >
-      {chip(base, "All", !active)}
+      {chip(undefined, "All", !active)}
       {TOPICS.map((topic) =>
-        chip(`${base}?topic=${topic.slug}`, topic.label, active === topic.slug),
+        chip(topic.slug, topic.label, active === topic.slug),
       )}
     </nav>
   );
