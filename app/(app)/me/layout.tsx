@@ -148,6 +148,9 @@ export default async function MeLayout({ children }: LayoutProps<"/me">) {
         <Link href="/community" className="text-[14px] font-semibold underline">
           Community rules and how your data is used
         </Link>
+        <Link href="/updates" className="text-[14px] font-semibold underline">
+          What&apos;s new at Canteen
+        </Link>
         <section className="flex justify-end border-t border-line pt-6">
           <DeleteAccountButton />
         </section>

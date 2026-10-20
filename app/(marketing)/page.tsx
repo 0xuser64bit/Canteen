@@ -233,6 +233,12 @@ export default async function LandingPage({ searchParams }: PageProps<"/">) {
           <Link href="/community" className="font-semibold hover:text-ink">
             Community and privacy
           </Link>
+          <Link
+            href="/updates"
+            className="inline-flex min-h-11 items-center font-semibold hover:text-ink"
+          >
+            What&apos;s new
+          </Link>
           <a
             href={repoUrl}
             target="_blank"

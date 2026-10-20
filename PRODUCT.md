@@ -45,6 +45,26 @@ University-email verification with per-thread aliases. Other students see an ali
 - Publication limiter events contain only account, kind and time, survive content erasure for the quota window, expire after 24 hours through maintenance and are erased with the account. Email sign-in codes have hourly per-address and per-campus budgets keyed without storing the address. Maintenance also expires domain requests after 90 days and exposes its success/failure heartbeat to the team.
 - Universities come from a bundled dataset of about 10,000 institutions and their email domains. A campus starts when its first member joins, with cross-campus visibility restricted until five members join.
 
+## October 2026 usability extension
+
+Reading filters survive topic changes where applicable, and thread links retain
+the validated feed or private collection to return to. Pagination and search offer
+explicit recovery without discarding already loaded posts or the search query.
+Search ignores responses after its query changes or the palette closes.
+
+Private collections follow a compact account summary. Settings and sign-out remain
+reachable before long collections. Sign-in requests keep their email fixed while
+pending, and failed transport preserves useful input. A public `/updates` page,
+linked from the landing footer and private account, records dated product changes
+and links to the source history.
+
+The Kotlin Android shell uses a Trusted Web Activity backed by the installed
+browser. It shares the web experience and browser sign-in, accepts launch links
+only from its configured origin, and falls back to a visible browser address when
+site ownership cannot be verified. Its release certificate is published through
+Digital Asset Links. A network-only service worker supplies a generic offline
+navigation explanation, without caching discussions, API responses or mutations.
+
 ## Brand Commitments
 
 - The name "Canteen" stays. The founder gave full authority to replace the previous logo and visual identity; nothing from the old look is binding.

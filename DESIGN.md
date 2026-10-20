@@ -293,7 +293,7 @@ Chunky, rounded and quick to press.
 
 ### Inputs / Fields
 
-- **Style:** `surface-2`, 16px radius, inset 1px `line` ring, 15px text, 48px tall. Textareas grow with their content (`field-sizing: content`).
+- **Style:** `surface-2`, 16px radius, inset 1px `line` ring, 16px text, 48px tall. Textareas grow with their content (`field-sizing: content`).
 - **Hover:** the ring moves to `line-strong`.
 - **Focus:** the background lifts to `surface` and the ring becomes 2px `ink` in light mode or 2px selected accent in dark mode.
 - **Error / Disabled:** errors use a `danger` ring and a 13px `danger` message below. Disabled fields drop to 60% opacity.
@@ -337,6 +337,29 @@ The opportunity deadline field opens the existing branded Dialog, a bottom sheet
 ### Branded loading
 
 The root loading fallback is a server-rendered, full-height wallpaper surface with the themed mark, display wordmark and "Pulling up a chair…". Only the mark's three dots animate: the existing 1.2s typing rhythm with 140ms and 280ms offsets. It has a loading status label, respects motion and wallpaper preferences, and adds no artificial wait. Conversation-specific skeletons stay in place.
+
+## Reading, recovery and account extension
+
+Feed and search failures use a quiet inline message with an explicit Retry action.
+Loaded posts and the current search query stay available. Filtered empty states
+describe the actual queue and offer Clear filters; topic changes retain applicable
+reading choices. Thread return controls preserve the originating reading route.
+
+The private account opens with a compact summary, wrapping email, three-column
+stats and sign-out, followed by collections. Its sticky header keeps a 44px
+Settings action reachable. Thread back and send targets are also 44px, and reply
+text uses 16px for comfortable phone entry.
+
+The public `/updates` surface is Read mode within the existing world: a linked
+Logo, a 32px display title, normal-width section headings, quiet semantic dates,
+15px relaxed body text and a narrow reading measure. Changes appear as plain text
+sections with generous separation. The landing footer and secondary account links
+make it discoverable; the source-history link provides supporting detail.
+
+The network-only offline fallback is self-contained: the existing static yellow
+mug, cool light/dark grounds, a short explanation and one 48px Retry action. It
+uses a system font because no network asset can be assumed available. It never
+renders or caches student content; reconnection reloads the requested page.
 
 ## Do's and Don'ts
 

@@ -42,6 +42,18 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 - Account page with sign-out and full account deletion
 - A moderation queue for team accounts, and help links on mental health threads
 - Light and dark themes, built mobile-first
+- A Kotlin Android app using the same student experience, plus a public [updates page](https://teamcanteen.vercel.app/updates)
+
+## Android app
+
+The `android/` project packages Canteen as a Trusted Web Activity, so mobile web
+improvements reach the installed app too. See [Android build, signing and device
+checks](docs/ANDROID.md). The production package is `app.canteen.android`;
+`public/.well-known/assetlinks.json` binds its release signing certificate to the
+site. Keep signing keys outside Git and reuse the same key for updates.
+
+The [improvement roadmap](docs/IMPROVEMENT-ROADMAP.md) records the current work,
+validation evidence and the next areas to investigate.
 
 ## Tech stack
 
