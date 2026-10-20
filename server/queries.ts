@@ -605,7 +605,9 @@ export async function getTrending(viewer: Viewer) {
     select: {
       id: true,
       title: true,
-      _count: { select: { likes: true, comments: true } },
+      _count: {
+        select: { likes: true, comments: { where: { hiddenAt: null } } },
+      },
     },
   });
   return rows.map((row) => ({
@@ -763,11 +765,27 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
     (post.audience === "EVERYONE" ||
       post.universityId === viewer.university.id);
 
-  // ponytail: first 100 of each; page the queue once it's ever that long.
+  // Rank open reports before the cap so a busy queue cannot bury at-risk content.
+  const [postIds, commentIds] = await Promise.all([
+    db.$queryRaw<{ id: string }[]>`
+      SELECT p."id" FROM "Post" p JOIN "Report" r ON r."postId" = p."id"
+      WHERE r."resolvedAt" IS NULL GROUP BY p."id"
+      ORDER BY BOOL_OR(r."reason" = 'SELF_HARM') DESC,
+        (p."hiddenAt" IS NOT NULL) DESC, COUNT(*) DESC, p."createdAt" DESC, p."id" DESC
+      LIMIT 100
+    `,
+    db.$queryRaw<{ id: string }[]>`
+      SELECT c."id" FROM "Comment" c JOIN "Report" r ON r."commentId" = c."id"
+      WHERE r."resolvedAt" IS NULL GROUP BY c."id"
+      ORDER BY BOOL_OR(r."reason" = 'SELF_HARM') DESC,
+        (c."hiddenAt" IS NOT NULL) DESC, COUNT(*) DESC, c."createdAt" DESC, c."id" DESC
+      LIMIT 100
+    `,
+  ]);
+  // shortcut: 100 of each; page the queue once it regularly reaches that cap.
   const [posts, comments] = await Promise.all([
     db.post.findMany({
-      where: OPEN_REPORTS,
-      take: 100,
+      where: { id: { in: postIds.map(({ id }) => id) }, ...OPEN_REPORTS },
       select: {
         id: true,
         title: true,
@@ -786,8 +804,7 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
       },
     }),
     db.comment.findMany({
-      where: OPEN_REPORTS,
-      take: 100,
+      where: { id: { in: commentIds.map(({ id }) => id) }, ...OPEN_REPORTS },
       select: {
         id: true,
         body: true,

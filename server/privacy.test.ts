@@ -464,6 +464,24 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     ).toEqual(new Set([campus.id, visible.id]));
   });
 
+  it("counts only visible replies in trending summaries", async () => {
+    const p = await post("ada");
+    await db.comment.createMany({
+      data: [
+        { postId: p.id, authorId: "alan", body: "A visible reply" },
+        {
+          postId: p.id,
+          authorId: "grace",
+          body: "A hidden reply",
+          hiddenAt: new Date(),
+        },
+      ],
+    });
+    expect(await queries.getTrending(await viewer("linus"))).toMatchObject([
+      { id: p.id, commentCount: 1 },
+    ]);
+  });
+
   it("keeps campus-only posts inside their university", async () => {
     const campus = await post("ada", {
       audience: "CAMPUS",
@@ -2344,6 +2362,68 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(queue[1]).toMatchObject({ urgent: false });
     });
 
+    it("includes at-risk posts and replies before limiting a full moderation queue", async () => {
+      const thread = await post("ada");
+      const postIds = Array.from(
+        { length: 100 },
+        (_, i) => `backlog-post-${i}`,
+      );
+      const commentIds = Array.from(
+        { length: 100 },
+        (_, i) => `backlog-comment-${i}`,
+      );
+      await db.post.createMany({
+        data: [...postIds, "urgent-post"].map((id) => ({
+          id,
+          title: "Waiting for review",
+          body: "Reported post",
+          authorId: "ada",
+          universityId: "u-stanford",
+        })),
+      });
+      await db.comment.createMany({
+        data: [...commentIds, "urgent-comment"].map((id) => ({
+          id,
+          body: "Reported reply",
+          authorId: "ada",
+          postId: thread.id,
+        })),
+      });
+      await db.report.createMany({
+        data: [
+          ...postIds.map((postId) => ({
+            postId,
+            reporterId: "grace",
+            reason: "HARASSMENT" as const,
+          })),
+          ...commentIds.map((commentId) => ({
+            commentId,
+            reporterId: "grace",
+            reason: "HARASSMENT" as const,
+          })),
+          {
+            postId: "urgent-post",
+            reporterId: "grace",
+            reason: "SELF_HARM",
+          },
+          {
+            commentId: "urgent-comment",
+            reporterId: "grace",
+            reason: "SELF_HARM",
+          },
+        ],
+      });
+
+      const queue = await queries.getModQueue(await viewer("mod"));
+      expect(queue).toHaveLength(200);
+      expect(queue.slice(0, 2)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "urgent-post", urgent: true }),
+          expect.objectContaining({ id: "urgent-comment", urgent: true }),
+        ]),
+      );
+    });
+
     it("is team-only and shows content, never identities", async () => {
       const p = await post("ada");
       await report("grace", "post", p.id);
@@ -2846,6 +2926,40 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         (await actions.votePoll(campus.id, campus.pollOptions[0]!.id)).ok,
       ).toBe(false);
       expect(await db.pollVote.count()).toBe(0);
+    });
+
+    it("rejects new and changed votes with a viewer captured before suspension", async () => {
+      const voted = await pollPost("ada", ["Yes", "No"]);
+      const untouched = await pollPost("ada", ["Up", "Down"]);
+      as("grace");
+      expect(
+        (await actions.votePoll(voted.id, voted.pollOptions[0]!.id)).ok,
+      ).toBe(true);
+      const beforeBan = await viewer("grace");
+      await db.user.update({
+        where: { id: "grace" },
+        data: { bannedAt: new Date() },
+      });
+
+      vi.mocked(getViewer).mockResolvedValueOnce(beforeBan);
+      expect(
+        (await actions.votePoll(voted.id, voted.pollOptions[1]!.id)).ok,
+      ).toBe(false);
+      vi.mocked(getViewer).mockResolvedValueOnce(beforeBan);
+      expect(
+        (await actions.votePoll(untouched.id, untouched.pollOptions[0]!.id)).ok,
+      ).toBe(false);
+
+      expect(await db.pollVote.findMany()).toMatchObject([
+        { postId: voted.id, optionId: voted.pollOptions[0]!.id },
+      ]);
+      expect(
+        (await db.post.findUniqueOrThrow({ where: { id: voted.id } })).revision,
+      ).toBe(1);
+      expect(
+        (await db.post.findUniqueOrThrow({ where: { id: untouched.id } }))
+          .revision,
+      ).toBe(0);
     });
 
     it("never says who voted", async () => {

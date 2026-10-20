@@ -410,16 +410,19 @@ export async function votePoll(
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
   const parsed = pollVoteInput.safeParse({ postId, optionId });
-  if (!parsed.success || !(await postVisibleTo(viewer, postId)))
-    return NOT_FOUND;
-  const option = await db.pollOption.findFirst({
-    where: { id: optionId, postId },
-    select: { id: true },
-  });
-  if (!option) return { ok: false, error: "That choice isn't in this poll." };
+  if (!parsed.success) return NOT_FOUND;
 
   // One vote per student; voting again moves it.
-  await db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return SIGNED_OUT;
+    if (!(await postVisibleTo(viewer, postId, tx))) return NOT_FOUND;
+    const option = await tx.pollOption.findFirst({
+      where: { id: optionId, postId },
+      select: { id: true },
+    });
+    if (!option)
+      return { ok: false as const, error: "That choice isn't in this poll." };
     await tx.pollVote.upsert({
       where: { userId_postId: { userId: viewer.id, postId } },
       create: { userId: viewer.id, postId, optionId },
@@ -429,7 +432,9 @@ export async function votePoll(
       where: { id: postId },
       data: { revision: { increment: 1 } },
     });
+    return ok(null);
   });
+  if (!result.ok) return result;
   const poll = await queries.getPoll(viewer, postId);
   refresh();
   return poll ? ok(poll) : NOT_FOUND;
