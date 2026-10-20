@@ -57,22 +57,37 @@ export default async function MePage({ searchParams }: PageProps<"/me">) {
         ))}
       </nav>
       {collection === "saved" && (
-        <nav aria-label="Saved content" className="mb-3 flex gap-4 text-[13px]">
+        <nav
+          aria-label="Saved content"
+          className="mt-2 mb-3 flex flex-wrap gap-2 text-[13px]"
+        >
           <Link
             scroll={false}
             prefetch={true}
-            className="underline"
+            aria-current={!opportunities ? "page" : undefined}
+            className={cn(
+              "inline-flex min-h-11 items-center justify-center rounded-full px-4 font-semibold transition-colors",
+              !opportunities
+                ? "bg-ink text-background"
+                : "bg-surface text-muted ring-1 ring-line hover:bg-surface-2 hover:text-ink",
+            )}
             href="/me?collection=saved"
           >
-            All saved posts
+            All saved
           </Link>
           <Link
             scroll={false}
             prefetch={true}
-            className="underline"
+            aria-current={opportunities ? "page" : undefined}
+            className={cn(
+              "inline-flex min-h-11 items-center justify-center rounded-full px-4 font-semibold transition-colors",
+              opportunities
+                ? "bg-ink text-background"
+                : "bg-surface text-muted ring-1 ring-line hover:bg-surface-2 hover:text-ink",
+            )}
             href="/me?collection=saved&topic=opportunities&sort=closing"
           >
-            Saved opportunities closing soon
+            Opportunities
           </Link>
         </nav>
       )}
@@ -123,11 +138,50 @@ async function CollectionFeed({
       initial={posts}
       scope={collection}
       empty={
-        <p className="px-4 py-6 text-[14px] text-muted lg:px-6">
-          {collection === "mine"
-            ? "Your posts show up here. Only you can see that they’re yours."
-            : "Use a post’s menu to save it or follow its replies. Only posts you can still access appear here."}
-        </p>
+        <div className="px-4 py-8 lg:px-6">
+          <h3 className="text-[17px] font-semibold">
+            {opportunities
+              ? sort === "closing"
+                ? "No opportunities closing soon"
+                : "No opportunities here yet"
+              : collection === "mine"
+                ? "No posts to show yet"
+                : collection === "saved"
+                  ? "Save a conversation for later"
+                  : "Keep a thread close"}
+          </h3>
+          <p className="mt-2 max-w-prose text-[14px] leading-relaxed text-muted">
+            {opportunities
+              ? sort === "closing"
+                ? "No opportunities in this collection have an upcoming deadline. Switch to all posts to include other topics and closed opportunities."
+                : "No opportunities you can still access appear in this collection. You can switch back to all posts."
+              : collection === "mine"
+                ? "Your posts show up here. Only you can see that they're yours. Start with something you'd like to ask your campus."
+                : collection === "saved"
+                  ? "Choose Save privately from a post's menu to keep it here. Only you can see your saved posts."
+                  : "Choose Follow replies from another student's post menu. Those threads appear here, and you'll get reply alerts when someone joins in."}
+          </p>
+          <Link
+            href={
+              opportunities
+                ? `/me?collection=${collection}`
+                : collection === "mine"
+                  ? "/new"
+                  : "/campus"
+            }
+            className="mt-3 inline-flex min-h-11 items-center font-semibold text-ink underline"
+          >
+            {opportunities
+              ? collection === "saved"
+                ? "All saved posts"
+                : collection === "following"
+                  ? "All followed threads"
+                  : "All your posts"
+              : collection === "mine"
+                ? "Ask a question"
+                : "Find a conversation"}
+          </Link>
+        </div>
       }
     />
   );
