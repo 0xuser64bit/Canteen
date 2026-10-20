@@ -34,6 +34,8 @@ jobs:
             android/**/*.gradle.kts
             android/gradle.properties
             android/gradle/wrapper/gradle-wrapper.properties
-      - run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-37.0 build-tools;37.0.0"
       - run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
         working-directory: android
