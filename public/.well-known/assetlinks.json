@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.canteen.android",
+      "sha256_cert_fingerprints": [
+        "AF:0E:EC:89:84:9A:0D:66:1A:D2:4A:FB:26:EE:F8:DF:89:9E:99:97:C5:F0:3B:19:1C:09:0E:85:86:CB:6F:DB"
+      ]
+    }
+  }
+]
