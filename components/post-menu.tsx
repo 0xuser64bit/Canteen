@@ -10,7 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
@@ -32,6 +32,15 @@ import {
 
 export const POST_DELETED = "canteen:post-deleted";
 
+async function copyToClipboard(text: string, message: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(message);
+  } catch {
+    toast.error("Couldn't copy the link. Try sharing it from your browser.");
+  }
+}
+
 /** The share sheet on phones; on desktops, copies the text and link instead. */
 export async function share(
   path: string,
@@ -43,12 +52,12 @@ export async function share(
     try {
       await navigator.share({ title, text, url });
       return;
-    } catch {
-      // The share sheet was dismissed; fall back to copying.
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      // Copy when sharing is unavailable, but respect a dismissed share sheet.
     }
   }
-  await navigator.clipboard.writeText(text ? `${text} ${url}` : url);
-  toast.success(copied);
+  await copyToClipboard(text ? `${text} ${url}` : url, copied);
 }
 
 export function ReportDialog({
@@ -63,56 +72,84 @@ export function ReportDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [reason, setReason] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const submitting = useRef(false);
+  const reasonGroup = useId();
 
-  const submit = () =>
+  const submit = () => {
+    if (!reason || submitting.current) return;
+    submitting.current = true;
+    setError(null);
     startTransition(async () => {
-      const result = await reportContent({ target, id, reason: reason ?? "" });
-      if (!result.ok) return void toast.error(result.error);
-      onOpenChange(false);
-      toast.success("Thanks. We'll take a look.", {
-        description:
-          "Content that several students report is hidden automatically.",
-      });
+      try {
+        const result = await reportContent({ target, id, reason });
+        if (!result.ok) return setError(result.error);
+        onOpenChange(false);
+        toast.success("Thanks. We'll take a look.", {
+          description:
+            "Content that several students report is hidden automatically.",
+        });
+      } catch {
+        setError(
+          "Couldn't confirm your report. Check your connection and try again.",
+        );
+      } finally {
+        submitting.current = false;
+      }
     });
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (submitting.current) return;
+        setError(null);
+        onOpenChange(next);
+      }}
+    >
       <DialogContent
         title={`Report this ${target === "post" ? "post" : "reply"}`}
         description="Reports are anonymous. The author never finds out who reported them."
       >
-        <div
-          role="radiogroup"
-          aria-label="Reason"
-          className="flex flex-col gap-1.5"
-        >
+        <fieldset disabled={pending} className="flex flex-col gap-1.5">
+          <legend className="sr-only">Reason</legend>
           {REPORT_REASONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={reason === option.id}
-              onClick={() => setReason(option.id)}
-              className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-[15px] font-medium ring-1 ring-line transition-colors ring-inset hover:bg-surface-3",
-                reason === option.id && "bg-surface-3 ring-2 ring-ink",
-              )}
-            >
+            <label key={option.id}>
+              <input
+                type="radio"
+                name={reasonGroup}
+                value={option.id}
+                checked={reason === option.id}
+                onChange={() => {
+                  setReason(option.id);
+                  setError(null);
+                }}
+                className="peer sr-only"
+              />
               <span
                 className={cn(
-                  "grid size-5 shrink-0 place-items-center rounded-full ring-2 ring-line-strong",
-                  reason === option.id && "ring-ink",
+                  "flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-[15px] font-medium ring-1 ring-line transition-colors ring-inset peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring peer-disabled:cursor-default hover:bg-surface-3",
+                  reason === option.id && "bg-surface-3 ring-2 ring-ink",
                 )}
               >
-                {reason === option.id && (
-                  <span className="size-2.5 rounded-full bg-ink" />
-                )}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "grid size-5 shrink-0 place-items-center rounded-full ring-2 ring-line-strong",
+                    reason === option.id && "ring-ink",
+                  )}
+                >
+                  {reason === option.id && (
+                    <span className="size-2.5 rounded-full bg-ink" />
+                  )}
+                </span>
+                {option.label}
               </span>
-              {option.label}
-            </button>
+            </label>
           ))}
-        </div>
+        </fieldset>
         {reason === "SELF_HARM" && (
           <p className="mt-3 rounded-2xl bg-surface-2 p-3 text-[13px] leading-relaxed text-muted">
             If someone is in immediate danger, contact local emergency services.
@@ -128,9 +165,16 @@ export function ReportDialog({
             .
           </p>
         )}
+        {error && (
+          <p role="alert" className="mt-3 text-[13px] font-medium text-danger">
+            {error}
+          </p>
+        )}
         <div className="mt-5 flex justify-end gap-2">
           <DialogClose asChild>
-            <Button variant="ghost">Cancel</Button>
+            <Button variant="ghost" disabled={pending}>
+              Cancel
+            </Button>
           </DialogClose>
           <Button
             variant="primary"
@@ -154,11 +198,36 @@ export function ConfirmDelete({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   what: "post" | "reply";
-  onConfirm: () => Promise<void>;
+  onConfirm: () => Promise<string | undefined>;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const submitting = useRef(false);
+  const confirm = () => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setError(null);
+    startTransition(async () => {
+      try {
+        setError((await onConfirm()) ?? null);
+      } catch {
+        setError(
+          "Couldn't confirm deletion. Check your connection and try again.",
+        );
+      } finally {
+        submitting.current = false;
+      }
+    });
+  };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (submitting.current) return;
+        setError(null);
+        onOpenChange(next);
+      }}
+    >
       <DialogContent
         title={`Delete this ${what}?`}
         description={
@@ -167,15 +236,18 @@ export function ConfirmDelete({
             : "It disappears for everyone. This can't be undone."
         }
       >
+        {error && (
+          <p role="alert" className="mb-4 text-[13px] font-medium text-danger">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <DialogClose asChild>
-            <Button variant="ghost">Keep it</Button>
+            <Button variant="ghost" disabled={pending}>
+              Keep it
+            </Button>
           </DialogClose>
-          <Button
-            variant="danger"
-            disabled={pending}
-            onClick={() => startTransition(onConfirm)}
-          >
+          <Button variant="danger" disabled={pending} onClick={confirm}>
             {pending ? "Deleting…" : "Delete"}
           </Button>
         </div>
@@ -200,11 +272,12 @@ export function PostMenu({
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
+  const collectionPending = useRef(false);
   const [dialog, setDialog] = useState<"report" | "delete" | null>(null);
 
   const remove = async () => {
     const result = await deletePost(post.id);
-    if (!result.ok) return void toast.error(result.error);
+    if (!result.ok) return result.error;
     setDialog(null);
     toast.success("Post deleted");
     window.dispatchEvent(new CustomEvent(POST_DELETED, { detail: post.id }));
@@ -220,9 +293,9 @@ export function PostMenu({
             type="button"
             aria-label="More actions"
             className={cn(
-              "relative z-10 grid size-8 cursor-pointer place-items-center rounded-full transition-colors",
+              "relative z-10 -my-1.5 grid size-11 shrink-0 cursor-pointer place-items-center rounded-full transition-colors",
               onYellow
-                ? "hover:bg-you-ink/10"
+                ? "hover:bg-you-surface-ink/10"
                 : "text-muted hover:bg-surface-3 hover:text-ink",
             )}
           >
@@ -235,10 +308,10 @@ export function PostMenu({
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={async () => {
-              await navigator.clipboard.writeText(
+              await copyToClipboard(
                 new URL(`/p/${post.id}`, window.location.origin).toString(),
+                "Link copied",
               );
-              toast.success("Link copied");
             }}
           >
             <Link2 /> Copy link
@@ -250,26 +323,36 @@ export function PostMenu({
             <DropdownMenuItem
               key={collection}
               disabled={pending}
-              onSelect={() =>
+              onSelect={() => {
+                if (collectionPending.current) return;
+                collectionPending.current = true;
                 startTransition(async () => {
-                  const result = await setCollection(
-                    post.id,
-                    collection,
-                    !post[collection],
-                  );
-                  if (!result.ok) toast.error(result.error);
-                  else
-                    toast.success(
-                      collection === "saved"
-                        ? post.saved
-                          ? "Removed from saved"
-                          : "Saved privately"
-                        : post.following
-                          ? "Reply alerts off"
-                          : "You'll get reply alerts",
+                  try {
+                    const result = await setCollection(
+                      post.id,
+                      collection,
+                      !post[collection],
                     );
-                })
-              }
+                    if (!result.ok) toast.error(result.error);
+                    else
+                      toast.success(
+                        collection === "saved"
+                          ? post.saved
+                            ? "Removed from saved"
+                            : "Saved privately"
+                          : post.following
+                            ? "Reply alerts off"
+                            : "You'll get reply alerts",
+                      );
+                  } catch {
+                    toast.error(
+                      "Couldn't confirm that change. Check your connection and try again.",
+                    );
+                  } finally {
+                    collectionPending.current = false;
+                  }
+                });
+              }}
             >
               {collection === "saved" ? <Bookmark /> : <Bell />}
               {collection === "saved"
@@ -313,7 +396,7 @@ export function CommentMenu({ id, isMine }: { id: string; isMine: boolean }) {
   const [dialog, setDialog] = useState<"report" | "delete" | null>(null);
   const remove = async () => {
     const result = await deleteComment(id);
-    if (!result.ok) return void toast.error(result.error);
+    if (!result.ok) return result.error;
     setDialog(null);
   };
   return (
@@ -323,7 +406,7 @@ export function CommentMenu({ id, isMine }: { id: string; isMine: boolean }) {
           <button
             type="button"
             aria-label="Reply actions"
-            className="grid size-7 cursor-pointer place-items-center rounded-full text-muted opacity-100 transition-[opacity,background-color] hover:bg-surface-3 hover:text-ink focus-visible:opacity-100 data-[state=open]:opacity-100 sm:opacity-0 sm:group-hover/reply:opacity-100"
+            className="-mx-2 -my-2 grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-muted opacity-100 transition-[opacity,background-color] hover:bg-surface-3 hover:text-ink focus-visible:opacity-100 data-[state=open]:opacity-100 sm:opacity-0 sm:group-hover/reply:opacity-100"
           >
             <MoreHorizontal className="size-4" />
           </button>
