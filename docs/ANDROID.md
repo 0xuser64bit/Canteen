@@ -107,10 +107,12 @@ out through Canteen when using a shared device.
 - The debug APK was installed on the dedicated API 36.1 Canteen QA emulator.
   Runtime testing found and fixed a missing browser-helper activity declaration;
   activity diagnostics then confirmed launch into Chrome's CustomTabActivity.
-- The signed APK installs on that emulator. Fullscreen domain verification and
-  end-to-end native student flows remain to be checked. Browser automation was
-  disabled during final review, and the founder chose to continue with the
-  available checks.
+- The signed APK installs on that emulator (Android 16 / API 36.1, Chrome
+  134.0.6998.135). After deployment, Android's domain verifier reports
+  `teamcanteen.vercel.app: verified` for the actual release certificate. A visual
+  fullscreen launch and end-to-end native student flows remain to be checked.
+  Browser automation was disabled during final review, and the founder chose to
+  continue with the available checks.
 - Separate mobile web tests used disposable Stanford and MIT student accounts
   through development email-code authentication, with external mail disabled.
   They exercised campus isolation, a public reply, filter retention and sign-out.

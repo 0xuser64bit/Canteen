@@ -31,17 +31,17 @@ observed student journeys and concrete defects.
 Integrated checks on 20 October 2026 used separate disposable databases for browser
 journeys and destructive database tests. Real student inboxes were not used.
 
-| Check                                           | Result / evidence                                                                                                            |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Formatting and lint                             | Passed                                                                                                                       |
-| Type checking                                   | Passed                                                                                                                       |
-| Unit, interaction and native PostgreSQL tests   | 257 passed across 25 files; 20-second test timeout under concurrent build load                                               |
-| Native PostgreSQL privacy and concurrency tests | Included above, no skipped database suite                                                                                    |
-| Production web build                            | Passed                                                                                                                       |
-| Visual review                                   | Phone at 390px, dark theme: campus, composer, thread and account reviewed; final desktop/light and real-device checks remain |
-| Student account journeys across campuses        | Stanford/MIT development OTP, campus-only denial, public question/reply, filtered return navigation, sign-out passed         |
-| Android APK build, tests and emulator review    | Record in `ANDROID.md`                                                                                                       |
-| Deployment and live smoke checks                | Pending deployment verification                                                                                              |
+| Check                                           | Result / evidence                                                                                                                                                             |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Formatting and lint                             | Passed                                                                                                                                                                        |
+| Type checking                                   | Passed                                                                                                                                                                        |
+| Unit, interaction and native PostgreSQL tests   | 257 passed across 25 files; 20-second test timeout under concurrent build load                                                                                                |
+| Native PostgreSQL privacy and concurrency tests | Included above, no skipped database suite                                                                                                                                     |
+| Production web build                            | Passed                                                                                                                                                                        |
+| Visual review                                   | Phone at 390px, dark theme: campus, composer, thread and account reviewed; final desktop/light and real-device checks remain                                                  |
+| Student account journeys across campuses        | Stanford/MIT development OTP, campus-only denial, public question/reply, filtered return navigation, sign-out passed                                                          |
+| Android APK build, tests and emulator review    | Record in `ANDROID.md`                                                                                                                                                        |
+| Deployment and live smoke checks                | Vercel production Ready; updates, worker, manifest and release asset links return 200; health 200; signed-out campus sends login redirect; release domain verified by Android |
 
 ## Next investigations
 
