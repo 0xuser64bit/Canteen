@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
     vote: request(),
     like: request(),
     reply: request(),
+    helpful: request(),
     hint: request(),
     sendCode: request(),
     signIn: request(),
@@ -54,7 +55,7 @@ vi.mock("@/server/actions", () => ({
   setLike: mocks.like,
   addComment: mocks.reply,
   recordView: vi.fn(),
-  markHelpful: vi.fn(),
+  markHelpful: mocks.helpful,
   lookupUniversity: mocks.hint,
   deleteAccount: mocks.deleteAccount,
 }));
@@ -506,6 +507,75 @@ it("reuses a reply publication ID after a lost acknowledgement", async () => {
   await change("textarea", "A helpful reply");
   await submit("#reply-bar");
   expect(mocks.reply.mock.calls[2]![2]).not.toBe(mocks.reply.mock.calls[0]![2]);
+});
+
+it("confirms an uncertain reply separately without merging or losing newer text", async () => {
+  const request = deferred();
+  mocks.reply.mockReturnValueOnce(request.promise);
+  await render(<ThreadView thread={thread} />);
+  await change("textarea", "First reply");
+  await submit("#reply-bar");
+  await change("textarea", "Newer draft");
+  await act(async () => request.reject(new Error("Lost acknowledgement")));
+  const retry = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent === "Retry this reply",
+  )!;
+  mocks.reply.mockRejectedValueOnce(new Error("Still offline"));
+  await act(async () => retry.click());
+  expect(field("textarea").value).toBe("Newer draft");
+  expect(container.querySelector("details")!.textContent).toContain(
+    "First reply",
+  );
+  mocks.reply.mockResolvedValue({ ok: true, data: null });
+  await act(async () => retry.click());
+  expect(container.querySelector("details")).toBeNull();
+  expect(field("textarea").value).toBe("Newer draft");
+  expect(mocks.reply.mock.calls.map((call) => call[1])).toEqual([
+    "First reply",
+    "First reply",
+    "First reply",
+  ]);
+  expect(new Set(mocks.reply.mock.calls.map((call) => call[2])).size).toBe(1);
+  await submit("#reply-bar");
+  expect(mocks.reply.mock.calls[3]![1]).toBe("Newer draft");
+  expect(mocks.reply.mock.calls[3]![2]).not.toBe(mocks.reply.mock.calls[0]![2]);
+});
+
+it("recovers from a helpful-answer connection failure without leaving the conversation", async () => {
+  mocks.helpful.mockRejectedValueOnce(new Error("Offline"));
+  mocks.helpful.mockResolvedValue({ ok: true, data: null });
+  await render(
+    <ThreadView
+      thread={{
+        ...thread,
+        isMine: true,
+        comments: [
+          {
+            id: "answer",
+            body: "Helpful context",
+            createdAt: new Date(),
+            alias,
+            university: thread.university,
+            isMine: false,
+            isAuthor: false,
+            hidden: false,
+          },
+        ],
+      }}
+    />,
+  );
+  const helpful = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent?.trim() === "Mark helpful",
+  )!;
+  await act(async () => helpful.click());
+  expect(mocks.toast).toHaveBeenCalledWith(
+    "Couldn't confirm that helpful answer. Check your connection and try again.",
+  );
+  expect(container.textContent).toContain("Helpful context");
+  expect(helpful.disabled).toBe(false);
+  await act(async () => helpful.click());
+  expect(mocks.helpful).toHaveBeenCalledTimes(2);
+  expect(mocks.helpful).toHaveBeenLastCalledWith("post", "answer");
 });
 
 it("returns from a thread to the original private collection", async () => {

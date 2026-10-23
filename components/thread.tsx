@@ -202,11 +202,17 @@ function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
       className="mt-1 cursor-pointer rounded-full px-2 py-1 text-[12px] font-semibold text-muted hover:bg-surface-3 hover:text-ink disabled:opacity-50"
       onClick={() =>
         startTransition(async () => {
-          const result = await markHelpful(
-            thread.id,
-            selected ? null : reply.id,
-          );
-          if (!result.ok) toast.error(result.error);
+          try {
+            const result = await markHelpful(
+              thread.id,
+              selected ? null : reply.id,
+            );
+            if (!result.ok) toast.error(result.error);
+          } catch {
+            toast.error(
+              "Couldn't confirm that helpful answer. Check your connection and try again.",
+            );
+          }
         })
       }
     >
@@ -229,7 +235,7 @@ function ReplyBar({
   onSend: (body: string) => Promise<boolean>;
 }) {
   const [body, setBody] = useState("");
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string[]>([]);
   const editor = useRef("");
   const [pending, startTransition] = useTransition();
   const form = useRef<HTMLFormElement>(null);
@@ -255,7 +261,9 @@ function ReplyBar({
           editor.current = text;
           setBody(text);
         } else
-          setFailed((previous) => (previous ? `${previous}\n\n${text}` : text));
+          setFailed((previous) =>
+            previous.includes(text) ? previous : [...previous, text],
+          );
       }
     });
   };
@@ -280,24 +288,36 @@ function ReplyBar({
       onSubmit={submit}
       className="sticky bottom-0 z-20 border-t border-line bg-background/90 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:px-6"
     >
-      {failed !== null && (
+      {failed.length > 0 && (
         <details className="mb-2 rounded-xl bg-surface-2 p-3 text-[13px]">
           <summary>A previous reply needs confirmation</summary>
-          <p className="my-2 break-words whitespace-pre-wrap">{failed}</p>
-          <button
-            type="button"
-            className="cursor-pointer font-semibold underline"
-            onClick={() => {
-              const restored = editor.current
-                ? `${failed}\n\n${editor.current}`
-                : failed;
-              editor.current = restored;
-              setBody(restored);
-              setFailed(null);
-            }}
-          >
-            Restore with current draft
-          </button>
+          {failed.map((text) => (
+            <div key={text}>
+              <p className="my-2 break-words whitespace-pre-wrap">{text}</p>
+              <button
+                type="button"
+                disabled={pending}
+                className="min-h-11 cursor-pointer font-semibold underline disabled:opacity-50"
+                onClick={() => {
+                  if (pending) return;
+                  startTransition(async () => {
+                    try {
+                      if (await onSend(text))
+                        setFailed((previous) =>
+                          previous.filter((item) => item !== text),
+                        );
+                    } catch {
+                      toast.error(
+                        "Couldn't confirm your reply. Check your connection and try again.",
+                      );
+                    }
+                  });
+                }}
+              >
+                {pending ? "Confirming…" : "Retry this reply"}
+              </button>
+            </div>
+          ))}
         </details>
       )}
       <div className="flex items-end gap-2 rounded-[26px] bg-surface p-1.5 ring-1 ring-line transition-shadow focus-within:ring-2 focus-within:ring-ink dark:focus-within:ring-you">
@@ -322,7 +342,7 @@ function ReplyBar({
         </span>
         <button
           type="submit"
-          disabled={empty || body.length > LIMITS.comment.max}
+          disabled={pending || empty || body.length > LIMITS.comment.max}
           aria-label="Send reply"
           className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-you text-you-ink transition-[transform,background-color,color] duration-150 active:scale-90 disabled:cursor-default disabled:bg-surface-3 disabled:text-muted"
         >
