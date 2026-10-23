@@ -18,7 +18,7 @@ export async function GET(
   if (!idInput.safeParse(id).success)
     return new Response(null, { status: 404, headers });
   const post = await db.post.findFirst({
-    where: { id, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
+    where: { id, ...visibleTo(viewer, true) },
     select: { revision: true, deadline: true },
   });
   return post

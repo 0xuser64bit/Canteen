@@ -2382,6 +2382,90 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(await actions.createPost(null, form)).toHaveProperty("error");
     });
 
+    it("revokes a former host's access even to campus threads they authored", async () => {
+      vi.stubEnv(
+        "CAMPUS_HOSTS",
+        JSON.stringify({ "mod@example.com": ["stanford.edu"] }),
+      );
+      as("mod");
+      const host = (await getViewer())!;
+      const form = new FormData();
+      for (const [key, value] of Object.entries({
+        title: "A question from the host",
+        body: "Ask during our coverage hours",
+        topic: "GENERAL",
+        kind: "QUESTION",
+        audience: "CAMPUS",
+        hostCampus: "stanford-university",
+      }))
+        form.set(key, value);
+      const created = await actions.createPost(null, form);
+      const id = created!.postedId!;
+      await db.post.update({
+        where: { id },
+        data: {
+          imageUrl: "https://test.private.blob.vercel-storage.com/host.webp",
+          emailOnReply: true,
+        },
+      });
+      const reply = await db.comment.create({
+        data: { postId: id, authorId: "ada", body: "Private campus context" },
+      });
+      expect((await queries.getThread(host, id))?.comments).toHaveLength(1);
+      expect(
+        (await queries.getFeed(host, { scope: { kind: "mine" } })).items,
+      ).toHaveLength(1);
+
+      const reported = await post("ada", { audience: "CAMPUS" });
+      await report("alan", "post", reported.id);
+      expect((await queries.getModQueue(host))[0]?.threadId).toBe(reported.id);
+
+      vi.stubEnv("CAMPUS_HOSTS", "{}");
+      as("mod");
+      const revoked = (await getViewer())!;
+      expect(await queries.getThread(revoked, id)).toBeNull();
+      expect(await queries.getComments(revoked, id)).toBeNull();
+      expect(
+        (await queries.getFeed(revoked, { scope: { kind: "mine" } })).items,
+      ).toHaveLength(0);
+      expect((await actions.markHelpful(id, reply.id)).ok).toBe(false);
+      expect((await queries.getModQueue(revoked))[0]?.threadId).toBeNull();
+      const params = { params: Promise.resolve({ id }) };
+      const { GET: updates } =
+        await import("@/app/api/threads/[id]/updates/route");
+      const { GET: image } = await import("@/app/api/images/[id]/route");
+      expect(
+        (await updates(new Request("http://localhost"), params)).status,
+      ).toBe(404);
+      expect(
+        (await image(new Request("http://localhost"), params)).status,
+      ).toBe(404);
+
+      vi.mocked(sendReplyNotice).mockClear();
+      as("ada");
+      expect((await actions.addComment(id, "A later private reply")).ok).toBe(
+        true,
+      );
+      await finishBackground();
+      expect(sendReplyNotice).not.toHaveBeenCalled();
+      expect(
+        (await db.post.findUniqueOrThrow({ where: { id } })).replyEmailedAt,
+      ).toBeNull();
+
+      const own = await post("ada", { audience: "CAMPUS" });
+      await db.post.update({
+        where: { id: own.id },
+        data: { hiddenAt: new Date() },
+      });
+      expect(
+        await queries.getThread(await viewer("ada"), own.id),
+      ).not.toBeNull();
+      expect(await queries.getThread(await viewer("grace"), own.id)).toBeNull();
+      as("mod");
+      expect((await actions.deletePost(id)).ok).toBe(true);
+      expect(await db.post.findUnique({ where: { id } })).toBeNull();
+    });
+
     it("keeps domain corrections private, bounded and subject to actual dataset verification", async () => {
       const { requestUniversity, reviewUniversityRequest } =
         await import("@/server/university-requests");

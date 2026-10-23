@@ -27,8 +27,7 @@ export async function GET(
     where: {
       id,
       OR: [
-        { authorId: viewer.id },
-        visibleTo(viewer),
+        visibleTo(viewer, true),
         ...(isModerator(viewer)
           ? [{ reports: { some: { resolvedAt: null } } }]
           : []),

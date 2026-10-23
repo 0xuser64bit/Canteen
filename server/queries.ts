@@ -35,23 +35,31 @@ const EXCERPT_LENGTH = 420;
 // ---------------------------------------------------------------------------
 
 /** The one visibility rule every read and write path goes through. */
-export function visibleTo(viewer: Viewer): Prisma.PostWhereInput {
+export function visibleTo(
+  viewer: Viewer,
+  includeOwnHidden = false,
+): Prisma.PostWhereInput {
   return {
-    hiddenAt: null,
-    OR: [
-      { audience: "EVERYONE" },
-      { universityId: viewer.university.id },
-      ...(viewer.hostCampuses?.length
-        ? [
-            {
-              universityId: {
-                in: viewer.hostCampuses.map((campus) => campus.id),
-              },
-            },
-          ]
-        : []),
+    AND: [
+      {
+        OR: [
+          { audience: "EVERYONE" },
+          { universityId: { in: campusIdsFor(viewer) } },
+        ],
+      },
+      // Ownership permits reviewing hidden content, never expired campus access.
+      includeOwnHidden
+        ? { OR: [{ hiddenAt: null }, { authorId: viewer.id }] }
+        : { hiddenAt: null },
     ],
   };
+}
+
+function campusIdsFor(viewer: Viewer) {
+  return [
+    viewer.university.id,
+    ...(viewer.hostCampuses?.map((c) => c.id) ?? []),
+  ];
 }
 
 /** Closed opportunities remain readable, but leave discovery automatically. */
@@ -332,7 +340,7 @@ export async function getFeed(
 ): Promise<FeedPage> {
   const scoped: Prisma.PostWhereInput =
     scope.kind === "mine"
-      ? { authorId: viewer.id } // authors also see their own hidden posts
+      ? { authorId: viewer.id, ...visibleTo(viewer, true) }
       : {
           AND: [
             scope.kind === "saved" || scope.kind === "following"
@@ -435,7 +443,7 @@ export async function getComments(
   inclusive = false,
 ): Promise<CommentPage | null> {
   const post = await db.post.findFirst({
-    where: { id: postId, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
+    where: { id: postId, ...visibleTo(viewer, true) },
     select: { authorId: true },
   });
   if (!post) return null;
@@ -483,7 +491,7 @@ export const getThread = cache(
     focusId?: string,
   ): Promise<Thread | null> => {
     const post = await db.post.findFirst({
-      where: { id: postId, OR: [{ authorId: viewer.id }, visibleTo(viewer)] },
+      where: { id: postId, ...visibleTo(viewer, true) },
       select: postSelect(viewer.id),
     });
     if (!post) return null;
@@ -763,7 +771,7 @@ export async function getModQueue(viewer: Viewer): Promise<ModItem[]> {
   }) =>
     post.hiddenAt === null &&
     (post.audience === "EVERYONE" ||
-      post.universityId === viewer.university.id);
+      campusIdsFor(viewer).includes(post.universityId));
 
   // Rank open reports before the cap so a busy queue cannot bury at-risk content.
   const [postIds, commentIds] = await Promise.all([

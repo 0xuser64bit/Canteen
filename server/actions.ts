@@ -530,6 +530,7 @@ export async function addComment(
         select: { id: true, email: true, universityId: true },
         orderBy: { id: "asc" },
       });
+      let authorEligible = false;
       for (const recipient of recipients) {
         if (
           post.audience === "CAMPUS" &&
@@ -537,12 +538,13 @@ export async function addComment(
           !campusHostDomains(recipient.email).includes(post.university.domain)
         )
           continue;
+        if (recipient.id === post.authorId) authorEligible = true;
         await notify(tx, recipient.id, postId, "COMMENT", comment.id);
       }
       // A question's one opt-in email, claimed here so retries and racing
       // replies send it at most once.
       const emailAuthor =
-        post.authorId !== viewer.id &&
+        authorEligible &&
         (
           await tx.post.updateMany({
             where: { id: postId, emailOnReply: true, replyEmailedAt: null },
@@ -979,7 +981,7 @@ export async function markHelpful(
       where: {
         id: postId,
         authorId: viewer.id,
-        hiddenAt: null,
+        ...queries.visibleTo(viewer),
         kind: "QUESTION",
       },
       select: { id: true },
