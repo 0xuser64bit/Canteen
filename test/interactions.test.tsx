@@ -338,6 +338,30 @@ it("keeps a submitted draft through failure and clears it only after confirmed p
   expect(mocks.router.push).toHaveBeenCalledWith("/p/published-post");
 });
 
+it("recovers a rejected publication without losing its draft or retry identity", async () => {
+  const request = deferred();
+  mocks.create.mockReturnValue(request.promise);
+  await render(composer());
+  await change("#title", "A useful question");
+  await change("#body", "Private draft content");
+  await submit();
+  expect(field("#body").closest("fieldset")!.disabled).toBe(true);
+  const first = mocks.create.mock.calls[0]![1] as FormData;
+  await act(async () => request.reject(new Error("Offline")));
+  expect(container.querySelector('[role="alert"]')!.textContent).toContain(
+    "Couldn't confirm your post",
+  );
+  expect(field("#body").closest("fieldset")!.disabled).toBe(false);
+  expect(readDraft("session-a").body).toBe("Private draft content");
+  expect(mocks.router.push).not.toHaveBeenCalled();
+  mocks.create.mockResolvedValue({ postedId: "published-post" });
+  await submit();
+  const retry = mocks.create.mock.calls[1]![1] as FormData;
+  expect(retry.get("id")).toBe(first.get("id"));
+  expect(retry.get("body")).toBe("Private draft content");
+  expect(readDraft("session-a").body).toBe("");
+});
+
 it("updates mounted poll totals and rolls back a failed pending choice", async () => {
   const base = {
     options: [

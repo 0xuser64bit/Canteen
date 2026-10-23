@@ -156,7 +156,16 @@ export function Composer({
 }) {
   const router = useRouter();
   const [state, dispatch, pending] = useActionState<ComposeState, FormData>(
-    createPost,
+    async (previous, form) => {
+      try {
+        return await createPost(previous, form);
+      } catch {
+        return {
+          error:
+            "Couldn't confirm your post. Your draft is still here. Check your connection and try again.",
+        };
+      }
+    },
     null,
   );
   const [title, setTitle] = useState("");
@@ -385,7 +394,7 @@ export function Composer({
         </p>
       )}
       <fieldset
-        disabled={invalidated}
+        disabled={invalidated || pending}
         className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 lg:px-6"
       >
         {topic !== "OPPORTUNITIES" && (
