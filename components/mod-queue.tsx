@@ -40,22 +40,28 @@ function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
 
   const decide = (decision: Decision) =>
     startTransition(async () => {
-      const result = await moderate({
-        target: item.target,
-        id: item.id,
-        decision,
-        reason,
-      });
-      if (!result.ok) return void toast.error(result.error);
-      setConfirm(null);
-      onDone();
-      toast.success(
-        {
-          keep: "Kept. Its reports are closed.",
-          remove: `The ${what} is gone.`,
-          ban: "Removed, and the author is banned.",
-        }[decision],
-      );
+      try {
+        const result = await moderate({
+          target: item.target,
+          id: item.id,
+          decision,
+          reason,
+        });
+        if (!result.ok) return void toast.error(result.error);
+        setConfirm(null);
+        onDone();
+        toast.success(
+          {
+            keep: "Kept. Its reports are closed.",
+            remove: `The ${what} is gone.`,
+            ban: "Removed, and the author is banned.",
+          }[decision],
+        );
+      } catch {
+        toast.error(
+          "Couldn't confirm that decision. Check your connection and try again.",
+        );
+      }
     });
 
   return (

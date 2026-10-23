@@ -19,12 +19,20 @@ function Decision({
   const [pending, startTransition] = useTransition();
   const act = (restore?: boolean) =>
     startTransition(async () => {
-      const result = review
-        ? await reviewAppeal(item.id, restore!, body)
-        : await submitAppeal(item.id, body);
-      if (!result.ok) return void toast.error(result.error);
-      setBody("");
-      toast.success(review ? "Appeal reviewed" : "Appeal sent to the team");
+      try {
+        const result = review
+          ? await reviewAppeal(item.id, restore!, body)
+          : await submitAppeal(item.id, body);
+        if (!result.ok) return void toast.error(result.error);
+        setBody("");
+        toast.success(review ? "Appeal reviewed" : "Appeal sent to the team");
+      } catch {
+        toast.error(
+          review
+            ? "Couldn't confirm the appeal review. Check your connection and try again."
+            : "Couldn't confirm your appeal. Check your connection and try again.",
+        );
+      }
     });
   const canAppeal = item.decision !== "KEEP" && !item.appealedAt;
   return (
@@ -77,13 +85,14 @@ function Decision({
           </label>
           <textarea
             id={`appeal-${item.id}`}
+            disabled={pending}
             required
             minLength={10}
             maxLength={review ? 600 : 2000}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={3}
-            className="mt-2 w-full resize-y rounded-2xl bg-background p-3 text-[14px] ring-1 ring-line"
+            className="mt-2 w-full resize-y rounded-2xl bg-background p-3 text-[16px] ring-1 ring-line"
           />
           <p className="mt-1 text-[12px] text-muted">
             Include context, without names, phone numbers or email addresses.
