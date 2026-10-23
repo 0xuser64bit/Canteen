@@ -1313,6 +1313,72 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect((await read()).status).toBe(404);
     });
 
+    it("limits moderator images to assigned campuses or open reports", async () => {
+      vi.stubEnv("TEAM_EMAILS", "mod@example.com");
+      await db.university.create({ data: { ...TEAM, id: "u-team" } });
+      await db.user.create({
+        data: {
+          id: "mod",
+          email: "mod@example.com",
+          universityId: "u-team",
+          emailVerified: true,
+        },
+      });
+      const p = await post("ada", { audience: "CAMPUS", imageUrl });
+      const { GET } = await import("@/app/api/images/[id]/route");
+      const read = () =>
+        GET(new Request("http://localhost/api/images/" + p.id), {
+          params: Promise.resolve({ id: p.id }),
+        });
+      vi.mocked(get).mockImplementation(
+        async () =>
+          ({
+            statusCode: 200,
+            stream: new Response("image").body,
+            blob: { contentType: "image/webp" },
+          }) as never,
+      );
+      as("mod");
+      expect((await read()).status).toBe(404);
+      expect(get).not.toHaveBeenCalled();
+
+      vi.stubEnv(
+        "CAMPUS_HOSTS",
+        JSON.stringify({ "mod@example.com": ["stanford.edu"] }),
+      );
+      expect((await read()).status).toBe(200);
+      vi.stubEnv("CAMPUS_HOSTS", "{}");
+      expect((await read()).status).toBe(404);
+
+      as("alan");
+      expect(
+        await actions.reportContent({
+          target: "post",
+          id: p.id,
+          reason: "OTHER",
+        }),
+      ).toEqual({ ok: true, data: null });
+      as("mod");
+      expect((await read()).status).toBe(200);
+      await db.post.update({
+        where: { id: p.id },
+        data: { hiddenAt: new Date() },
+      });
+      expect((await read()).status).toBe(200);
+      as("grace");
+      expect((await read()).status).toBe(404);
+
+      as("mod");
+      await db.user.update({
+        where: { id: "mod" },
+        data: { bannedAt: new Date() },
+      });
+      expect((await read()).status).toBe(401);
+      await db.user.update({ where: { id: "mod" }, data: { bannedAt: null } });
+      await db.report.updateMany({ data: { resolvedAt: new Date() } });
+      expect((await read()).status).toBe(404);
+    });
+
     it("retains deletion work across storage failures, leases and account deletion", async () => {
       const { processImageDeletions } = await import("@/server/media");
       const p = await post("ada", { imageUrl });

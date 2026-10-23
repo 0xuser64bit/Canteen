@@ -26,9 +26,13 @@ export async function GET(
   const post = await db.post.findFirst({
     where: {
       id,
-      ...(isModerator(viewer)
-        ? {}
-        : { OR: [{ authorId: viewer.id }, visibleTo(viewer)] }),
+      OR: [
+        { authorId: viewer.id },
+        visibleTo(viewer),
+        ...(isModerator(viewer)
+          ? [{ reports: { some: { resolvedAt: null } } }]
+          : []),
+      ],
     },
     select: { imageUrl: true },
   });
