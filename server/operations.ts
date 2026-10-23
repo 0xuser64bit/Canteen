@@ -16,7 +16,14 @@ export async function getWaitingSummary(viewer: Viewer, universityId: string) {
   const where = {
     AND: [
       visibleTo(viewer),
-      { universityId, kind: "QUESTION" as const, helpfulAnswer: null },
+      {
+        universityId,
+        kind: "QUESTION" as const,
+        OR: [
+          { helpfulAnswer: null },
+          { helpfulAnswer: { comment: { hiddenAt: { not: null } } } },
+        ],
+      },
     ],
   };
   const [count, oldest] = await Promise.all([

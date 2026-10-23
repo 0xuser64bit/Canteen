@@ -2466,6 +2466,53 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       expect(await db.post.findUnique({ where: { id } })).toBeNull();
     });
 
+    it("counts waiting host questions when a previously helpful answer is hidden", async () => {
+      const { getWaitingSummary } = await import("@/server/operations");
+      const base = await viewer("mod");
+      const host = {
+        ...base,
+        hostCampuses: [
+          {
+            id: "u-stanford",
+            slug: "stanford-university",
+            name: "Stanford University",
+          },
+        ],
+      };
+      const posts = [];
+      for (let index = 0; index < 5; index++)
+        posts.push(await post("ada", { audience: "CAMPUS", kind: "QUESTION" }));
+      const oldest = new Date(Date.now() - 10 * 24 * 60 * 60_000);
+      await db.post.update({
+        where: { id: posts[0]!.id },
+        data: { createdAt: oldest },
+      });
+      const answer = await db.comment.create({
+        data: {
+          postId: posts[0]!.id,
+          authorId: "alan",
+          body: "A previous answer",
+          hiddenAt: new Date(),
+        },
+      });
+      await db.helpfulAnswer.create({
+        data: { postId: posts[0]!.id, commentId: answer.id },
+      });
+      expect(await getWaitingSummary(host, "u-stanford")).toEqual({
+        count: 5,
+        oldest,
+      });
+      expect(await getWaitingSummary(base, "u-stanford")).toBeNull();
+      expect(
+        await getWaitingSummary(await viewer("ada"), "u-stanford"),
+      ).toBeNull();
+      await db.comment.update({
+        where: { id: answer.id },
+        data: { hiddenAt: null },
+      });
+      expect(await getWaitingSummary(host, "u-stanford")).toBeNull();
+    });
+
     it("keeps domain corrections private, bounded and subject to actual dataset verification", async () => {
       const { requestUniversity, reviewUniversityRequest } =
         await import("@/server/university-requests");
