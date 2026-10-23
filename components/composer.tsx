@@ -22,7 +22,7 @@ import {
 import { HelplineNote } from "@/components/helpline";
 import { Button } from "@/components/ui/button";
 import { DateTimeField } from "@/components/ui/datetime-field";
-import { Counter, FieldError } from "@/components/ui/field";
+import { Counter, FieldError, Input } from "@/components/ui/field";
 import { parseLocalDateTime } from "@/lib/datetime";
 import {
   DRAFT_CHANGE,
@@ -127,7 +127,7 @@ function Choice({
       }}
       onClick={onSelect}
       className={cn(
-        "flex shrink-0 cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold ring-1 transition-colors ring-inset",
+        "flex min-h-11 max-w-full shrink-0 cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-left text-[13px] font-semibold wrap-anywhere ring-1 transition-colors ring-inset [&_svg]:shrink-0",
         checked
           ? "bg-ink text-background ring-ink"
           : "bg-surface text-muted ring-line hover:text-ink",
@@ -405,7 +405,7 @@ export function Composer({
             <div
               role="radiogroup"
               aria-label="Post type"
-              className="flex gap-2"
+              className="flex flex-wrap gap-2"
             >
               <Choice
                 checked={kind === "QUESTION"}
@@ -505,7 +505,7 @@ export function Composer({
             >
               Official application link
             </label>
-            <input
+            <Input
               id="application-url"
               type="url"
               required
@@ -589,7 +589,7 @@ export function Composer({
                     placeholder={`Choice ${index + 1}`}
                     maxLength={LIMITS.pollChoice.max}
                     autoComplete="off"
-                    className="h-11 min-w-0 flex-1 rounded-xl bg-surface px-3.5 text-[15px] ring-1 ring-line outline-none ring-inset placeholder:text-muted focus:ring-2 focus:ring-ink dark:focus:ring-you"
+                    className="h-11 min-w-0 flex-1 rounded-xl bg-surface px-3.5 text-[16px] ring-1 ring-line outline-none ring-inset placeholder:text-muted focus:ring-2 focus:ring-ink dark:focus:ring-you"
                   />
                   {poll.length > LIMITS.pollChoices.min && (
                     <button
@@ -598,19 +598,19 @@ export function Composer({
                       onClick={() =>
                         setPoll(poll.filter((_, i) => i !== index))
                       }
-                      className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                      className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
                     >
                       <X className="size-4" />
                     </button>
                   )}
                 </div>
               ))}
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 {poll.length < LIMITS.pollChoices.max ? (
                   <button
                     type="button"
                     onClick={() => setPoll([...poll, ""])}
-                    className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                    className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
                   >
                     <Plus className="size-4" /> Add a choice
                   </button>
@@ -620,7 +620,7 @@ export function Composer({
                 <button
                   type="button"
                   onClick={() => setPoll(null)}
-                  className="h-9 cursor-pointer rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                  className="min-h-11 cursor-pointer rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
                 >
                   Remove poll
                 </button>
@@ -645,7 +645,7 @@ export function Composer({
                 type="button"
                 onClick={() => setImage(null)}
                 aria-label="Remove image"
-                className="absolute top-2 right-2 grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur transition-colors hover:bg-black/80"
+                className="absolute top-2 right-2 grid size-11 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur transition-colors hover:bg-black/80"
               >
                 <X className="size-4" />
               </button>
@@ -673,7 +673,7 @@ export function Composer({
             </div>
           )}
           {(imagesEnabled || !poll || nearLimit) && (
-            <div className="flex items-center gap-2 border-t border-line px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2">
               {imagesEnabled && (
                 <>
                   <input
@@ -687,7 +687,7 @@ export function Composer({
                   />
                   <label
                     htmlFor="image"
-                    className="flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring hover:bg-surface-3 hover:text-ink"
+                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring hover:bg-surface-3 hover:text-ink"
                   >
                     {preparing ? (
                       <Loader2 className="size-[18px] animate-spin" />
@@ -702,7 +702,7 @@ export function Composer({
                 <button
                   type="button"
                   onClick={() => setPoll(["", ""])}
-                  className="flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                  className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-ink"
                 >
                   <ListChecks className="size-[18px]" /> Add poll
                 </button>

@@ -199,7 +199,7 @@ function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
       type="button"
       disabled={pending}
       aria-pressed={selected}
-      className="mt-1 cursor-pointer rounded-full px-2 py-1 text-[12px] font-semibold text-muted hover:bg-surface-3 hover:text-ink disabled:opacity-50"
+      className="mt-1 min-h-11 cursor-pointer rounded-full px-2 py-1 text-[12px] font-semibold text-muted hover:bg-surface-3 hover:text-ink disabled:opacity-50"
       onClick={() =>
         startTransition(async () => {
           try {
@@ -532,7 +532,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
                     href={thread.applicationUrl}
                     target="_blank"
                     rel="noreferrer nofollow"
-                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-background"
+                    className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-background"
                   >
                     {thread.closed
                       ? "View original opportunity"

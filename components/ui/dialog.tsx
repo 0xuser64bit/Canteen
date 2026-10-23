@@ -45,7 +45,7 @@ export function DialogContent({
               </DialogPrimitive.Description>
             )}
           </div>
-          <DialogPrimitive.Close className="-m-1 grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink">
+          <DialogPrimitive.Close className="-m-1 grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink">
             <X className="size-5" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>

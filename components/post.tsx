@@ -88,7 +88,7 @@ export function LikeButton({
       aria-pressed={state.liked}
       aria-label={state.liked ? "Unlike" : "Like"}
       className={cn(
-        "relative z-10 flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors",
+        "relative z-10 flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
         onYellow
           ? "hover:bg-you-surface-ink/10"
           : "text-muted hover:bg-surface-3 hover:text-ink",
@@ -154,7 +154,7 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
         <ThreadLink
           href={`/p/${post.id}`}
           className={cn(
-            "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors",
+            "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold tabular transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             onYellow
               ? "hover:bg-you-surface-ink/10"
               : "text-muted hover:bg-surface-3 hover:text-ink",

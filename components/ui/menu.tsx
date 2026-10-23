@@ -33,7 +33,7 @@ export function DropdownMenuItem({
   return (
     <Menu.Item
       className={cn(
-        "flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-[14px] font-medium outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface-3 [&_svg]:size-4 [&_svg]:text-muted",
+        "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-[14px] font-medium outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface-3 [&_svg]:size-4 [&_svg]:text-muted",
         destructive &&
           "text-danger data-[highlighted]:bg-danger-surface [&_svg]:text-danger",
         className,

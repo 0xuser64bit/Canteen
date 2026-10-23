@@ -27,7 +27,7 @@ export function openSearch() {
 }
 
 const itemClass =
-  "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] data-[selected=true]:bg-surface-3 [&>svg]:size-[18px] [&>svg]:shrink-0 [&>svg]:text-muted";
+  "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] data-[selected=true]:bg-surface-3 [&>svg]:size-[18px] [&>svg]:shrink-0 [&>svg]:text-muted";
 
 type SearchState =
   | { query: string; status: "loading" | "error" }
