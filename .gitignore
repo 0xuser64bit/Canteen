@@ -25,5 +25,10 @@ next-env.d.ts
 coverage/
 npm-debug.log*
 
-# local design tooling
-/.impeccable/
+# design tooling scratch (briefs and DESIGN.md stay tracked)
+/.impeccable/questions/
+/.impeccable/review/
+/.impeccable/build/
+/.impeccable/mocks/
+/.impeccable/live/
+/.impeccable/hook.cache.json

@@ -5,6 +5,7 @@ prisma/migrations
 data/universities.json
 bun.lock
 next-env.d.ts
+.impeccable
 android/**/build
 android/.gradle
 android/.kotlin

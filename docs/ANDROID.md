@@ -91,5 +91,40 @@ runtime readiness or Google Play approval.
 - Verified release origin/certificate, rejected foreign launch links and external
   links displaying their origin.
 
+### Verification on 20 October 2026
+
+The canonical deployment is `https://teamcanteen.vercel.app`.
+
+- Debug and signed release APKs build. Kotlin URL checks pass, including foreign
+  hosts, ports, schemes, credentials and malformed links. Release lint reports no
+  errors; its only warning is a newer Gradle version being available.
+- The release APK's v2 signature verifies and matches the certificate in
+  `public/.well-known/assetlinks.json`. It targets the canonical deployment.
+- The debug APK was installed on the dedicated API 36.1 Canteen QA emulator.
+  Runtime testing found and fixed a missing browser-helper activity declaration;
+  activity diagnostics then confirmed launch into Chrome's `CustomTabActivity`.
+- The signed APK installs on that emulator (Android 16 / API 36.1, Chrome
+  134.0.6998.135). After deployment, Android's domain verifier reports
+  `teamcanteen.vercel.app: verified` for the actual release certificate. A visual
+  fullscreen launch and end-to-end native student flows remain to be checked.
+- Separate mobile web tests used disposable Stanford and MIT student accounts
+  through development email-code authentication, with external mail disabled.
+  They exercised campus isolation, a public reply, filter retention and sign-out.
+  They are not a substitute for native keyboard, picker or physical-phone tests.
+- The founder installed the signed APK on a physical Android device and reported
+  that it seems fine. Device/browser versions and individual flow results were
+  not recorded, so the checklist above remains the release gate.
+
+The local checks here do not establish Google Play approval, real-device behavior,
+or production email delivery. Record tested device/browser versions and any
+remaining issues alongside a release.
+
 The browser retains cookies and site data after APK removal. Uninstalling does
 not sign out of Canteen; sign out through the site on shared devices.
+
+## References
+
+- [Android Trusted Web Activities](https://developer.android.com/develop/ui/views/layout/webapps/trusted-web-activities)
+- [Android Browser Helper](https://github.com/GoogleChrome/android-browser-helper)
+- [Digital Asset Links and signing keys](https://developer.chrome.com/docs/android/trusted-web-activity/quick-start)
+- [Android Gradle Plugin 9.3 compatibility](https://developer.android.com/build/releases/agp-9-3-0-release-notes)

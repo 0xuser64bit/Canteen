@@ -39,10 +39,11 @@ bun run db:migrate --name describe_the_change
 
 `app/globals.css` owns design tokens; `components/ui/` owns shared controls.
 Reuse these rather than copying token tables or creating a second component
-system. Own messages sit on the right using `you-surface` and matching inks;
-others sit on the left in neutral bubbles, with alias hues from `components/alias.tsx`.
-The selected accent carries primary actions and the logo; yellow is the default,
-not a fixed palette. Use Mona Sans's expanded cut for display text only.
+system. [DESIGN.md](DESIGN.md) documents the full visual system. Own messages sit
+on the right using `you-surface` and matching inks; others sit on the left in
+neutral bubbles, with alias hues from `components/alias.tsx`. The selected accent
+carries primary actions and the logo; yellow is the default, not a fixed palette.
+Use Mona Sans's expanded cut for display text only.
 
 Keep controls usable on narrow screens, with visible keyboard focus, labels,
 readable input text, and adequate touch targets. Check light/dark and Soft/Vivid

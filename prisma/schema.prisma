@@ -256,7 +256,8 @@ model PollOption {
   @@unique([postId, position])
 }
 
-// One vote per student per poll; voting again moves it. Only totals ever leave the server.
+// One vote per student per poll; voting again moves it. Everyone sees the total;
+// only the author and voters see per-choice counts.
 model PollVote {
   createdAt DateTime @default(now())
 

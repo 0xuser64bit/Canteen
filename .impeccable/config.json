@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "roboto",
+        "files": [
+          "lib/email.ts"
+        ],
+        "createdAt": "2026-10-16T12:56:55.485Z",
+        "reason": "Agent: transactional HTML email uses an existing system-font fallback stack for mail-client compatibility; the web app uses Mona Sans."
+      }
+    ]
+  }
+}

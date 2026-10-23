@@ -36,3 +36,14 @@ updating dependencies, and use `bun audit` to review development dependencies as
 well. Assess advisories against actual usage and fix them with compatible
 updates; do not suppress findings or force incompatible versions merely to
 produce a clean report. An old audit result is not a current security guarantee.
+
+The review on 23 October 2026 found no production dependency advisories across
+207 packages. The full `bun audit` still reports
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) in
+`braces@3.0.3`, through
+`eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch`. It
+affects deeply nested glob patterns during development and linting; Canteen does
+not send student input to that code. The advisory lists no patched release. Keep
+build and lint configuration trusted, and recheck the upstream fix when updating
+the linter. This finding is documented rather than suppressed or forced onto an
+incompatible dependency version.

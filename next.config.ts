@@ -11,7 +11,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  agentRules: false,
   poweredByHeader: false,
   typedRoutes: true,
   experimental: {

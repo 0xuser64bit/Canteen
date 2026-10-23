@@ -50,6 +50,10 @@ deletion, private image access, moderation and appeals on the deployment. Assign
 a real moderator and response coverage; Canteen promises no guaranteed response
 time. Test production mail delivery separately from the mocked test suite.
 
+Plan the launch itself with the [campus launch playbook](../LAUNCH.md): it covers
+the first two weeks, the weekly decision, honest outreach and the operational
+checks that matter during a pilot.
+
 ## Staff and campus access
 
 - `TEAM_EMAILS` is the current staff allowlist. Staff contributions are labeled
