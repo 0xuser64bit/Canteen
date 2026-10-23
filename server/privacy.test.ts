@@ -932,6 +932,38 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     ).toBe(1);
   });
 
+  it("acknowledges a saved opportunity retry even after its deadline passes", async () => {
+    as("ada");
+    const form = new FormData();
+    const id = crypto.randomUUID();
+    const now = Date.now();
+    for (const [key, value] of Object.entries({
+      id,
+      title: "A closing opportunity",
+      body: "Some context",
+      topic: "OPPORTUNITIES",
+      audience: "EVERYONE",
+      applicationUrl: "https://example.org/apply",
+      deadline: new Date(now + 60_000).toISOString(),
+    }))
+      form.set(key, value);
+    expect(await actions.createPost(null, form)).toEqual({ postedId: id });
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now + 120_000);
+    try {
+      expect(await actions.createPost(null, form)).toEqual({ postedId: id });
+      expect(await db.post.count()).toBe(1);
+      expect(
+        await db.publication.count({ where: { userId: "ada", kind: "POST" } }),
+      ).toBe(1);
+      as("alan");
+      expect(await actions.createPost(null, form)).not.toHaveProperty(
+        "postedId",
+      );
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it("sorts waiting questions oldest first and saved opportunities by deadline across page boundaries", async () => {
     const ids = Array.from({ length: 24 }, () => crypto.randomUUID());
     await db.post.createMany({

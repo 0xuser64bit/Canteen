@@ -189,6 +189,15 @@ export async function createPost(
         "That campus assignment is no longer available. Refresh and try again.",
     };
 
+  const retryId = postInput.shape.id.safeParse(form.get("id") ?? undefined);
+  if (retryId.success && retryId.data) {
+    const existing = await db.post.findFirst({
+      where: { id: retryId.data, authorId: viewer.id },
+      select: { id: true },
+    });
+    if (existing) return { postedId: existing.id };
+  }
+
   const choices = form.getAll("pollChoice");
   const parsed = postInput.safeParse({
     id: form.get("id") ?? undefined,
@@ -209,14 +218,6 @@ export async function createPost(
       fieldErrors[field] ??= issue.message;
     }
     return { fieldErrors };
-  }
-
-  if (parsed.data.id) {
-    const existing = await db.post.findFirst({
-      where: { id: parsed.data.id, authorId: viewer.id },
-      select: { id: true },
-    });
-    if (existing) return { postedId: existing.id };
   }
 
   if (await postingTooFast("post", viewer.id)) {
