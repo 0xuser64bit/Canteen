@@ -99,7 +99,7 @@ function QueueItem({ item, onDone }: { item: ModItem; onDone: () => void }) {
           </h2>
         )}
         {item.body && (
-          <p className="mt-1 line-clamp-12 text-[15px] leading-relaxed break-words whitespace-pre-line text-ink/85">
+          <p className="mt-1 text-[15px] leading-relaxed break-words whitespace-pre-line text-ink/85">
             {item.body}
           </p>
         )}
