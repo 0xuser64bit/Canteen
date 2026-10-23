@@ -374,6 +374,19 @@ mug, cool light/dark grounds, a short explanation and one 48px Retry action. It
 uses a system font because no network asset can be assumed available. It never
 renders or caches student content; reconnection reloads the requested page.
 
+## October 23 interaction extension
+
+Writing choices, attachment and poll controls, menu rows, search results and
+helpful-answer actions have at least 44px targets. Shared compact buttons and
+discussion like/reply controls expand to 44px on coarse pointers. Composer groups
+wrap when space is limited; poll and application fields use 16px text.
+
+During publication and appeal submission, the submitted fields stay fixed until
+the request completes. A failed request restores editing and keeps the input. An
+uncertain earlier reply has its own Retry this reply action inside a details
+element, preserving the exact submitted text and leaving newer writing untouched.
+Reported messages show their complete body before moderation controls.
+
 ## Do's and Don'ts
 
 ### Do:

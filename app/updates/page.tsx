@@ -30,6 +30,58 @@ export default function UpdatesPage() {
       </header>
 
       <article
+        aria-labelledby="reliability-update"
+        className="mt-8 border-t border-line pt-7"
+      >
+        <header>
+          <h2
+            id="reliability-update"
+            className="text-[24px] leading-tight font-semibold tracking-tight"
+          >
+            Keep your words. Keep your progress.
+          </h2>
+          <time
+            dateTime="2026-10-23"
+            className="mt-2 block text-[13px] text-muted"
+          >
+            23 October 2026
+          </time>
+        </header>
+        <div className="mt-7 space-y-6">
+          <section>
+            <h3 className="text-[20px] font-semibold">
+              A clearer way to retry
+            </h3>
+            <p className="mt-2 text-muted">
+              If publishing loses its connection, your draft stays in place.
+              When an earlier reply needs confirmation, retry it separately
+              while keeping your newer draft. Appeals and university domain
+              requests also keep your text through a failed request.
+            </p>
+          </section>
+          <section>
+            <h3 className="text-[20px] font-semibold">Actions that stay put</h3>
+            <p className="mt-2 text-muted">
+              Likes, poll results, saves and reply follows now keep their
+              confirmed state on posts loaded further down a feed. Busy campuses
+              can show eligible universities even when smaller campuses are
+              posting more, while small campuses stay unnamed.
+            </p>
+          </section>
+          <section>
+            <h3 className="text-[20px] font-semibold">More room, more care</h3>
+            <p className="mt-2 text-muted">
+              Writing, search, menus and conversation controls have more room to
+              tap. Moderators can read complete reported messages before making
+              a decision, and failed decisions offer a retry. Campus access
+              checks also apply when a host assignment ends, including threads
+              the host started.
+            </p>
+          </section>
+        </div>
+      </article>
+
+      <article
         aria-labelledby="appearance-update"
         className="mt-8 border-t border-line pt-7"
       >

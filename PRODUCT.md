@@ -67,6 +67,20 @@ site ownership cannot be verified. Its release certificate is published through
 Digital Asset Links. A network-only service worker supplies a generic offline
 navigation explanation, without caching discussions, API responses or mutations.
 
+## October 23 reliability extension
+
+Confirmed likes, poll votes, saves and follows remain visible on posts loaded by
+pagination, while later server responses can update them. Publishing failures keep
+the draft and its retry identity. Uncertain replies can be retried separately from
+newer writing. Appeals, moderation decisions and domain requests recover from
+connection errors without discarding input.
+
+Campus access ends when a host assignment is removed, including read access to
+threads the host authored, their replies, images and updates. Authors retain
+erasure rights. Moderators can review images on posts with open reports; ordinary
+staff status does not unlock unreported campus images. Busy-campus discovery
+applies the existing five-member naming threshold before ranking its four results.
+
 ## Brand Commitments
 
 - The name "Canteen" stays. The founder gave full authority to replace the previous logo and visual identity; nothing from the old look is binding.

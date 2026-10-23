@@ -1,10 +1,43 @@
 # Canteen improvement roadmap
 
-Updated 20 October 2026. This is a working record of completed improvements and
+Updated 23 October 2026. This is a working record of completed improvements and
 the next areas to investigate. Future work is exploratory; prioritize it using
 observed student journeys and concrete defects.
 
-## Completed implementation: October 2026
+## Completed implementation: 23 October 2026
+
+The [audit and implementation record](IMPROVEMENT-AUDIT-2026-10-23.md) captures
+the reviewed areas, evidence, twelve implementation commits and remaining work.
+
+- Campus image reads and former-host thread access obey current permissions;
+  ownership retains erasure rights without keeping expired campus access.
+- Likes, polls, saves and follows retain confirmed state on paginated posts.
+- Publishing, helpful answers, moderation decisions, appeals and domain requests
+  recover locally from connection failures. Pending submissions keep their fields
+  fixed. Uncertain replies retry separately without combining newer text.
+- Moderation shows complete reported messages. Host waiting totals include
+  questions whose previously helpful answer is now hidden.
+- Busy-campus discovery filters privacy eligibility before limiting results.
+  Saved opportunity retries still acknowledge publication after the deadline.
+- Writing controls, search, menus and discussion actions have larger tap targets;
+  composer groups wrap, and remaining writing fields use 16px text.
+
+Validation: formatting, lint, types and **331 tests across 35 files** passed,
+including the native PostgreSQL suite with no skips. The production build passed.
+The production dependency audit found no advisories in 207 packages. Separate
+fresh local databases isolated browser fixtures from destructive integration
+tests. No production deployment, migration or student-data change was made.
+Local production-mode HTTP checks also passed for public pages/assets, signed-out
+API denial, the streamed campus sign-in redirect and security headers. The fresh
+database correctly reported unhealthy maintenance until a heartbeat exists.
+
+Local browser review reached the landing page, university-email sign-in and dark
+desktop campus page; composer navigation loaded successfully. Browser access was
+then disabled in Work settings, so final visual review of the new controls,
+mobile/light-theme checks, offline/reconnection and real Android hardware remain
+unverified. Earlier captures below describe earlier implementations.
+
+## Earlier implementation: October 2026
 
 - Soft dark accents use dark tinted message surfaces and light text across posts,
   replies, polls and the live Settings preview. Primary controls retain a clear
