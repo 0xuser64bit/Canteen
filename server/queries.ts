@@ -627,41 +627,22 @@ export async function getTrending(viewer: Viewer) {
 }
 
 export async function getActiveUniversities() {
-  const busiest = await db.post.groupBy({
-    by: ["universityId"],
-    where: {
-      hiddenAt: null,
-      OR: [{ deadline: null }, { deadline: { gt: new Date() } }],
-      audience: "EVERYONE",
-      createdAt: { gte: new Date(Date.now() - WEEK_MS) },
-    },
-    _count: { _all: true },
-    orderBy: { _count: { universityId: "desc" } },
-    take: 12,
-  });
-  if (busiest.length === 0) return [];
-
-  const universities = await db.university.findMany({
-    where: { id: { in: busiest.map((row) => row.universityId) } },
-    select: universitySelect,
-  });
-  const byId = new Map(universities.map((u) => [u.id, u]));
-  return busiest
-    .map((row) => ({
-      university: byId.get(row.universityId),
-      postCount: row._count._all,
-    }))
-    .filter(
-      (row): row is { university: UniversityRow; postCount: number } =>
-        !!row.university &&
-        row.university._count.users >= MIN_MEMBERS_TO_NAME_UNIVERSITY,
-    )
-    .slice(0, 4)
-    .map(({ university, postCount }) => ({
-      slug: university.slug,
-      name: university.name,
-      postCount,
-    }));
+  // Apply campus privacy eligibility before ranking, so small campuses cannot crowd out the list.
+  return db.$queryRaw<{ slug: string; name: string; postCount: number }[]>`
+    SELECT u."slug", u."name", COUNT(*)::int AS "postCount"
+    FROM "Post" p
+    JOIN "University" u ON u."id" = p."universityId"
+    JOIN (
+      SELECT "universityId" FROM "User" GROUP BY "universityId"
+      HAVING COUNT(*) >= ${MIN_MEMBERS_TO_NAME_UNIVERSITY}
+    ) eligible ON eligible."universityId" = u."id"
+    WHERE p."hiddenAt" IS NULL AND p."audience" = 'EVERYONE'
+      AND (p."deadline" IS NULL OR p."deadline" > ${new Date()})
+      AND p."createdAt" >= ${new Date(Date.now() - WEEK_MS)}
+    GROUP BY u."id"
+    ORDER BY COUNT(*) DESC, u."slug" ASC
+    LIMIT 4
+  `;
 }
 
 export type SearchResults = {

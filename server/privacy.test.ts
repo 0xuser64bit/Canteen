@@ -344,6 +344,65 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     }
   });
 
+  it("fills busy campuses with eligible universities before applying the discovery cap", async () => {
+    const campuses = Array.from({ length: 16 }, (_, index) => ({
+      id: `busy-campus-${index}`,
+      domain: `busy-campus-${index}.example`,
+      slug: `busy-campus-${index}`,
+      name: `Campus ${index}`,
+      country: "United States",
+      countryCode: "US",
+    }));
+    await db.university.createMany({ data: campuses });
+    for (const [index, campus] of campuses.entries()) {
+      await db.user.createMany({
+        data: Array.from({ length: index < 12 ? 1 : 5 }, (_, member) => ({
+          id: `${campus.id}-student-${member}`,
+          email: `student-${member}@${campus.domain}`,
+          emailVerified: true,
+          universityId: campus.id,
+        })),
+      });
+      await db.post.createMany({
+        data: Array.from({ length: index < 12 ? 3 : 1 }, () => ({
+          authorId: `${campus.id}-student-0`,
+          universityId: campus.id,
+          title: "A recent public discussion",
+          body: "Some context",
+          audience: "EVERYONE" as const,
+        })),
+      });
+    }
+    const eligible = campuses.slice(12);
+    await db.post.createMany({
+      data: [
+        { audience: "CAMPUS" as const },
+        { audience: "EVERYONE" as const, hiddenAt: new Date() },
+        {
+          audience: "EVERYONE" as const,
+          deadline: new Date(Date.now() - 60_000),
+        },
+        {
+          audience: "EVERYONE" as const,
+          createdAt: new Date(Date.now() - 8 * 24 * 60 * 60_000),
+        },
+      ].map((fields) => ({
+        ...fields,
+        authorId: `${eligible[0]!.id}-student-0`,
+        universityId: eligible[0]!.id,
+        title: "Not in discovery",
+        body: "Some context",
+      })),
+    });
+    expect(await queries.getActiveUniversities()).toEqual(
+      eligible.map((campus) => ({
+        name: campus.name,
+        slug: campus.slug,
+        postCount: 1,
+      })),
+    );
+  });
+
   it("paginates replies without gaps and protects update and earlier-reply reads", async () => {
     const p = await post("ada", { audience: "CAMPUS" });
     await db.comment.createMany({
