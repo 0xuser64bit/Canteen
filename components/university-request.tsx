@@ -1,12 +1,29 @@
 "use client";
 
-import { useActionState } from "react";
-import { requestUniversity } from "@/server/university-requests";
+import { useActionState, useState } from "react";
+import {
+  requestUniversity,
+  type UniversityRequestState,
+} from "@/server/university-requests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 
 export function UniversityRequestForm() {
-  const [state, action, pending] = useActionState(requestUniversity, null);
+  const [domain, setDomain] = useState("");
+  const [website, setWebsite] = useState("");
+  const [state, action, pending] = useActionState<
+    UniversityRequestState,
+    FormData
+  >(async (previous, form) => {
+    try {
+      return await requestUniversity(previous, form);
+    } catch {
+      return {
+        error:
+          "Couldn't confirm your request. Check your connection and try again.",
+      };
+    }
+  }, null);
   if (state?.ok)
     return (
       <p
@@ -30,6 +47,9 @@ export function UniversityRequestForm() {
         <Input
           id="university-domain"
           name="domain"
+          value={domain}
+          onChange={(event) => setDomain(event.target.value)}
+          disabled={pending}
           required
           maxLength={253}
           autoCapitalize="none"
@@ -51,6 +71,9 @@ export function UniversityRequestForm() {
         <Input
           id="university-website"
           name="website"
+          value={website}
+          onChange={(event) => setWebsite(event.target.value)}
+          disabled={pending}
           type="url"
           required
           maxLength={2048}
