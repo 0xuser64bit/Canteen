@@ -271,6 +271,17 @@ export function PostMenu({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [collections, setCollections] = useState({
+    source: post,
+    saved: post.saved,
+    following: post.following,
+  });
+  if (collections.source !== post)
+    setCollections({
+      source: post,
+      saved: post.saved,
+      following: post.following,
+    });
   const [pending, startTransition] = useTransition();
   const collectionPending = useRef(false);
   const [dialog, setDialog] = useState<"report" | "delete" | null>(null);
@@ -326,24 +337,30 @@ export function PostMenu({
               onSelect={() => {
                 if (collectionPending.current) return;
                 collectionPending.current = true;
+                const enabled = !collections[collection];
                 startTransition(async () => {
                   try {
                     const result = await setCollection(
                       post.id,
                       collection,
-                      !post[collection],
+                      enabled,
                     );
                     if (!result.ok) toast.error(result.error);
-                    else
+                    else {
+                      setCollections((current) => ({
+                        ...current,
+                        [collection]: enabled,
+                      }));
                       toast.success(
                         collection === "saved"
-                          ? post.saved
-                            ? "Removed from saved"
-                            : "Saved privately"
-                          : post.following
-                            ? "Reply alerts off"
-                            : "You'll get reply alerts",
+                          ? enabled
+                            ? "Saved privately"
+                            : "Removed from saved"
+                          : enabled
+                            ? "You'll get reply alerts"
+                            : "Reply alerts off",
                       );
+                    }
                   } catch {
                     toast.error(
                       "Couldn't confirm that change. Check your connection and try again.",
@@ -356,10 +373,10 @@ export function PostMenu({
             >
               {collection === "saved" ? <Bookmark /> : <Bell />}
               {collection === "saved"
-                ? post.saved
+                ? collections.saved
                   ? "Unsave"
                   : "Save privately"
-                : post.following
+                : collections.following
                   ? "Unfollow replies"
                   : "Follow replies"}
             </DropdownMenuItem>

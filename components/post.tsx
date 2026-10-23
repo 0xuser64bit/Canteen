@@ -3,7 +3,7 @@
 import { Eye, Heart, Lock, MessageCircle, ShieldAlert } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
 import { PollView } from "@/components/poll";
@@ -45,8 +45,15 @@ export function LikeButton({
   count: number;
   onYellow?: boolean;
 }) {
+  const source = { liked: initialLiked, count: initialCount };
+  const [confirmed, setConfirmed] = useState({ source, value: source });
+  if (
+    confirmed.source.liked !== initialLiked ||
+    confirmed.source.count !== initialCount
+  )
+    setConfirmed({ source, value: source });
   const [state, choose] = useOptimistic(
-    { liked: initialLiked, count: initialCount },
+    confirmed.value,
     (current, liked: boolean) => ({
       liked,
       count: current.count + (Number(liked) - Number(current.liked)),
@@ -62,6 +69,11 @@ export function LikeButton({
       try {
         const result = await setLike(postId, liked);
         if (!result.ok) toast.error(result.error);
+        else
+          setConfirmed((current) => ({
+            ...current,
+            value: { liked: result.data.liked, count: result.data.likeCount },
+          }));
       } catch {
         toast.error("That like didn't go through. Try again.");
       }

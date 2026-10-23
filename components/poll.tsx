@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { votePoll } from "@/server/actions";
@@ -20,10 +20,16 @@ export function PollView({
   poll: Poll;
   onYellow?: boolean;
 }) {
-  const [poll, choose] = useOptimistic(initial, (current, choice: string) => ({
-    ...current,
-    choice,
-  }));
+  const [confirmed, setConfirmed] = useState({
+    source: initial,
+    value: initial,
+  });
+  if (confirmed.source !== initial)
+    setConfirmed({ source: initial, value: initial });
+  const [poll, choose] = useOptimistic(
+    confirmed.value,
+    (current, choice: string) => ({ ...current, choice }),
+  );
   const [pending, startTransition] = useTransition();
   const revealed = poll.options.some((option) => option.votes !== null);
 
@@ -34,6 +40,7 @@ export function PollView({
       try {
         const result = await votePoll(postId, optionId);
         if (!result.ok) toast.error(result.error);
+        else setConfirmed((current) => ({ ...current, value: result.data }));
       } catch {
         toast.error("That vote didn't go through. Try again.");
       }
