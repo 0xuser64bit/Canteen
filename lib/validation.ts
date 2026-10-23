@@ -28,13 +28,13 @@ const DATES = /\b\d{1,4}[./-]\d{1,2}[./-]\d{1,4}\b/g;
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/i;
 const NUMBER_RUN = /\+?\(?\d[\d ().-]{8,}\d/g;
 
-/** True for text carrying an email address or a phone number from any country. */
+/** Detects common email addresses and phone-length digit runs in prose. */
 export function hasContactInfo(value: string) {
   const prose = value.replace(LINKS, " ").replace(DATES, " ");
   if (EMAIL.test(prose)) return true;
   for (const [run] of prose.matchAll(NUMBER_RUN)) {
     const digits = run.replace(/\D/g, "").length;
-    // ponytail: digit count only; an ISBN or order number trips it too.
+    // Digit counts can also flag ISBNs or order numbers.
     if (digits >= 10 && digits <= 15) return true;
   }
   return false;

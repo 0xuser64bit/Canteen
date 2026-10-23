@@ -83,8 +83,7 @@ export const isEmailEnabled =
 
 // Creates the university row the first time someone from it signs up.
 async function ensureUniversity(match: UniversityMatch) {
-  // ponytail: if a dataset update ever reuses an existing slug for a new domain,
-  // the insert is skipped and sign-up fails loudly; rename the slug by hand then.
+  // shortcut: reused slugs make a new domain's sign-up fail; rename the slug on dataset updates.
   await db.university.createMany({ data: [match], skipDuplicates: true });
   return db.university.findUniqueOrThrow({ where: { domain: match.domain } });
 }

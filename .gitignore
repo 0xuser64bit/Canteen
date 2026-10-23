@@ -11,8 +11,8 @@ next-env.d.ts
 /lib/generated/
 
 # env files (see .env.example)
-.env
-.env*.local
+.env*
+!.env.example
 
 # vercel
 .vercel
@@ -25,10 +25,5 @@ next-env.d.ts
 coverage/
 npm-debug.log*
 
-# design tooling scratch (briefs and DESIGN.md stay tracked)
-/.impeccable/questions/
-/.impeccable/review/
-/.impeccable/build/
-/.impeccable/mocks/
-/.impeccable/live/
-/.impeccable/hook.cache.json
+# local design tooling
+/.impeccable/

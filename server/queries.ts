@@ -164,7 +164,7 @@ type PollRow = Prisma.PostGetPayload<{
 function toPoll(row: PollRow, viewer: Viewer): Poll | null {
   if (row.pollOptions.length === 0) return null;
   const choice = row.pollVotes[0]?.optionId ?? null;
-  // Results stay hidden until you vote, so early votes don't herd later ones.
+  // Only voters and the author see per-choice results.
   const reveal = choice !== null || row.authorId === viewer.id;
   return {
     options: row.pollOptions.map((option) => ({
@@ -657,7 +657,7 @@ export async function search(
   const query = raw.trim().slice(0, 80);
   if (query.length < 2) return { universities: [], posts: [] };
 
-  // ponytail: ILIKE scans; add a pg_trgm or full-text index once posts number in the 100k range.
+  // shortcut: ILIKE scans; add a pg_trgm or full-text index once posts number in the 100k range.
   const [universities, posts] = await Promise.all([
     db.university.findMany({
       where: { name: { contains: query, mode: "insensitive" } },

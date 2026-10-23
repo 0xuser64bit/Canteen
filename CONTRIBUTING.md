@@ -1,42 +1,86 @@
-# Contributing to Canteen
+# Contributing
 
-Thanks for helping. Canteen is small and opinionated; this page explains how to get set up and the few rules that keep it safe for the people using it.
+Use the [README](README.md#run-locally) for setup and
+[operations guide](docs/OPERATIONS.md) for deployment. Keep changes focused, use
+existing helpers and dependencies, and describe the behavior and checks in each
+pull request. Commit messages follow Conventional Commits (`fix:`, `feat:`,
+`chore:`, etc.).
 
-## Setup
+## Privacy boundaries
 
-Follow [Run it locally](README.md#run-it-locally). Before opening a pull request, run:
+- Shared discussion responses must omit author and reporter account IDs, emails,
+  raw database rows, and session credentials. Convert rows to explicit view models
+  in `server/queries.ts`. A private account page may show its owner their email;
+  browser drafts use an opaque session-derived owner, never a session ID.
+- Reuse `visibleTo(viewer)` for discussion access. Derive identity from
+  `getViewer()` and recheck suspension, current team membership, and host
+  assignments. A client-supplied campus is a request, not authorization; team
+  membership alone does not grant campus access. Preserve restricted suspended
+  account access for status, appeals, and erasure.
+- Validate untrusted input with the existing boundary schemas. Keep private
+  image delivery authorized and uncached; preserve server-side image re-encoding
+  and durable erasure work when changing upload or deletion flows.
+- Never log discussion text, emails, tokens, IP addresses, or account-linked
+  content. Do not add public profiles, author histories, or counters that link a
+  student's aliases across threads.
+- Describe verification as university-email control, not proof of enrollment or
+  post accuracy. Label examples and staff activity honestly; never fabricate
+  members, activity, testimonials, or partnerships.
+
+## Code and interface conventions
+
+Use strict TypeScript and existing patterns. Main reads and mutations live in
+`server/queries.ts` and `server/actions.ts`, with supporting server modules and
+`lib/` helpers. Schema changes need a committed migration:
 
 ```sh
+bun run db:migrate --name describe_the_change
+```
+
+`app/globals.css` owns design tokens; `components/ui/` owns shared controls.
+Reuse these rather than copying token tables or creating a second component
+system. Own messages sit on the right using `you-surface` and matching inks;
+others sit on the left in neutral bubbles, with alias hues from `components/alias.tsx`.
+The selected accent carries primary actions and the logo; yellow is the default,
+not a fixed palette. Use Mona Sans's expanded cut for display text only.
+
+Keep controls usable on narrow screens, with visible keyboard focus, labels,
+readable input text, and adequate touch targets. Check light/dark and Soft/Vivid
+accents, text scaling, and both device and local reduced-motion preferences.
+Preserve drafts through failed requests and clear them only after confirmed
+publication; never persist image bytes or adopt drafts from another session.
+
+## Checks
+
+Before a pull request, run `bun run check` and `bun run build`. Changes to
+authorization, server behavior, or schema also need the database suite.
+
+**The integration suite truncates its database before each test.** Use an existing
+disposable native PostgreSQL database, never a development database you need or a
+shared/production database. For example, create a dedicated database and replace
+the credentials below with your local credentials:
+
+```sh
+createdb canteen_test
+export TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/canteen_test
+DATABASE_URL="$TEST_DATABASE_URL" DATABASE_URL_UNPOOLED="$TEST_DATABASE_URL" bun run db:deploy
 bun run check
 ```
 
-If you touched anything in `server/` or `lib/`, also run the integration tests against a disposable database (see [Checks and tests](README.md#checks-and-tests)).
+Both migration URLs must name that same disposable database: Prisma prefers
+`DATABASE_URL_UNPOOLED` and loads `.env`. Without `TEST_DATABASE_URL`, the database
+suite skips. Native PostgreSQL is required for meaningful concurrent lock tests;
+email and Blob calls are mocked.
 
-## Privacy rules
+For changed student journeys, also review session changes across tabs, failed
+submissions and retries, earlier reply pages, and permission revocation with
+separate accounts. Automated tests do not establish real-device keyboard, photo
+picker, offline recovery, or production provider behavior.
 
-These are not style preferences. A pull request that breaks one will not be merged.
+## University data
 
-1. **Identity never reaches the client.** Server code converts rows into view models (`PostSummary`, `Thread`, and friends in `server/queries.ts`) before rendering. Shared discussion views must never pass an author/reporter user ID, email, or raw Prisma row to a Client Component or Server Action response. A private account page may show its authenticated owner their own email. An opaque draft owner is derived from the current session; never send session IDs or tokens.
-2. **One visibility rule.** Every query and action that reads or acts on a post goes through `visibleTo(viewer)` in `server/queries.ts`. Don't hand-roll a second version.
-3. **The session decides who you are.** Server Actions derive the user from `getViewer()`. Never accept a user ID, email or university as authority from the client. A host campus slug is only a request: resolve it against current server-owned assignments. Current team status alone does not grant campus discussion access.
-4. **Validate at the boundary.** Server Actions parse their input with the schemas in `lib/validation.ts`.
-5. **No identifying logs.** Don't log emails, user ids next to content, IP addresses, or post bodies.
-6. **Nothing that links aliases.** Features that let someone connect a student's posts across threads (profiles, "more from this author", per-user counters shown to others) break the product's core promise.
-
-## Conventions
-
-- TypeScript strict mode, no `any`. Prefer the platform and existing dependencies over new packages.
-- Server reads live in `server/queries.ts`; writes live in `server/actions.ts`.
-- UI follows the existing design system: tokens in `app/globals.css`, primitives in `components/ui`. Highlighter yellow (`you`) is reserved for the student's own voice and primary actions.
-- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `chore:`, ...).
-- Schema changes need a migration: `bun run db:migrate --name describe_the_change`.
-
-## Adding a university
-
-Universities and their email domains come from `data/universities.json`, a copy of [Hipo/university-domains-list](https://github.com/Hipo/university-domains-list). If yours is missing or wrong, the best fix is upstream; you can also open an issue here with the university's name, country, and student email domain.
-
-## Regression checks
-
-The database suite runs the real session-to-viewer checks (suspension, current staff, host campuses) and includes publication quotas after erasure, post retry IDs, delivered notification revisions/ownership, historical and helpful-reply navigation, report/KEEP serialization, provider-token create/update hooks, campus-host revocation, domain review, maintenance retention, and migration/erasure commit ordering. Run it against native PostgreSQL for meaningful concurrency coverage; single-backend embedded engines cannot establish multi-session lock behavior. External email and Blob calls stay mocked.
-
-Browser review should include two accounts in one browser, cross-tab draft invalidation, continued typing during delayed/failed replies, refreshed poll props, and earlier reply pages during moderation. Keep draft text through failed transport and clear it only on confirmed publication; never persist image bytes or adopt an unowned legacy draft.
+Check domain changes against the official university and
+[upstream dataset](https://github.com/Hipo/university-domains-list). Requests from
+`/university-request` are reviewed in `/launch`; deploy verified changes to
+`data/universities.json` before resolving a request. A request never grants
+eligibility automatically. Report vulnerabilities [privately](SECURITY.md).
