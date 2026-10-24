@@ -368,6 +368,26 @@ export function Composer({
       (applicationUrl.trim().length > 0 &&
         parseLocalDateTime(deadline) !== null)) &&
     !tooLong;
+  // Post stays disabled until the draft can publish; say what's missing once writing starts.
+  const started = Boolean(title.trim() || body.trim() || poll || image);
+  const hint =
+    !started || ready || pending || preparing || invalidated
+      ? null
+      : title.trim().length < LIMITS.title.min
+        ? `Add a title of at least ${LIMITS.title.min} characters.`
+        : !body.trim() && !poll
+          ? "Add a few details, or a poll."
+          : !pollReady
+            ? "Fill in each poll choice, and keep them different."
+            : image && !imageAlt.trim()
+              ? "Describe the image so everyone can follow."
+              : topic === "OPPORTUNITIES" &&
+                  (!applicationUrl.trim() || !parseLocalDateTime(deadline))
+                ? "Add the application link and deadline below."
+                : tooLong
+                  ? "Shorten your post to fit."
+                  : null;
+  const opportunity = topic === "OPPORTUNITIES";
 
   return (
     <form onSubmit={submit} className="flex min-h-dvh flex-col lg:min-h-0">
@@ -397,146 +417,6 @@ export function Composer({
         disabled={invalidated || pending}
         className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 lg:px-6"
       >
-        {topic !== "OPPORTUNITIES" && (
-          <fieldset>
-            <legend className="mb-2 text-[13px] font-semibold text-muted">
-              Start a
-            </legend>
-            <div
-              role="radiogroup"
-              aria-label="Post type"
-              className="flex flex-wrap gap-2"
-            >
-              <Choice
-                checked={kind === "QUESTION"}
-                onSelect={() => setKind("QUESTION")}
-              >
-                Question
-              </Choice>
-              <Choice
-                checked={kind === "DISCUSSION"}
-                onSelect={() => setKind("DISCUSSION")}
-              >
-                Conversation
-              </Choice>
-            </div>
-            <p className="mt-2 text-[12px] text-muted">
-              Questions stay open until you mark a helpful reply.
-            </p>
-            {emailEnabled && kind === "QUESTION" && (
-              <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[13px]">
-                <input
-                  type="checkbox"
-                  checked={emailOnReply}
-                  onChange={(event) => setEmailOnReply(event.target.checked)}
-                  className="mt-0.5 size-4 shrink-0 accent-ink"
-                />
-                <span>
-                  <span className="font-semibold">
-                    Email me once when someone replies
-                  </span>
-                  <span className="block text-muted">
-                    One email to your sign-in address. It won&apos;t include
-                    your question or the reply.
-                  </span>
-                </span>
-              </label>
-            )}
-          </fieldset>
-        )}
-        <fieldset className="min-w-0">
-          <legend className="mb-2 text-[13px] font-semibold text-muted">
-            Topic
-          </legend>
-          <div
-            role="radiogroup"
-            aria-label="Topic"
-            className="-mx-4 no-scrollbar flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:px-0"
-          >
-            {TOPICS.map((option) => (
-              <Choice
-                key={option.id}
-                checked={topic === option.id}
-                onSelect={() => setTopic(option.id)}
-              >
-                {option.label}
-              </Choice>
-            ))}
-          </div>
-          {topic === "MENTAL_HEALTH" && <HelplineNote className="mt-3" />}
-        </fieldset>
-
-        <fieldset className="min-w-0">
-          <legend className="mb-2 text-[13px] font-semibold text-muted">
-            Who can see it
-          </legend>
-          <div
-            role="radiogroup"
-            aria-label="Audience"
-            className="flex flex-wrap gap-2"
-          >
-            <Choice
-              checked={audience === "EVERYONE"}
-              onSelect={() => setAudience("EVERYONE")}
-            >
-              <Globe className="size-4" /> Every university
-            </Choice>
-            <Choice
-              checked={audience === "CAMPUS"}
-              onSelect={() => setAudience("CAMPUS")}
-            >
-              <Lock className="size-4" /> {university} campus
-            </Choice>
-          </div>
-          <p className="mt-2 text-[12px] text-muted">
-            Campus posts include explicitly assigned Canteen hosts. Moderators
-            can review reported content.
-          </p>
-        </fieldset>
-
-        {topic === "OPPORTUNITIES" && (
-          <fieldset className="flex flex-col gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
-            <legend className="text-[13px] font-semibold">
-              Application details
-            </legend>
-            <label
-              className="text-[13px] font-semibold"
-              htmlFor="application-url"
-            >
-              Official application link
-            </label>
-            <Input
-              id="application-url"
-              type="url"
-              required
-              value={applicationUrl}
-              onChange={(e) => setApplicationUrl(e.target.value)}
-              placeholder="https://…"
-              maxLength={2048}
-              className="rounded-xl bg-background px-3 py-2 ring-1 ring-line"
-              aria-invalid={!!errors.applicationUrl || undefined}
-              aria-describedby="application-error"
-            />
-            <FieldError id="application-error">
-              {errors.applicationUrl}
-            </FieldError>
-            <label className="text-[13px] font-semibold" htmlFor="deadline">
-              Application deadline (your local time)
-            </label>
-            <DateTimeField
-              id="deadline"
-              value={deadline}
-              onChange={setDeadline}
-              invalid={!!errors.deadline}
-              describedBy="deadline-error"
-            />
-            <FieldError id="deadline-error">{errors.deadline}</FieldError>
-            <p className="text-[12px] text-muted">
-              Closed opportunities leave discovery automatically. Share a direct
-              link to the organizer.
-            </p>
-          </fieldset>
-        )}
         <div className="rounded-[26px] bg-surface p-1 shadow-soft ring-1 ring-line focus-within:ring-2 focus-within:ring-ink dark:focus-within:ring-you">
           <label htmlFor="title" className="sr-only">
             Title
@@ -545,7 +425,15 @@ export function Composer({
             id="title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder={poll ? "Ask your question" : "What's on your mind?"}
+            placeholder={
+              poll
+                ? "Ask your question"
+                : opportunity
+                  ? "What's the opportunity?"
+                  : kind === "QUESTION"
+                    ? "What do you want to ask?"
+                    : "What's on your mind?"
+            }
             autoComplete="off"
             aria-invalid={!!errors.title || undefined}
             aria-describedby={errors.title ? "title-error" : undefined}
@@ -561,7 +449,9 @@ export function Composer({
             placeholder={
               poll
                 ? "Add context if it helps (optional)"
-                : "Give people the context they need to answer well. Skip names and anything that could identify you."
+                : opportunity
+                  ? "Who it's for, what it involves, and anything that helps someone apply."
+                  : "Give people the context they need to answer well. Skip names and anything that could identify you."
             }
             rows={poll ? 2 : 6}
             aria-invalid={!!errors.body || undefined}
@@ -727,7 +617,155 @@ export function Composer({
             {state.error}
           </p>
         )}
+        {hint && (
+          <p
+            role="status"
+            className="-mt-3 px-1 text-[13px] font-medium text-muted"
+          >
+            {hint}
+          </p>
+        )}
 
+        {!opportunity && (
+          <fieldset>
+            <legend className="mb-2 text-[13px] font-semibold text-muted">
+              Post type
+            </legend>
+            <div
+              role="radiogroup"
+              aria-label="Post type"
+              className="flex flex-wrap gap-2"
+            >
+              <Choice
+                checked={kind === "QUESTION"}
+                onSelect={() => setKind("QUESTION")}
+              >
+                Question
+              </Choice>
+              <Choice
+                checked={kind === "DISCUSSION"}
+                onSelect={() => setKind("DISCUSSION")}
+              >
+                Conversation
+              </Choice>
+            </div>
+            <p className="mt-2 text-[12px] text-muted">
+              Questions stay open until you mark a helpful reply.
+            </p>
+            {emailEnabled && kind === "QUESTION" && (
+              <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[13px]">
+                <input
+                  type="checkbox"
+                  checked={emailOnReply}
+                  onChange={(event) => setEmailOnReply(event.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-ink"
+                />
+                <span>
+                  <span className="font-semibold">
+                    Email me once when someone replies
+                  </span>
+                  <span className="block text-muted">
+                    One email to your sign-in address. It won&apos;t include
+                    your question or the reply.
+                  </span>
+                </span>
+              </label>
+            )}
+          </fieldset>
+        )}
+        <fieldset className="min-w-0">
+          <legend className="mb-2 text-[13px] font-semibold text-muted">
+            Topic
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label="Topic"
+            className="-mx-4 no-scrollbar flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-wrap lg:px-0"
+          >
+            {TOPICS.map((option) => (
+              <Choice
+                key={option.id}
+                checked={topic === option.id}
+                onSelect={() => setTopic(option.id)}
+              >
+                {option.label}
+              </Choice>
+            ))}
+          </div>
+          {topic === "MENTAL_HEALTH" && <HelplineNote className="mt-3" />}
+        </fieldset>
+
+        <fieldset className="min-w-0">
+          <legend className="mb-2 text-[13px] font-semibold text-muted">
+            Who can see it
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label="Audience"
+            className="flex flex-wrap gap-2"
+          >
+            <Choice
+              checked={audience === "EVERYONE"}
+              onSelect={() => setAudience("EVERYONE")}
+            >
+              <Globe className="size-4" /> Every university
+            </Choice>
+            <Choice
+              checked={audience === "CAMPUS"}
+              onSelect={() => setAudience("CAMPUS")}
+            >
+              <Lock className="size-4" /> {university} campus
+            </Choice>
+          </div>
+          <p className="mt-2 text-[12px] text-muted">
+            Campus posts include explicitly assigned Canteen hosts. Moderators
+            can review reported content.
+          </p>
+        </fieldset>
+
+        {opportunity && (
+          <fieldset className="flex flex-col gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
+            <legend className="text-[13px] font-semibold">
+              Application details
+            </legend>
+            <label
+              className="text-[13px] font-semibold"
+              htmlFor="application-url"
+            >
+              Official application link
+            </label>
+            <Input
+              id="application-url"
+              type="url"
+              required
+              value={applicationUrl}
+              onChange={(e) => setApplicationUrl(e.target.value)}
+              placeholder="https://…"
+              maxLength={2048}
+              className="rounded-xl bg-background px-3 py-2 ring-1 ring-line"
+              aria-invalid={!!errors.applicationUrl || undefined}
+              aria-describedby="application-error"
+            />
+            <FieldError id="application-error">
+              {errors.applicationUrl}
+            </FieldError>
+            <label className="text-[13px] font-semibold" htmlFor="deadline">
+              Application deadline (your local time)
+            </label>
+            <DateTimeField
+              id="deadline"
+              value={deadline}
+              onChange={setDeadline}
+              invalid={!!errors.deadline}
+              describedBy="deadline-error"
+            />
+            <FieldError id="deadline-error">{errors.deadline}</FieldError>
+            <p className="text-[12px] text-muted">
+              Closed opportunities leave discovery automatically. Share a direct
+              link to the organizer.
+            </p>
+          </fieldset>
+        )}
         <p className="text-[13px] leading-relaxed text-pretty text-muted">
           You&apos;ll appear under a fresh alias that only exists in this
           thread.
