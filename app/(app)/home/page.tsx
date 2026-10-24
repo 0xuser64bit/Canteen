@@ -18,7 +18,12 @@ import {
   MIN_MEMBERS_TO_NAME_UNIVERSITY,
 } from "@/server/queries";
 
-export const metadata: Metadata = { title: "Everyone" };
+export async function generateMetadata({
+  searchParams,
+}: PageProps<"/home">): Promise<Metadata> {
+  const { topic } = await searchParams;
+  return { title: topic === "opportunities" ? "Opportunities" : "Everyone" };
+}
 
 export default async function HomePage({ searchParams }: PageProps<"/home">) {
   const viewer = await requireViewer();
