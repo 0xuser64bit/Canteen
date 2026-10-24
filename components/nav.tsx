@@ -3,9 +3,11 @@
 import {
   Bell,
   Briefcase,
+  HandHelping,
   Home,
   PenLine,
   Plus,
+  Rocket,
   School,
   Search,
   Settings2,
@@ -149,14 +151,14 @@ export function SideNav({
                 href: "/host" as const,
                 label: "Campus hosting",
                 short: "Host",
-                icon: School,
+                icon: HandHelping,
                 active: (path: string) => path === "/host",
               },
               {
                 href: "/launch" as const,
                 label: "Campus launch",
                 short: "Launch",
-                icon: Home,
+                icon: Rocket,
                 active: (path: string) => path === "/launch",
               },
             ]
@@ -232,7 +234,13 @@ export function MobileNav({ unread: serverUnread }: { unread: number }) {
   // Threads and the composer own the bottom of the screen.
   if (pathname.startsWith("/p/") || pathname === "/new") return null;
 
-  const [feed, campus, , alerts, you] = ITEMS as [Item, Item, Item, Item, Item];
+  const [campus, everyone, , alerts, you] = ITEMS as [
+    Item,
+    Item,
+    Item,
+    Item,
+    Item,
+  ];
   const tab = (item: Item) => {
     const active =
       isActive(item) ||
@@ -263,8 +271,8 @@ export function MobileNav({ unread: serverUnread }: { unread: number }) {
       data-mobile-nav
       className="fixed inset-x-0 bottom-0 z-40 flex h-[calc(64px+env(safe-area-inset-bottom))] items-start border-t border-line bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
     >
-      {tab(feed)}
       {tab(campus)}
+      {tab(everyone)}
       <div className="flex flex-1 justify-center pt-1.5">
         <Link
           href="/new"
