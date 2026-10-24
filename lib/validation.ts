@@ -162,6 +162,8 @@ export const commentInput = z.object({
   // Client-generated so the optimistic bubble and the saved reply share one
   // identity (and one DOM node). Exact retries acknowledge the existing reply.
   id: z.uuid().optional(),
+  // An earlier reply in the same thread that this one answers.
+  replyTo: idInput.optional(),
 });
 
 export const reportInput = z.object({

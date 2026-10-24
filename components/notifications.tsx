@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, Heart, MessageCircle } from "lucide-react";
+import { Check, ChevronRight, Heart, MessageCircle, Reply } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TimeAgo } from "@/components/time";
@@ -26,6 +26,12 @@ function describe({ type, post }: NotificationItem) {
       icon: Check,
       tone: "bg-ink text-background",
       label: "The author marked your reply helpful",
+    };
+  if (type === "REPLY")
+    return {
+      icon: Reply,
+      tone: "bg-surface ring-1 ring-line",
+      label: "Someone answered your reply",
     };
   return {
     icon: MessageCircle,

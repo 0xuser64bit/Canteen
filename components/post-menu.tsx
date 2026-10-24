@@ -6,6 +6,7 @@ import {
   Flag,
   Link2,
   MoreHorizontal,
+  Reply,
   Share,
   Trash2,
 } from "lucide-react";
@@ -409,8 +410,17 @@ export function PostMenu({
   );
 }
 
-export function CommentMenu({ id, isMine }: { id: string; isMine: boolean }) {
+export function CommentMenu({
+  id,
+  isMine,
+  onReply,
+}: {
+  id: string;
+  isMine: boolean;
+  onReply?: () => void;
+}) {
   const [dialog, setDialog] = useState<"report" | "delete" | null>(null);
+  const answering = useRef(false);
   const remove = async () => {
     const result = await deleteComment(id);
     if (!result.ok) return result.error;
@@ -428,7 +438,28 @@ export function CommentMenu({ id, isMine }: { id: string; isMine: boolean }) {
             <MoreHorizontal className="size-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align={isMine ? "end" : "start"}>
+        <DropdownMenuContent
+          align={isMine ? "end" : "start"}
+          onCloseAutoFocus={(event) => {
+            if (!answering.current) return;
+            // Answer once the menu has let go of focus, so writing can take it.
+            answering.current = false;
+            event.preventDefault();
+            onReply?.();
+          }}
+        >
+          {onReply && (
+            <>
+              <DropdownMenuItem
+                onSelect={() => {
+                  answering.current = true;
+                }}
+              >
+                <Reply /> Reply to this
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {isMine ? (
             <DropdownMenuItem destructive onSelect={() => setDialog("delete")}>
               <Trash2 /> Delete reply

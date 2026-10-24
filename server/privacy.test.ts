@@ -403,6 +403,67 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await db.notification.count({ where: { userId: "alan" } })).toBe(0);
   });
 
+  it("answers a specific reply, alerts its author directly and keeps quotes private", async () => {
+    const p = await post("ada");
+    const other = await post("ada");
+    as("alan");
+    await actions.addComment(p.id, "The annex is quiet after six.");
+    const annex = await db.comment.findFirstOrThrow({
+      where: { authorId: "alan" },
+    });
+    // Alan stops following; a direct answer still reaches him.
+    await actions.setCollection(p.id, "following", false);
+    as("grace");
+    expect(
+      (await actions.addComment(p.id, "Which floor?", undefined, annex.id)).ok,
+    ).toBe(true);
+    expect(
+      await db.notification.findMany({
+        select: { userId: true, type: true },
+        orderBy: { userId: "asc" },
+      }),
+    ).toEqual([
+      { userId: "ada", type: "COMMENT" },
+      { userId: "alan", type: "REPLY" },
+    ]);
+    // Only a visible reply in the same thread can be answered.
+    expect(
+      (await actions.addComment(other.id, "Wrong thread", undefined, annex.id))
+        .ok,
+    ).toBe(false);
+
+    const quoted = async (who: string) =>
+      (await queries.getThread(await viewer(who), p.id))!.comments.find(
+        (comment) => comment.body === "Which floor?",
+      )!.replyTo;
+    expect(await quoted("linus")).toEqual({
+      id: annex.id,
+      alias: (await queries.getThread(await viewer("linus"), p.id))!
+        .comments[0]!.alias,
+      isMine: false,
+      excerpt: "The annex is quiet after six.",
+    });
+    expect(JSON.stringify(await quoted("linus"))).not.toContain('"alan"');
+    expect((await quoted("alan"))!.isMine).toBe(true);
+
+    await db.comment.update({
+      where: { id: annex.id },
+      data: { hiddenAt: new Date() },
+    });
+    expect((await quoted("linus"))!.excerpt).toBeNull();
+    expect((await quoted("alan"))!.excerpt).toBe(
+      "The annex is quiet after six.",
+    );
+    as("linus");
+    expect(
+      (await actions.addComment(p.id, "Hidden target", undefined, annex.id)).ok,
+    ).toBe(false);
+
+    // Erasing the answered reply leaves the answer without its quote.
+    await db.comment.delete({ where: { id: annex.id } });
+    expect(await quoted("linus")).toBeNull();
+  });
+
   it("saves simultaneous replies and alerts when two students reply to each other", async () => {
     const a = await post("ada");
     const b = await post("alan");

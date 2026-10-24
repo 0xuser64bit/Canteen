@@ -69,7 +69,11 @@ vi.mock("@/lib/auth-client", () => ({
 vi.mock("sonner", () => ({ toast: { error: mocks.toast } }));
 vi.mock("@/components/post-menu", () => ({
   PostMenu: () => null,
-  CommentMenu: () => null,
+  CommentMenu: ({ onReply }: { onReply?: () => void }) => (
+    <button type="button" onClick={onReply}>
+      Reply to this
+    </button>
+  ),
 }));
 vi.mock("@/components/post", () => ({
   LikeButton: () => null,
@@ -81,6 +85,7 @@ vi.mock("@/components/post", () => ({
 vi.mock("@/components/time", () => ({
   TimeAgo: () => null,
   DateTime: () => null,
+  Deadline: () => null,
 }));
 vi.mock("@/components/preferences", () => ({ reducedMotion: () => true }));
 vi.mock("@/components/ui/datetime-field", () => ({
@@ -559,6 +564,7 @@ it("recovers from a helpful-answer connection failure without leaving the conver
             isMine: false,
             isAuthor: false,
             hidden: false,
+            replyTo: null,
           },
         ],
       }}
@@ -576,6 +582,73 @@ it("recovers from a helpful-answer connection failure without leaving the conver
   await act(async () => helpful.click());
   expect(mocks.helpful).toHaveBeenCalledTimes(2);
   expect(mocks.helpful).toHaveBeenLastCalledWith("post", "answer");
+});
+
+it("answers a specific message and keeps that target through a failed send", async () => {
+  mocks.reply
+    .mockResolvedValueOnce({ ok: false, error: "Failed" })
+    .mockResolvedValue({ ok: true, data: null });
+  await render(
+    <ThreadView
+      thread={{
+        ...thread,
+        comments: [
+          {
+            id: "earlier",
+            body: "Office hours on Mondays are quiet",
+            createdAt: new Date(),
+            alias,
+            university: thread.university,
+            isMine: false,
+            isAuthor: false,
+            hidden: false,
+            replyTo: null,
+          },
+        ],
+      }}
+    />,
+  );
+  const bar = () => container.querySelector("#reply-bar")!.textContent!;
+  const answer = () =>
+    [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Reply to this",
+    )!;
+  await act(async () => answer().click());
+  expect(bar()).toContain(
+    "Replying to Quiet Otter: Office hours on Mondays are quiet",
+  );
+  expect(document.activeElement).toBe(field("textarea"));
+
+  await change("textarea", "Which room?");
+  await submit("#reply-bar");
+  expect(mocks.reply).toHaveBeenLastCalledWith(
+    "post",
+    "Which room?",
+    expect.any(String),
+    "earlier",
+  );
+  // A failed send restores the text and the message it answers.
+  expect(field("textarea").value).toBe("Which room?");
+  expect(bar()).toContain("Replying to Quiet Otter");
+  await submit("#reply-bar");
+  expect(mocks.reply).toHaveBeenLastCalledWith(
+    "post",
+    "Which room?",
+    expect.any(String),
+    "earlier",
+  );
+  expect(bar()).not.toContain("Replying to");
+
+  // Escape lets go of the target without touching the draft.
+  await act(async () => answer().click());
+  await change("textarea", "Unrelated thought");
+  await act(async () => {
+    field("textarea").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
+  expect(bar()).not.toContain("Replying to");
+  expect(field("textarea").value).toBe("Unrelated thought");
 });
 
 it("returns from a thread to the original private collection", async () => {

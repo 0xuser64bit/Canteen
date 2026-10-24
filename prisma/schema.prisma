@@ -218,10 +218,15 @@ model Comment {
   hiddenAt  DateTime?
   createdAt DateTime  @default(now())
 
-  postId   String
-  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  // An earlier reply in the same thread that this one answers. Erasing it
+  // leaves this reply standing without the quote.
+  replyToId String?
+  replyTo   Comment?  @relation("Replies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Comment[] @relation("Replies")
 
   helpfulAnswer   HelpfulAnswer?
   moderationCases ModerationCase[]
@@ -229,6 +234,7 @@ model Comment {
 
   @@index([postId, createdAt])
   @@index([authorId, createdAt])
+  @@index([replyToId])
 }
 
 model Like {
@@ -317,6 +323,8 @@ enum NotificationType {
   LIKE
   // The question's author marked the recipient's reply helpful.
   HELPFUL
+  // Someone answered one of the recipient's replies directly.
+  REPLY
 }
 
 // Notifications never say who acted; that would break anonymity.

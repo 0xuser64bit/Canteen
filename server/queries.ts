@@ -420,7 +420,18 @@ export type ThreadComment = {
   isMine: boolean;
   isAuthor: boolean;
   hidden: boolean;
+  replyTo: QuotedReply | null;
 };
+
+/** The earlier reply a reply answers. `excerpt` is null while it's hidden from the viewer. */
+export type QuotedReply = {
+  id: string;
+  alias: Pseudonym;
+  isMine: boolean;
+  excerpt: string | null;
+};
+
+const QUOTE_LENGTH = 140;
 
 export type Thread = PostSummary & {
   body: string;
@@ -434,6 +445,26 @@ export type Thread = PostSummary & {
 };
 
 export type CommentPage = { items: ThreadComment[]; nextCursor: string | null };
+
+function quote(
+  reply: { id: string; body: string; authorId: string; hiddenAt: Date | null },
+  postId: string,
+  viewer: Viewer,
+): QuotedReply {
+  const isMine = reply.authorId === viewer.id;
+  return {
+    id: reply.id,
+    alias: pseudonym(reply.authorId, postId),
+    isMine,
+    // Hidden replies stay hidden inside quotes too, except from their author.
+    excerpt:
+      reply.hiddenAt && !isMine
+        ? null
+        : reply.body.length > QUOTE_LENGTH
+          ? `${reply.body.slice(0, QUOTE_LENGTH).trimEnd()}…`
+          : reply.body,
+  };
+}
 const COMMENT_PAGE_SIZE = 50;
 
 export async function getComments(
@@ -463,6 +494,9 @@ export async function getComments(
       hiddenAt: true,
       authorId: true,
       author: { select: { university: { select: universitySelect } } },
+      replyTo: {
+        select: { id: true, body: true, authorId: true, hiddenAt: true },
+      },
     },
   });
   const page = rows.slice(0, COMMENT_PAGE_SIZE);
@@ -476,6 +510,7 @@ export async function getComments(
       isMine: comment.authorId === viewer.id,
       isAuthor: comment.authorId === post.authorId,
       hidden: comment.hiddenAt !== null,
+      replyTo: comment.replyTo && quote(comment.replyTo, postId, viewer),
     })),
     nextCursor:
       rows.length > COMMENT_PAGE_SIZE ? encodeCursor(page.at(-1)!) : null,
@@ -550,6 +585,7 @@ export const getThread = cache(
             isMine: helpful.authorId === viewer.id,
             isAuthor: helpful.authorId === post.authorId,
             hidden: false,
+            replyTo: null,
           }
         : null,
     };

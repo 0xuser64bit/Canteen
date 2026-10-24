@@ -461,11 +461,12 @@ export async function addComment(
   postId: string,
   body: string,
   id?: string,
+  replyTo?: string,
 ): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
 
-  const parsed = commentInput.safeParse({ postId, body, id });
+  const parsed = commentInput.safeParse({ postId, body, id, replyTo });
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]!.message };
 
@@ -497,12 +498,30 @@ export async function addComment(
           ok: false as const,
           error: "You're replying very quickly. Give it a minute.",
         };
+      // Only a reply this student can see in this thread can be answered.
+      const quoted = parsed.data.replyTo
+        ? await tx.comment.findFirst({
+            where: {
+              id: parsed.data.replyTo,
+              postId,
+              OR: [{ hiddenAt: null }, { authorId: viewer.id }],
+            },
+            select: { id: true, authorId: true },
+          })
+        : null;
+      if (parsed.data.replyTo && !quoted)
+        return {
+          ok: false as const,
+          error:
+            "The message you're answering isn't available anymore. Send it as a regular reply.",
+        };
       const comment = await tx.comment.create({
         data: {
           id: parsed.data.id,
           postId,
           body: parsed.data.body,
           authorId: viewer.id,
+          replyToId: quoted?.id,
         },
       });
       await tx.publication.create({
@@ -524,7 +543,14 @@ export async function addComment(
           id: { not: viewer.id },
           bannedAt: null,
           AND: [
-            { OR: [{ id: post.authorId }, { follows: { some: { postId } } }] },
+            {
+              OR: [
+                { id: post.authorId },
+                { follows: { some: { postId } } },
+                // Answering someone directly reaches them even if they stopped following.
+                ...(quoted ? [{ id: quoted.authorId }] : []),
+              ],
+            },
           ],
           ...(post.audience === "CAMPUS"
             ? {
@@ -547,7 +573,13 @@ export async function addComment(
         )
           continue;
         if (recipient.id === post.authorId) authorEligible = true;
-        await notify(tx, recipient.id, postId, "COMMENT", comment.id);
+        await notify(
+          tx,
+          recipient.id,
+          postId,
+          recipient.id === quoted?.authorId ? "REPLY" : "COMMENT",
+          comment.id,
+        );
       }
       // A question's one opt-in email, claimed here so retries and racing
       // replies send it at most once.

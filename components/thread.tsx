@@ -7,7 +7,9 @@ import {
   Check,
   Eye,
   Lock,
+  Reply as ReplyIcon,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
@@ -20,6 +22,7 @@ import {
   useTransition,
   type FormEvent,
   type KeyboardEvent,
+  type MouseEvent,
 } from "react";
 import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
@@ -38,7 +41,7 @@ import { cn, compactNumber } from "@/lib/utils";
 import { LIMITS } from "@/lib/validation";
 import { threadHref, threadReturnTo } from "@/lib/return-to";
 import { addComment, recordView, markHelpful } from "@/server/actions";
-import type { Thread, ThreadComment } from "@/server/queries";
+import type { QuotedReply, Thread, ThreadComment } from "@/server/queries";
 
 type Reply = ThreadComment & { sending?: boolean };
 
@@ -73,14 +76,82 @@ function OpBadge() {
   );
 }
 
+/** The message a reply answers. Jumps to it when it's on this page. */
+function Quote({
+  postId,
+  quote,
+  mine,
+}: {
+  postId: string;
+  quote: QuotedReply;
+  mine: boolean;
+}) {
+  const jump = (event: MouseEvent<HTMLAnchorElement>) => {
+    const target = document.getElementById(`reply-${quote.id}`);
+    // Otherwise the link opens the reply page that holds it.
+    if (!target) return;
+    event.preventDefault();
+    const reduce = reducedMotion();
+    target.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      block: "center",
+    });
+    if (reduce) return;
+    target
+      .querySelector("[data-bubble]")
+      ?.animate(
+        [
+          { boxShadow: "0 0 0 3px var(--ring)" },
+          { boxShadow: "0 0 0 3px transparent" },
+        ],
+        { duration: 1600, easing: "cubic-bezier(0.25, 1, 0.5, 1)" },
+      );
+  };
+  return (
+    <ThreadLink
+      href={`/p/${postId}?reply=${quote.id}#reply-${quote.id}`}
+      onClick={jump}
+      className={cn(
+        "mb-1.5 block rounded-[14px] px-3 py-1.5 text-[13px] leading-snug whitespace-normal transition-colors",
+        mine
+          ? "bg-you-surface-ink/10 hover:bg-you-surface-ink/15"
+          : "bg-surface-2 ring-1 ring-line hover:bg-surface-3",
+      )}
+    >
+      <span className="sr-only">Replying to </span>
+      {quote.isMine || mine ? (
+        // Alias hues are tuned for neutral bubbles, not for your accent.
+        <span className="block font-semibold">
+          {quote.isMine ? "You" : quote.alias.name}
+        </span>
+      ) : (
+        <AliasName alias={quote.alias} className="block" />
+      )}
+      <span
+        className={cn(
+          "line-clamp-2",
+          mine ? "text-you-surface-muted" : "text-muted",
+          quote.excerpt === null && "italic",
+        )}
+      >
+        {quote.excerpt ?? "This message is hidden."}
+      </span>
+    </ThreadLink>
+  );
+}
+
 function ReplyBubble({
+  postId,
   reply,
   grouped,
   lastInGroup,
+  onReply,
 }: {
+  postId: string;
   reply: Reply;
   grouped: boolean;
   lastInGroup: boolean;
+  onReply: (reply: Reply) => void;
 }) {
   const mine = reply.isMine;
   const ref = useRef<HTMLDivElement>(null);
@@ -147,6 +218,7 @@ function ReplyBubble({
           </div>
         )}
         <div
+          data-bubble
           className={cn(
             "rounded-[22px] px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-wrap",
             mine
@@ -167,6 +239,9 @@ function ReplyBubble({
               can see it.
             </span>
           )}
+          {reply.replyTo && (
+            <Quote postId={postId} quote={reply.replyTo} mine={mine} />
+          )}
           <Linkified text={reply.body} />
           <span
             className={cn(
@@ -178,7 +253,13 @@ function ReplyBubble({
           </span>
         </div>
       </div>
-      {!reply.sending && <CommentMenu id={reply.id} isMine={mine} />}
+      {!reply.sending && (
+        <CommentMenu
+          id={reply.id}
+          isMine={mine}
+          onReply={() => onReply(reply)}
+        />
+      )}
     </div>
   );
 }
@@ -232,30 +313,44 @@ function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
   );
 }
 
+type Outgoing = { text: string; replyTo: Reply | null };
+
 function ReplyBar({
   thread,
+  replyTo,
+  onReplyToChange,
   onSend,
 }: {
   thread: Thread;
-  onSend: (body: string) => Promise<boolean>;
+  replyTo: Reply | null;
+  onReplyToChange: (reply: Reply | null) => void;
+  onSend: (body: string, replyTo: Reply | null) => Promise<boolean>;
 }) {
   const [body, setBody] = useState("");
-  const [failed, setFailed] = useState<string[]>([]);
+  const [failed, setFailed] = useState<Outgoing[]>([]);
   const editor = useRef("");
   const [pending, startTransition] = useTransition();
   const form = useRef<HTMLFormElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
   const empty = body.trim().length === 0;
+
+  // Choosing a message to answer moves straight to writing.
+  useEffect(() => {
+    if (replyTo) field.current?.focus();
+  }, [replyTo]);
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     if (empty || pending || body.length > LIMITS.comment.max) return;
     const text = body;
+    const target = replyTo;
     setBody("");
     editor.current = "";
+    onReplyToChange(null);
     startTransition(async () => {
       let sent = false;
       try {
-        sent = await onSend(text);
+        sent = await onSend(text, target);
       } catch {
         toast.error(
           "Couldn't confirm your reply. Check your connection and try again.",
@@ -265,15 +360,25 @@ function ReplyBar({
         if (editor.current === "") {
           editor.current = text;
           setBody(text);
+          onReplyToChange(target);
         } else
           setFailed((previous) =>
-            previous.includes(text) ? previous : [...previous, text],
+            previous.some(
+              (item) => item.text === text && item.replyTo?.id === target?.id,
+            )
+              ? previous
+              : [...previous, { text, replyTo: target }],
           );
       }
     });
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Escape" && replyTo) {
+      event.preventDefault();
+      onReplyToChange(null);
+      return;
+    }
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
     // Enter sends on keyboards; on touch screens it makes a new line, like chat apps.
     const sends =
@@ -296,9 +401,21 @@ function ReplyBar({
       {failed.length > 0 && (
         <details className="mb-2 rounded-xl bg-surface-2 p-3 text-[13px]">
           <summary>A previous reply needs confirmation</summary>
-          {failed.map((text) => (
-            <div key={text}>
-              <p className="my-2 break-words whitespace-pre-wrap">{text}</p>
+          {failed.map((item) => (
+            <div key={`${item.replyTo?.id ?? ""}:${item.text}`}>
+              {item.replyTo && (
+                <p className="mt-2 truncate text-muted">
+                  Replying to{" "}
+                  {item.replyTo.isMine ? (
+                    "your message"
+                  ) : (
+                    <AliasName alias={item.replyTo.alias} />
+                  )}
+                </p>
+              )}
+              <p className="my-2 break-words whitespace-pre-wrap">
+                {item.text}
+              </p>
               <button
                 type="button"
                 disabled={pending}
@@ -307,9 +424,9 @@ function ReplyBar({
                   if (pending) return;
                   startTransition(async () => {
                     try {
-                      if (await onSend(text))
+                      if (await onSend(item.text, item.replyTo))
                         setFailed((previous) =>
-                          previous.filter((item) => item !== text),
+                          previous.filter((other) => other !== item),
                         );
                     } catch {
                       toast.error(
@@ -325,12 +442,38 @@ function ReplyBar({
           ))}
         </details>
       )}
+      {replyTo && (
+        <div className="mb-2 flex items-center gap-2 rounded-2xl bg-surface-2 pl-3 ring-1 ring-line">
+          <ReplyIcon aria-hidden className="size-4 shrink-0 text-muted" />
+          <p className="min-w-0 flex-1 truncate text-[13px] text-muted">
+            Replying to{" "}
+            {replyTo.isMine ? (
+              <span className="font-semibold text-ink">your message</span>
+            ) : (
+              <AliasName alias={replyTo.alias} />
+            )}
+            : {replyTo.body}
+          </p>
+          <button
+            type="button"
+            aria-label="Cancel reply to this message"
+            onClick={() => {
+              onReplyToChange(null);
+              field.current?.focus();
+            }}
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
       <div className="flex items-end gap-2 rounded-[26px] bg-surface p-1.5 ring-1 ring-line transition-shadow focus-within:ring-2 focus-within:ring-ink dark:focus-within:ring-you">
         <label htmlFor="reply" className="sr-only">
           Reply
         </label>
         <textarea
           id="reply"
+          ref={field}
           rows={1}
           value={body}
           onChange={(event) => {
@@ -365,6 +508,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
   const router = useRouter();
   const search = useSearchParams();
   const unconfirmedReplies = useRef(new Map<string, string>());
+  const [replyingTo, setReplyingTo] = useState<Reply | null>(null);
   const [replies, addReply] = useOptimistic<Reply[], Reply>(
     thread.comments,
     (current, reply) =>
@@ -419,12 +563,12 @@ export function ThreadView({ thread }: { thread: Thread }) {
     };
   }, [thread.id, thread.revision, thread.closed, router]);
 
-  const send = async (body: string) => {
+  const send = async (body: string, replyTo: Reply | null) => {
     // Same id for the optimistic bubble and the saved reply: React keeps the
     // node, so the rise animation isn't cut short when the server is fast.
-    const text = body.trim();
-    const id = unconfirmedReplies.current.get(text) ?? crypto.randomUUID();
-    unconfirmedReplies.current.set(text, id);
+    const key = `${replyTo?.id ?? ""}:${body.trim()}`;
+    const id = unconfirmedReplies.current.get(key) ?? crypto.randomUUID();
+    unconfirmedReplies.current.set(key, id);
     addReply({
       id,
       body,
@@ -435,10 +579,16 @@ export function ThreadView({ thread }: { thread: Thread }) {
       isAuthor: thread.isMine,
       hidden: false,
       sending: true,
+      replyTo: replyTo && {
+        id: replyTo.id,
+        alias: replyTo.alias,
+        isMine: replyTo.isMine,
+        excerpt: replyTo.body,
+      },
     });
-    const result = await addComment(thread.id, body, id);
+    const result = await addComment(thread.id, body, id, replyTo?.id);
     // A lost acknowledgement retries the same publication, rather than duplicating it.
-    unconfirmedReplies.current.delete(text);
+    unconfirmedReplies.current.delete(key);
     if (!result.ok) toast.error(result.error);
     else if (thread.historical)
       router.push(
@@ -694,9 +844,11 @@ export function ThreadView({ thread }: { thread: Thread }) {
                 className="scroll-mt-24"
               >
                 <ReplyBubble
+                  postId={thread.id}
                   reply={reply}
                   grouped={sameAsPrevious}
                   lastInGroup={!sameAsNext}
+                  onReply={setReplyingTo}
                 />
                 <HelpfulReply thread={thread} reply={reply} />
               </div>
@@ -705,7 +857,12 @@ export function ThreadView({ thread }: { thread: Thread }) {
         </div>
       </div>
 
-      <ReplyBar thread={thread} onSend={send} />
+      <ReplyBar
+        thread={thread}
+        replyTo={replyingTo}
+        onReplyToChange={setReplyingTo}
+        onSend={send}
+      />
     </div>
   );
 }

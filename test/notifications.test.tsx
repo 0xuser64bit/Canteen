@@ -196,6 +196,7 @@ it("says what happened in each alert without naming anyone", async () => {
     item({ id: "joined", post: thread(false, true) }),
     item({ id: "liked", type: "LIKE", replyId: null }),
     item({ id: "helped", type: "HELPFUL", post: thread(false, true) }),
+    item({ id: "answered", type: "REPLY", post: thread(false, false) }),
   ]);
   const labels = [...container.querySelectorAll("li")].map((li) =>
     li.textContent!.replace(/^A thread|^Finding a quiet study spot/, ""),
@@ -206,5 +207,6 @@ it("says what happened in each alert without naming anyone", async () => {
     "New replies in a thread you follow·just now",
     "New likes on your post·just now",
     "The author marked your reply helpful·just now",
+    "Someone answered your reply·just now",
   ]);
 });
