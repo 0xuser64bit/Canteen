@@ -55,6 +55,12 @@ export default function CommunityPage() {
           delete them within a day.
         </p>
         <p className="mt-2 text-muted">
+          You can edit a post or reply for 15 minutes after publishing. Edited
+          messages are labeled, and an edit replaces the earlier text rather
+          than keeping a history. Reported or hidden messages can&apos;t be
+          edited.
+        </p>
+        <p className="mt-2 text-muted">
           Replying to a thread follows it, so follow-up replies and direct
           answers to your messages reach you. Notifications say what happened,
           never who did it, and Unfollow replies in the post menu turns thread

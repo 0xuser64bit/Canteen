@@ -37,7 +37,7 @@ University-email verification with per-thread aliases. Other students see an ali
 - Notifications preserve New markers during the current visit while acknowledging the exact delivered revision. Failed read-status updates have an explicit retry; later activity stays unread until delivered.
 - New opportunity posts require an application link and deadline. Closing-soon sorting is available in discovery and saved opportunities. Closed opportunities leave discovery automatically; accessible threads retain a closed state and a link to the original opportunity. Submissions are from students, not independently vetted listings.
 - Images are available when private storage is configured. New uploads require a bounded author-provided description, rendered in feeds, threads and moderation. They are re-encoded in the browser to strip location and camera metadata, then served only to authorized signed-in accounts. Visible image content can still identify someone; legacy public image links remain accessible until migration and erasure finish.
-- Students can delete their own posts and comments, and delete their account and related records. Post deletion erases its replies too. A suspended account that deletes itself leaves only a keyed hash of its email for 12 months, so it can't rejoin unsuspended. Stored images enter a durable erasure queue with retries; providers and backups may retain operational records.
+- Students can edit their own posts and comments for 15 minutes after publishing (labeled, without history), delete them, and delete their account and related records. Post deletion erases its replies too. A suspended account that deletes itself leaves only a keyed hash of its email for 12 months, so it can't rejoin unsuspended. Stored images enter a durable erasure queue with retries; providers and backups may retain operational records.
 - Three distinct reports hide content pending review. The team records a reason when keeping content, removing it or suspending an author. Authors can review decisions and submit one private appeal per removal or suspension decision; suspended accounts retain access to decisions, appeals, sign-out and deletion, while student feeds and posting are blocked.
 - Moderation screens show content and appeals without author or reporter identities. Authorized service operators have database access to account-linked records.
 - Team-only campus launch measures show aggregate membership, weekly activity, authors helped and week-two return, suppressing small groups. One account-linked mark per UTC day records activity without page history or text, expires after 90 days and is erased with the account. No external analytics service receives these measures.
@@ -96,6 +96,13 @@ moving or undoing the choice withdraws a thank-you that hasn't been read. Alerts
 describe what happened (new replies to your question or post, in a thread you
 follow, a direct answer, likes, a helpful mark) and never name anyone. The
 private account summary counts the student's helpful replies; nothing is public.
+
+Authors can edit a post's title and text, or a reply, for 15 minutes after
+publishing. Edits pass the same text checks as new content, replace the earlier
+text without keeping a history, show an edited label, and refresh open threads.
+They are refused for reported or hidden content, for polls with votes and for
+suspended accounts; topic, audience, poll choices, images and opportunity details
+stay fixed.
 
 Opportunity cards count down to their deadline, rounding down and emphasizing
 the last 48 hours. Opportunities follows All in every topic row, trending

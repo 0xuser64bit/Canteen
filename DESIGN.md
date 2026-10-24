@@ -429,6 +429,16 @@ Opportunities chip follows All in every topic row. The composer leads with the
 writing card; post type, topic, audience and application details follow, and a
 muted line under the card names what still blocks Post once writing starts.
 
+**Editing.** For 15 minutes, your own post and replies offer Edit (pen icon) in
+their menus, above Delete. Edit opens the shared Dialog: a bottom sheet on phones,
+a 448px card from `sm`, with visible 13px labels (Title and Text for posts; the
+reply field's label is visually hidden), the standard fields, length counters
+and Cancel / Save. Focus lands at the end of the text. Save is the accent primary
+and stays neutral-disabled until the text changes and is valid; errors use the
+13px danger line. Edited posts add a capitalized Edited label to their tag row in
+feeds and threads; edited replies append "· edited" to the in-bubble time. Both
+labels use the surrounding muted ink and carry the edit time in a title.
+
 **Account and access.** The private summary adds Helpful replies and wraps to two
 columns on phones. A Skip to content link (ink pill, top-left) appears on the
 first Tab in the signed-in shell.

@@ -71,6 +71,16 @@ export default function UpdatesPage() {
             </p>
           </section>
           <section>
+            <h3 className="text-[20px] font-semibold">Fix it fast</h3>
+            <p className="mt-2 text-muted">
+              For 15 minutes after posting, you can edit a post&apos;s title and
+              text or one of your replies from its menu. Edits are labeled for
+              everyone and replace the earlier text, so a detail you regret
+              sharing is really gone. Reported or hidden messages, and polls
+              that already have votes, stay as they are.
+            </p>
+          </section>
+          <section>
             <h3 className="text-[20px] font-semibold">Better on your phone</h3>
             <p className="mt-2 text-muted">
               Opportunity cards count down to their deadline. Opportunities sits

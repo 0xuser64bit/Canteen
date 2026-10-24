@@ -30,7 +30,7 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 ## Features
 
 - Feeds for every university, your own campus, each university, and opportunities, filterable by topic
-- Threads with per-thread aliases, OP tags, likes, unique view counts, and replies that can answer a specific message with a short quote
+- Threads with per-thread aliases, OP tags, likes, unique view counts, and replies that can answer a specific message with a short quote. Authors can edit for 15 minutes, with an edited label
 - Composer with topics, audience, accessible image descriptions, polls, and session-owned drafts that preserve publishing context until confirmed success
 - Polls with two to four choices. Results appear after you vote; only the author and voters see per-choice counts, while everyone else sees the total
 - Campus invites: until five classmates join, a share link helps bring the rest in
