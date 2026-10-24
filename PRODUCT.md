@@ -23,7 +23,7 @@ University-email verification with per-thread aliases. Other students see an ali
 - Sign in with a university Google account when configured, or an 8-digit email code (no passwords). Production email codes require an email provider key.
 - My campus is the signed-in starting point. Read by topic, oldest waiting, no replies, or Needs an answer; ask a question or start a conversation, reply, like, save privately, or follow replies. Question authors can mark another student's reply helpful and undo that choice.
 - Feeds: My campus (own university, including campus-only posts), Everyone (all universities), Opportunities (internships, jobs, hackathons, scholarships), and a page per visible university. New posts default to a campus-only question.
-- Thread replies update through periodic polling, with URL-backed earlier/latest reply pages that survive refresh and recheck visibility. Helpful answers and reply notifications link directly to their reading page. Notifications cover authors' replies and likes, plus reply alerts for followed threads, without exposing the actor's account identity. When email is configured, a question's author can ask for one email at the first reply from someone else; it carries a link, never the question or reply.
+- Thread replies update through periodic polling, with URL-backed earlier/latest reply pages that survive refresh and recheck visibility. Helpful answers and reply notifications link directly to their reading page. Notifications cover authors' replies and likes, reply alerts for followed threads (replying follows a thread), direct answers to a student's message and helpful marks on their replies, without exposing the actor's account identity. When email is configured, a question's author can ask for one email at the first reply from someone else; it carries a link, never the question or reply.
 
 ## Capabilities and Constraints
 
@@ -80,6 +80,29 @@ threads the host authored, their replies, images and updates. Authors retain
 erasure rights. Moderators can review images on posts with open reports; ordinary
 staff status does not unlock unreported campus images. Busy-campus discovery
 applies the existing five-member naming threshold before ranking its four results.
+
+## October 24 conversation extension
+
+Any message in a thread can be answered directly. The answer carries a short
+quote of the original, with its per-thread alias and no account identity; a
+quote of a hidden message shows no text to anyone but its author, and erasing
+the original leaves the answer without its quote. The answered student receives
+a direct alert, even after unfollowing, subject to the usual campus eligibility.
+
+Replying follows a thread (except for its author), so follow-up questions reach
+the students who answered. Unfollow replies in the post menu turns thread alerts
+off until the student replies again. Marking a reply helpful alerts its author;
+moving or undoing the choice withdraws a thank-you that hasn't been read. Alerts
+describe what happened (new replies to your question or post, in a thread you
+follow, a direct answer, likes, a helpful mark) and never name anyone. The
+private account summary counts the student's helpful replies; nothing is public.
+
+Opportunity cards count down to their deadline, rounding down and emphasizing
+the last 48 hours. Opportunities follows All in every topic row, trending
+threads open the Everyone feed below the wide-screen breakpoint, and new posts
+lead with the writing. Threads point to replies that arrive while the student is
+reading further up. The installed app offers New post, Notifications and
+Opportunities shortcuts.
 
 ## Brand Commitments
 

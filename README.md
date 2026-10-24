@@ -30,14 +30,14 @@ Anonymity in Canteen is a property of the data that reaches the browser, not a c
 ## Features
 
 - Feeds for every university, your own campus, each university, and opportunities, filterable by topic
-- Threads with per-thread aliases, OP tags, likes, unique view counts, and replies
+- Threads with per-thread aliases, OP tags, likes, unique view counts, and replies that can answer a specific message with a short quote
 - Composer with topics, audience, accessible image descriptions, polls, and session-owned drafts that preserve publishing context until confirmed success
 - Polls with two to four choices. Results appear after you vote; only the author and voters see per-choice counts, while everyone else sees the total
 - Campus invites: until five classmates join, a share link helps bring the rest in
 - Search across posts and universities (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd>)
-- Paginated notifications that acknowledge only delivered versions, with direct links to replies
+- Paginated notifications that acknowledge only delivered versions, with direct links to replies. Replying follows a thread, so follow-ups, direct answers and helpful marks reach the students who helped
 - An opt-in, one-time email when a question gets its first reply, without the question or reply text (when email is configured)
-- Campus-first navigation, oldest-waiting and no-reply question queues, author-marked helpful answers with direct navigation, and closing-soon saved opportunities
+- Campus-first navigation, oldest-waiting and no-reply question queues, author-marked helpful answers with direct navigation, opportunity deadline countdowns, and closing-soon saved opportunities
 - Explicitly assigned, labeled campus hosts and a private domain-only university correction queue
 - Account page with sign-out and full account deletion
 - A moderation queue for team accounts, and help links on mental health threads

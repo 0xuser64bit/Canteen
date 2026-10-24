@@ -387,6 +387,52 @@ uncertain earlier reply has its own Retry this reply action inside a details
 element, preserving the exact submitted text and leaving newer writing untouched.
 Reported messages show their complete body before moderation controls.
 
+## October 24 conversation extension
+
+**Direct answers.** Every message menu starts with Reply to this. While a target
+is chosen, a 44px strip sits above the reply shell: `surface-2` with a `line`
+ring and 16px radius, a Lucide reply icon, "Replying to" plus the alias in its
+hue (or "your message"), a one-line excerpt and a 44px close button. Escape also
+lets go. A sent answer opens with a quote block inside the bubble: 14px radius,
+13px text, the alias name over a two-line excerpt. On others' bubbles the block
+is `surface-2` with a `line` ring; on your own it is a 10% `you-surface-ink` tint
+and the name uses the message ink, because alias hues are tuned for neutral
+grounds. There is no colored side rule. Choosing the quote scrolls to the
+original (smoothly unless motion is reduced) and briefly draws a 3px `--ring`
+halo around it; off-page originals open their reply page. A hidden original
+reads "This message is hidden." in italics.
+
+**New replies.** When a refresh brings replies while you are more than 240px
+from the bottom, an ink pill with a down arrow and "New replies" floats 56px
+above the reply bar (44px tall, pop shadow, a short fade-and-rise that motion
+preferences silence). Tapping it scrolls to the latest message; reaching the
+bottom clears it.
+
+**Alerts.** Notification rows name the event: replies to your question or post,
+replies in a thread you follow, an answer to your message (reply icon), likes
+(filled heart on `danger-surface`) and a helpful mark (check on an inverted ink
+circle, matching the OP and active-chip treatment). None names a person.
+
+**Deadlines.** Opportunity cards replace Open with a clock icon and a countdown:
+minutes, then hours up to 48, then days up to a week, then a short date. The last
+48 hours use full ink (`you-surface-ink` on your own bubble); earlier ones stay
+muted. The exact local time is in the title, and the label follows the shared
+minute clock. Open threads repeat the countdown under the application details.
+
+**Phone layout.** Meta lines stay on one line: the alias and time hold their
+width and the university truncates with its full name in the title. Relative
+times use the narrow form ("5m ago", "2w ago") with the long form as the spoken
+label. Thread openers drop the avatar below `sm`. Below `xl`, the unfiltered
+Everyone feed opens with a swipeable row of up to four trending threads (240px
+cards, 22px radius, `surface` + ring + soft shadow, three-line titles). The
+Opportunities chip follows All in every topic row. The composer leads with the
+writing card; post type, topic, audience and application details follow, and a
+muted line under the card names what still blocks Post once writing starts.
+
+**Account and access.** The private summary adds Helpful replies and wraps to two
+columns on phones. A Skip to content link (ink pill, top-left) appears on the
+first Tab in the signed-in shell.
+
 ## Do's and Don'ts
 
 ### Do:
