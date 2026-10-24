@@ -202,12 +202,6 @@ export function SignIn({
 
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href="/university-request"
-        className="text-[13px] text-muted underline"
-      >
-        University domain not recognized? Request a review
-      </Link>
       {error && (
         <p
           id="sign-in-error"
@@ -268,7 +262,13 @@ export function SignIn({
               </span>
             ) : hint ? (
               <span className="text-muted">
-                We don&apos;t recognize that domain as a university yet.
+                We don&apos;t recognize that domain as a university yet.{" "}
+                <Link
+                  href="/university-request"
+                  className="font-semibold text-ink underline"
+                >
+                  Request a review
+                </Link>
               </span>
             ) : (
               <span className="text-muted">
@@ -286,6 +286,15 @@ export function SignIn({
             Send code
           </Button>
         </form>
+      )}
+
+      {step === "email" && !(hint && !hint.name) && (
+        <Link
+          href="/university-request"
+          className="inline-flex min-h-11 items-center justify-center text-center text-[13px] text-muted underline decoration-current/40 hover:text-ink hover:decoration-current"
+        >
+          University not recognized? Request a review
+        </Link>
       )}
 
       {step === "code" && (
