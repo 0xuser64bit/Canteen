@@ -19,6 +19,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1320px]">
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-full bg-ink px-4 py-2.5 text-[14px] font-semibold text-background focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Skip to content
+      </a>
       <DraftBoundary owner={await getDraftOwner()} />
       <Suspense>
         <SideNav
@@ -28,7 +34,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           modQueue={modQueue}
         />
       </Suspense>
-      <main className="min-w-0 flex-1 lg:border-x lg:border-line max-lg:[&:has(~[data-mobile-nav])]:pb-24">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="min-w-0 flex-1 outline-none lg:border-x lg:border-line max-lg:[&:has(~[data-mobile-nav])]:pb-24"
+      >
         {children}
       </main>
       <aside className="sticky top-0 hidden h-dvh w-[320px] shrink-0 overflow-y-auto px-5 py-6 xl:block">
