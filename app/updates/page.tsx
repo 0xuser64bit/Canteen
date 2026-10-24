@@ -30,6 +30,61 @@ export default function UpdatesPage() {
       </header>
 
       <article
+        aria-labelledby="conversation-update"
+        className="mt-8 border-t border-line pt-7"
+      >
+        <header>
+          <h2
+            id="conversation-update"
+            className="text-[24px] leading-tight font-semibold tracking-tight"
+          >
+            Conversations that come back to you.
+          </h2>
+          <time
+            dateTime="2026-10-24"
+            className="mt-2 block text-[13px] text-muted"
+          >
+            24 October 2026
+          </time>
+        </header>
+        <div className="mt-7 space-y-6">
+          <section>
+            <h3 className="text-[20px] font-semibold">
+              Answer a specific message
+            </h3>
+            <p className="mt-2 text-muted">
+              Choose Reply to this from any message&apos;s menu. Your reply
+              carries a short quote that jumps back to the original, and the
+              student you answered gets a direct alert. Quotes never show a
+              hidden message to anyone but its author.
+            </p>
+          </section>
+          <section>
+            <h3 className="text-[20px] font-semibold">Hear about follow-ups</h3>
+            <p className="mt-2 text-muted">
+              Replying to a thread now follows it, so you hear when the person
+              who asked comes back with a question. When an author marks your
+              reply helpful, you get a thank-you alert, and your account page
+              counts your helpful replies privately. Alerts say what happened,
+              still never who. A New replies pill points to messages that arrive
+              while you&apos;re reading further up.
+            </p>
+          </section>
+          <section>
+            <h3 className="text-[20px] font-semibold">Better on your phone</h3>
+            <p className="mt-2 text-muted">
+              Opportunity cards count down to their deadline. Opportunities sits
+              right after All in every topic row, trending threads open the
+              Everyone feed on smaller screens, and a new post starts with the
+              writing instead of the settings. Message times are shorter, long
+              university names no longer wrap the line, and the installed app
+              offers shortcuts from its home-screen icon.
+            </p>
+          </section>
+        </div>
+      </article>
+
+      <article
         aria-labelledby="reliability-update"
         className="mt-8 border-t border-line pt-7"
       >
