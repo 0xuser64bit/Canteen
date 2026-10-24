@@ -22,5 +22,14 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
+    // Long-press the home-screen icon to jump straight in.
+    shortcuts: [
+      { name: "New post", url: "/new" },
+      { name: "Notifications", url: "/notifications" },
+      { name: "Opportunities", url: "/home?topic=opportunities" },
+    ].map((shortcut) => ({
+      ...shortcut,
+      icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    })),
   };
 }
