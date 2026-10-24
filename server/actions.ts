@@ -29,6 +29,9 @@ import {
   reviewAppealInput,
   collectionInput,
   commentInput,
+  EDIT_WINDOW_MS,
+  editCommentInput,
+  editPostInput,
   helpfulInput,
   DELETE_CONFIRMATION,
   feedInput,
@@ -350,6 +353,80 @@ export async function createPost(
   return { postedId: result.data.id };
 }
 
+const EDIT_CLOSED = {
+  ok: false,
+  error: "Editing closes 15 minutes after posting.",
+} as const;
+const UNDER_REVIEW = {
+  ok: false,
+  error: "Reported or hidden content can't be edited.",
+} as const;
+
+/**
+ * Lets an author fix the text of a post shortly after publishing. Edits replace
+ * the text (no history, so a regretted detail can really go) and are labeled.
+ * Reported or hidden content and polls with votes stay as they are.
+ */
+export async function editPost(
+  postId: string,
+  input: { title: string; body: string },
+): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  const parsed = editPostInput.safeParse({
+    postId,
+    title: input?.title,
+    body: input?.body,
+  });
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]!.message };
+  const { title, body } = parsed.data;
+  const result = await db.$transaction(async (tx) => {
+    // Reports and moderation lock the author too, so a review can't start mid-edit.
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return SIGNED_OUT;
+    const post = await tx.post.findFirst({
+      where: {
+        id: postId,
+        authorId: viewer.id,
+        ...queries.visibleTo(viewer, true),
+      },
+      select: {
+        title: true,
+        body: true,
+        createdAt: true,
+        hiddenAt: true,
+        _count: {
+          select: {
+            pollOptions: true,
+            pollVotes: true,
+            reports: { where: { resolvedAt: null } },
+          },
+        },
+      },
+    });
+    if (!post) return NOT_FOUND;
+    if (post.hiddenAt || post._count.reports > 0) return UNDER_REVIEW;
+    if (Date.now() - post.createdAt.getTime() > EDIT_WINDOW_MS)
+      return EDIT_CLOSED;
+    if (post._count.pollVotes > 0)
+      return {
+        ok: false as const,
+        error: "Students already voted on this poll, so it can't change.",
+      };
+    if (!body && post._count.pollOptions === 0)
+      return { ok: false as const, error: "Post is too short." };
+    if (post.title === title && post.body === body) return ok(null);
+    await tx.post.update({
+      where: { id: postId },
+      data: { title, body, editedAt: new Date(), revision: { increment: 1 } },
+    });
+    return ok(null);
+  });
+  if (result.ok) refresh();
+  return result;
+}
+
 export async function deletePost(postId: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return SIGNED_OUT;
@@ -616,6 +693,56 @@ export async function addComment(
     });
   refresh();
   return ok(null);
+}
+
+/** A reply's author can fix it under the same rules as posts. */
+export async function editComment(
+  commentId: string,
+  body: string,
+): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return SIGNED_OUT;
+  const parsed = editCommentInput.safeParse({ commentId, body });
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]!.message };
+  const result = await db.$transaction(async (tx) => {
+    const author = await lockAuthor(tx, viewer.id);
+    if (!author || author.bannedAt) return SIGNED_OUT;
+    const comment = await tx.comment.findFirst({
+      where: {
+        id: commentId,
+        authorId: viewer.id,
+        post: queries.visibleTo(viewer),
+      },
+      select: {
+        postId: true,
+        body: true,
+        createdAt: true,
+        hiddenAt: true,
+        _count: { select: { reports: { where: { resolvedAt: null } } } },
+      },
+    });
+    if (!comment)
+      return {
+        ok: false as const,
+        error: "That reply isn't available anymore.",
+      };
+    if (comment.hiddenAt || comment._count.reports > 0) return UNDER_REVIEW;
+    if (Date.now() - comment.createdAt.getTime() > EDIT_WINDOW_MS)
+      return EDIT_CLOSED;
+    if (comment.body === parsed.data.body) return ok(null);
+    await tx.comment.update({
+      where: { id: commentId },
+      data: { body: parsed.data.body, editedAt: new Date() },
+    });
+    await tx.post.update({
+      where: { id: comment.postId },
+      data: { revision: { increment: 1 } },
+    });
+    return ok(null);
+  });
+  if (result.ok) refresh();
+  return result;
 }
 
 export async function deleteComment(commentId: string): Promise<ActionResult> {

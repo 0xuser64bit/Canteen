@@ -473,6 +473,139 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await quoted("linus")).toBeNull();
   });
 
+  it("lets authors fix text for 15 minutes, but not under review or after votes", async () => {
+    const p = await post("ada", { kind: "QUESTION" });
+    const { revision } = await db.post.findUniqueOrThrow({
+      where: { id: p.id },
+    });
+    as("alan");
+    expect(
+      (await actions.editPost(p.id, { title: "Not mine to change", body: "x" }))
+        .ok,
+    ).toBe(false);
+    as("ada");
+    expect(
+      await actions.editPost(p.id, {
+        title: "A clearer question",
+        body: "Better context",
+      }),
+    ).toEqual({ ok: true, data: null });
+    expect(
+      await db.post.findUniqueOrThrow({ where: { id: p.id } }),
+    ).toMatchObject({
+      title: "A clearer question",
+      body: "Better context",
+      revision: revision + 1,
+      editedAt: expect.any(Date),
+    });
+    // Edits pass the same contact-detail check as new posts.
+    expect(
+      (
+        await actions.editPost(p.id, {
+          title: "A clearer question",
+          body: "Call me at +1 415 555 0100",
+        })
+      ).ok,
+    ).toBe(false);
+    expect(
+      (await queries.getThread(await viewer("grace"), p.id))!.editedAt,
+    ).toEqual(expect.any(Date));
+
+    // Replies follow the same rules.
+    as("alan");
+    await actions.addComment(p.id, "Try teh annex");
+    const reply = await db.comment.findFirstOrThrow({
+      where: { authorId: "alan" },
+    });
+    as("grace");
+    expect((await actions.editComment(reply.id, "Hijacked")).ok).toBe(false);
+    as("alan");
+    expect((await actions.editComment(reply.id, "Try the annex")).ok).toBe(
+      true,
+    );
+    expect(
+      (await queries.getThread(await viewer("grace"), p.id))!.comments[0],
+    ).toMatchObject({ body: "Try the annex", editedAt: expect.any(Date) });
+
+    // A report freezes the text until the team decides.
+    as("grace");
+    await actions.reportContent({
+      target: "comment",
+      id: reply.id,
+      reason: "SPAM",
+    });
+    await actions.reportContent({ target: "post", id: p.id, reason: "SPAM" });
+    as("alan");
+    expect(
+      await actions.editComment(reply.id, "Changed after a report"),
+    ).toEqual({
+      ok: false,
+      error: "Reported or hidden content can't be edited.",
+    });
+    as("ada");
+    expect(
+      (
+        await actions.editPost(p.id, {
+          title: "Changed after a report",
+          body: "x",
+        })
+      ).ok,
+    ).toBe(false);
+
+    // The window closes 15 minutes after posting.
+    const late = await post("ada");
+    await db.post.update({
+      where: { id: late.id },
+      data: { createdAt: new Date(Date.now() - 16 * 60_000) },
+    });
+    expect(
+      await actions.editPost(late.id, { title: "Too late now", body: "x" }),
+    ).toEqual({ ok: false, error: "Editing closes 15 minutes after posting." });
+
+    // A poll can stand on its question, until someone votes.
+    const poll = await db.post.create({
+      data: {
+        title: "Pick one",
+        body: "",
+        authorId: "ada",
+        universityId: "u-stanford",
+        pollOptions: {
+          create: [
+            { label: "Mornings", position: 0 },
+            { label: "Evenings", position: 1 },
+          ],
+        },
+      },
+      include: { pollOptions: true },
+    });
+    expect(
+      (await actions.editPost(poll.id, { title: "Pick one, please", body: "" }))
+        .ok,
+    ).toBe(true);
+    as("grace");
+    await actions.votePoll(poll.id, poll.pollOptions[0]!.id);
+    as("ada");
+    expect(
+      (await actions.editPost(poll.id, { title: "Pick the other", body: "" }))
+        .ok,
+    ).toBe(false);
+
+    // Suspended accounts can't edit.
+    const fresh = await post("ada");
+    await db.user.update({
+      where: { id: "ada" },
+      data: { bannedAt: new Date() },
+    });
+    expect(
+      (
+        await actions.editPost(fresh.id, {
+          title: "From a suspension",
+          body: "x",
+        })
+      ).ok,
+    ).toBe(false);
+  });
+
   it("saves simultaneous replies and alerts when two students reply to each other", async () => {
     const a = await post("ada");
     const b = await post("alan");

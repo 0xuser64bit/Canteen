@@ -127,6 +127,7 @@ function post(id: string): PostSummary {
     topic: "GENERAL",
     audience: "CAMPUS",
     createdAt: new Date(),
+    editedAt: null,
     university: { name: "Campus", slug: null },
     alias: { name: "Quiet Otter", hue: 100 },
     isMine: false,

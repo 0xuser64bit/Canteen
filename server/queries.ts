@@ -208,6 +208,7 @@ function postSelect(viewerId: string) {
     topic: true,
     audience: true,
     createdAt: true,
+    editedAt: true,
     hiddenAt: true,
     revision: true,
     bookmarks: { where: { userId: viewerId }, select: { userId: true } },
@@ -240,6 +241,7 @@ export type PostSummary = {
   topic: Topic;
   audience: Audience;
   createdAt: Date;
+  editedAt: Date | null;
   university: PublicUniversity;
   alias: Pseudonym;
   isMine: boolean;
@@ -281,6 +283,7 @@ function toSummary(row: PostRow, viewer: Viewer): PostSummary {
     topic: row.topic,
     audience: row.audience,
     createdAt: row.createdAt,
+    editedAt: row.editedAt,
     university: publicUniversity(row.university, viewer),
     alias: pseudonym(row.authorId, row.id),
     isMine: row.authorId === viewer.id,
@@ -415,6 +418,7 @@ export type ThreadComment = {
   id: string;
   body: string;
   createdAt: Date;
+  editedAt: Date | null;
   alias: Pseudonym;
   university: PublicUniversity;
   isMine: boolean;
@@ -491,6 +495,7 @@ export async function getComments(
       id: true,
       body: true,
       createdAt: true,
+      editedAt: true,
       hiddenAt: true,
       authorId: true,
       author: { select: { university: { select: universitySelect } } },
@@ -505,6 +510,7 @@ export async function getComments(
       id: comment.id,
       body: comment.body,
       createdAt: comment.createdAt,
+      editedAt: comment.editedAt,
       alias: pseudonym(comment.authorId, postId),
       university: publicUniversity(comment.author.university, viewer),
       isMine: comment.authorId === viewer.id,
@@ -562,6 +568,7 @@ export const getThread = cache(
             id: true,
             body: true,
             createdAt: true,
+            editedAt: true,
             authorId: true,
             author: { select: { university: { select: universitySelect } } },
           },
@@ -580,6 +587,7 @@ export const getThread = cache(
             id: helpful.id,
             body: helpful.body,
             createdAt: helpful.createdAt,
+            editedAt: helpful.editedAt,
             alias: pseudonym(helpful.authorId, postId),
             university: publicUniversity(helpful.author.university, viewer),
             isMine: helpful.authorId === viewer.id,

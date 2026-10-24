@@ -166,6 +166,20 @@ export const commentInput = z.object({
   replyTo: idInput.optional(),
 });
 
+/** How long an author can fix what they published. Chat apps use the same window. */
+export const EDIT_WINDOW_MS = 15 * 60_000;
+
+export const editPostInput = z.object({
+  postId: idInput,
+  title: text(LIMITS.title.min, LIMITS.title.max, "Title"),
+  body: text(0, LIMITS.body.max, "Post"),
+});
+
+export const editCommentInput = z.object({
+  commentId: idInput,
+  body: text(LIMITS.comment.min, LIMITS.comment.max, "Reply"),
+});
+
 export const reportInput = z.object({
   target: z.enum(["post", "comment"]),
   id: idInput,

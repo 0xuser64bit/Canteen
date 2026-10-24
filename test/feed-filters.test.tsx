@@ -106,6 +106,7 @@ const post = (id: string): PostSummary => ({
   topic: "GENERAL",
   audience: "EVERYONE",
   createdAt: new Date(),
+  editedAt: null,
   university: { name: "Example University", slug: null },
   alias: { name: "Quiet Otter", hue: 120 },
   isMine: false,

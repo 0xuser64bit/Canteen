@@ -615,6 +615,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
       id,
       body,
       createdAt: new Date(),
+      editedAt: null,
       alias: thread.viewerAlias,
       university: { name: "", slug: null },
       isMine: true,

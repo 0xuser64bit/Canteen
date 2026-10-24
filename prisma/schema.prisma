@@ -187,6 +187,8 @@ model Post {
   hiddenAt       DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  // Last change by the author inside the edit window; the text keeps no history.
+  editedAt       DateTime?
 
   authorId     String
   author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -217,6 +219,7 @@ model Comment {
   removedAt DateTime?
   hiddenAt  DateTime?
   createdAt DateTime  @default(now())
+  editedAt  DateTime?
 
   postId    String
   post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
