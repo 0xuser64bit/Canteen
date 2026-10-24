@@ -65,11 +65,12 @@ export default async function MeLayout({ children }: LayoutProps<"/me">) {
             </span>{" "}
             · joined {joined.format(viewer.createdAt)}
           </p>
-          <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3">
+          <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-3 sm:grid-cols-4">
             {[
               ["Posts", stats.posts],
               ["Replies", stats.comments],
               ["Likes received", stats.likesReceived],
+              ["Helpful replies", stats.helpful],
             ].map(([label, value]) => (
               <div key={label}>
                 <dt className="text-[12px] font-semibold text-muted">

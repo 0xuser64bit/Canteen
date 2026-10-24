@@ -972,12 +972,16 @@ export function getUnreadCount(viewer: Viewer) {
 }
 
 export async function getAccountStats(viewer: Viewer) {
-  const [posts, comments, likesReceived] = await Promise.all([
+  const [posts, comments, likesReceived, helpful] = await Promise.all([
     db.post.count({ where: { authorId: viewer.id } }),
     db.comment.count({ where: { authorId: viewer.id } }),
     db.like.count({ where: { post: { authorId: viewer.id } } }),
+    // Private to the student: replies a question's author marked helpful.
+    db.helpfulAnswer.count({
+      where: { comment: { authorId: viewer.id, hiddenAt: null } },
+    }),
   ]);
-  return { posts, comments, likesReceived };
+  return { posts, comments, likesReceived, helpful };
 }
 
 const decisionSelect = {

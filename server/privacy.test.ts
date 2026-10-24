@@ -298,8 +298,17 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
       post: { id: p.id, mine: false, question: true },
     });
     expect(await queries.getNotifications(await viewer("ada"))).toEqual([]);
+    expect((await queries.getAccountStats(await viewer("alan"))).helpful).toBe(
+      1,
+    );
 
     expect((await actions.markHelpful(p.id, weekends!.id)).ok).toBe(true);
+    expect((await queries.getAccountStats(await viewer("alan"))).helpful).toBe(
+      0,
+    );
+    expect((await queries.getAccountStats(await viewer("grace"))).helpful).toBe(
+      1,
+    );
     expect(await thanks()).toEqual([
       { userId: "grace", type: "HELPFUL", replyId: weekends!.id, readAt: null },
     ]);
