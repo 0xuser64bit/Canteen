@@ -11,8 +11,11 @@ import { plural } from "@/lib/utils";
 import { getFeed, getUniversityPage } from "@/server/queries";
 
 export async function generateMetadata({ params }: PageProps<"/u/[slug]">) {
-  const { slug } = await params;
-  return { title: slug.replace(/-/g, " ") };
+  const university = await getUniversityPage(
+    await requireViewer(),
+    (await params).slug,
+  );
+  return { title: university?.name ?? "University not found" };
 }
 
 export default async function UniversityPage({

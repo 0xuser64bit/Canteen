@@ -601,7 +601,8 @@ export function getCampusSize(viewer: Viewer) {
   return db.user.count({ where: { universityId: viewer.university.id } });
 }
 
-export async function getUniversityPage(viewer: Viewer, slug: string) {
+// Cached per request: the page and its metadata both read the university.
+export const getUniversityPage = cache(async (viewer: Viewer, slug: string) => {
   const university = await db.university.findUnique({
     where: { slug },
     select: { ...universitySelect, website: true },
@@ -622,7 +623,7 @@ export async function getUniversityPage(viewer: Viewer, slug: string) {
     isMine,
     memberCount: university._count.users,
   };
-}
+});
 
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
