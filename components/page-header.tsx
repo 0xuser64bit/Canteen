@@ -43,6 +43,12 @@ export function PageHeader({
   );
 }
 
+// Opportunities is a destination of its own; on a phone it stays in view instead of last.
+const CHIP_ORDER = [
+  ...TOPICS.filter((topic) => topic.id === "OPPORTUNITIES"),
+  ...TOPICS.filter((topic) => topic.id !== "OPPORTUNITIES"),
+];
+
 export function TopicChips({
   base,
   active,
@@ -93,7 +99,7 @@ export function TopicChips({
       className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2 lg:px-6"
     >
       {chip(undefined, "All", !active)}
-      {TOPICS.map((topic) =>
+      {CHIP_ORDER.map((topic) =>
         chip(topic.slug, topic.label, active === topic.slug),
       )}
     </nav>
