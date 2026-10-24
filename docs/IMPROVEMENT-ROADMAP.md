@@ -1,8 +1,44 @@
 # Canteen improvement roadmap
 
-Updated 23 October 2026. This is a working record of completed improvements and
+Updated 24 October 2026. This is a working record of completed improvements and
 the next areas to investigate. Future work is exploratory; prioritize it using
 observed student journeys and concrete defects.
+
+## Completed implementation: 24 October 2026
+
+A review of every signed-in and public screen on a local fixture database, at
+375px and desktop widths in light and dark, focused on the core loop: ask, get a
+helpful answer, come back. Twenty-one commits followed, each with its checks.
+
+- **Conversations that come back to you.** Any message can be answered directly
+  with a quote that jumps to the original; the answered student gets a direct
+  alert. Replying follows a thread, so follow-up questions reach the people who
+  answered. A helpful mark alerts the reply's author (withdrawn while unread if
+  the choice changes), and the private account summary counts helpful replies.
+  Alerts name the event, never a person. Threads point to replies that arrive
+  off-screen.
+- **Phones first.** The composer leads with the writing and says what blocks
+  Post. Meta lines stay on one line with compact times. Opportunity cards count
+  down to deadlines; Opportunities follows All in topic rows; trending threads
+  open the Everyone feed below the wide-screen breakpoint. The installed app has
+  home-screen shortcuts.
+- **Fixes.** Distinct team-tool icons, the domain-review link after the email
+  field, aligned helpful controls, real titles for Opportunities and university
+  pages, a skip link, and a health check that answers 503 when the database is
+  unreachable.
+
+Schema: two additive migrations (`HELPFUL` and `REPLY` notification types;
+`Comment.replyToId`, indexed, set null when the answered reply is erased).
+
+Validation: formatting, lint, types and **340 tests across 35 files** passed,
+including the native PostgreSQL suite (105 tests, no skips) on a fresh migrated
+database; migrations diffed clean against the schema. The production build
+passed, and a local production server served public pages, the manifest and
+worker, denied signed-out API reads (401), reported stale maintenance (503) and
+sent the security headers. Browser review used the built-in browser's device
+emulation, not real hardware; the design detector reported only advisory
+font-size notes for sizes the prose already documents. No production deployment,
+migration or student data was touched.
 
 ## Completed implementation: 23 October 2026
 
@@ -93,13 +129,15 @@ captures describe the prior implementation.
 
 ## Next investigations
 
-| Priority | Area                                  | Evidence to collect and completion criteria                                                                                                                                                                                                                     |
-| -------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1        | Android on real hardware              | Founder installed the signed APK and reported basic use seems fine. Continue sign-in, keyboard, photo picker, deep links, gestures, text scaling and app updates. Record device/browser versions and observed defects before public distribution.               |
-| 2        | Offline and installation experience   | Network-only recovery is implemented and covered by worker and registration tests. Finish real-browser offline/reconnection, cold launch and verified fullscreen review. Avoid caching private discussions without an explicit design.                          |
-| 3        | Large moderation queues               | Measure query time and rendered volume with large disposable report/appeal queues. Design bounded pagination that preserves urgent-first ordering and current permission checks.                                                                                |
-| 4        | Trending relevance                    | Review how likes, replies, recency and unanswered questions affect the current ranking. Compare useful conversations with repetitive or stale posts using fixtures and observed aggregate behavior before changing the score.                                   |
-| 5        | Campus and returning-student journeys | Continue with separate student accounts in the same and different campuses, an authorized host, and suspended access. Review first-post discovery, helpful answers, saved opportunities and notifications; preserve anonymity and accurate small-campus labels. |
+| Priority | Area                                  | Evidence to collect and completion criteria                                                                                                                                                                                                                                                              |
+| -------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1        | Android on real hardware              | Founder installed the signed APK and reported basic use seems fine. Continue sign-in, keyboard, photo picker, deep links, gestures, text scaling and app updates. Record device/browser versions and observed defects before public distribution.                                                        |
+| 2        | Offline and installation experience   | Network-only recovery is implemented and covered by worker and registration tests. Finish real-browser offline/reconnection, cold launch and verified fullscreen review. Avoid caching private discussions without an explicit design.                                                                   |
+| 3        | Large moderation queues               | Measure query time and rendered volume with large disposable report/appeal queues. Design bounded pagination that preserves urgent-first ordering and current permission checks.                                                                                                                         |
+| 4        | Trending relevance                    | Review how likes, replies, recency and unanswered questions affect the current ranking. Compare useful conversations with repetitive or stale posts using fixtures and observed aggregate behavior before changing the score.                                                                            |
+| 5        | Campus and returning-student journeys | Continue with separate student accounts in the same and different campuses, an authorized host, and suspended access. Review first-post discovery, helpful answers, saved opportunities and notifications; preserve anonymity and accurate small-campus labels.                                          |
+| 6        | Direct answers and reply follows      | Watch alert volume once threads are busy: replying now follows a thread, and direct answers alert even after unfollowing. If students mute threads often, consider a per-thread mute that also covers direct answers. Check the reply strip and quote jump on real phones, including VoiceOver/TalkBack. |
+| 7        | Editing a post or reply               | Students cannot fix a typo after publishing. Explore a short edit window with an edited label, blocked once content is reported or hidden, so edits can't rewrite a conversation under moderation.                                                                                                       |
 
 ## Working agreement
 
