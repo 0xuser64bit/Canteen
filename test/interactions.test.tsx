@@ -651,6 +651,37 @@ it("answers a specific message and keeps that target through a failed send", asy
   expect(field("textarea").value).toBe("Unrelated thought");
 });
 
+it("points to replies that arrive while reading further up", async () => {
+  const reply = (id: string): Thread["comments"][number] => ({
+    id,
+    body: `Reply ${id}`,
+    createdAt: new Date(),
+    alias,
+    university: thread.university,
+    isMine: false,
+    isAuthor: false,
+    hidden: false,
+    replyTo: null,
+  });
+  const pill = () =>
+    [...container.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "New replies",
+    );
+  const height = vi
+    .spyOn(document.documentElement, "scrollHeight", "get")
+    .mockReturnValue(5000);
+  await render(<ThreadView thread={{ ...thread, comments: [reply("a")] }} />);
+  expect(pill()).toBeUndefined();
+  await render(
+    <ThreadView thread={{ ...thread, comments: [reply("a"), reply("b")] }} />,
+  );
+  expect(pill()).toBeDefined();
+  // Reaching the bottom clears it.
+  height.mockReturnValue(0);
+  await act(async () => window.dispatchEvent(new Event("scroll")));
+  expect(pill()).toBeUndefined();
+});
+
 it("returns from a thread to the original private collection", async () => {
   mocks.search = new URLSearchParams({
     from: "/me?collection=saved",

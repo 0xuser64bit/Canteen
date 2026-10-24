@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowDown,
   ArrowLeft,
   ArrowUp,
   ArrowUpRight,
@@ -47,6 +48,17 @@ type Reply = ThreadComment & { sending?: boolean };
 
 const GROUP_WINDOW_MS = 10 * 60_000;
 const REPLY_BAR_ID = "reply-bar";
+
+const nearBottom = () =>
+  window.innerHeight + window.scrollY >=
+  document.documentElement.scrollHeight - 240;
+
+function scrollToLatest() {
+  window.scrollTo({
+    top: document.documentElement.scrollHeight,
+    behavior: reducedMotion() ? "auto" : "smooth",
+  });
+}
 
 function BackButton() {
   const router = useRouter();
@@ -320,11 +332,13 @@ function ReplyBar({
   replyTo,
   onReplyToChange,
   onSend,
+  unseen,
 }: {
   thread: Thread;
   replyTo: Reply | null;
   onReplyToChange: (reply: Reply | null) => void;
   onSend: (body: string, replyTo: Reply | null) => Promise<boolean>;
+  unseen: boolean;
 }) {
   const [body, setBody] = useState("");
   const [failed, setFailed] = useState<Outgoing[]>([]);
@@ -398,6 +412,15 @@ function ReplyBar({
       onSubmit={submit}
       className="sticky bottom-0 z-20 border-t border-line bg-background/90 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:px-6"
     >
+      {unseen && (
+        <button
+          type="button"
+          onClick={scrollToLatest}
+          className="absolute -top-14 left-1/2 flex min-h-11 -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-semibold text-background shadow-pop motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2"
+        >
+          <ArrowDown aria-hidden className="size-4" /> New replies
+        </button>
+      )}
       {failed.length > 0 && (
         <details className="mb-2 rounded-xl bg-surface-2 p-3 text-[13px]">
           <summary>A previous reply needs confirmation</summary>
@@ -520,6 +543,25 @@ export function ThreadView({ thread }: { thread: Thread }) {
   useEffect(() => {
     recordView(thread.id);
   }, [thread.id]);
+
+  // Replies that arrive while you read further up get a pill instead of a jump.
+  const latest = thread.comments.at(-1)?.id;
+  const shown = useRef(latest);
+  const [unseen, setUnseen] = useState(false);
+  useEffect(() => {
+    if (latest === shown.current) return;
+    shown.current = latest;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the live scroll position
+    if (!nearBottom()) setUnseen(true);
+  }, [latest]);
+  useEffect(() => {
+    if (!unseen) return;
+    const onScroll = () => {
+      if (nearBottom()) setUnseen(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [unseen]);
 
   // shortcut: ten-second polling; use push delivery when concurrent open threads make it costly.
   useEffect(() => {
@@ -862,6 +904,7 @@ export function ThreadView({ thread }: { thread: Thread }) {
         replyTo={replyingTo}
         onReplyToChange={setReplyingTo}
         onSend={send}
+        unseen={unseen}
       />
     </div>
   );
