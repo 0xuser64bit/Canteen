@@ -1891,6 +1891,14 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
         data: { succeededAt: new Date(Date.now() - 27 * 60 * 60_000) },
       });
       expect((await GET()).status).toBe(503);
+      // An unreachable database reads as an outage, with nothing more said.
+      const outage = vi
+        .spyOn(db.maintenance, "findUnique")
+        .mockRejectedValueOnce(new Error("connection refused"));
+      const down = await GET();
+      expect(down.status).toBe(503);
+      expect(await down.json()).toEqual({ maintenance: "unavailable" });
+      outage.mockRestore();
     });
 
     it("rejects unauthenticated maintenance requests", async () => {
