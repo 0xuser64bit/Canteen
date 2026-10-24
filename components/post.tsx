@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
 import { PollView } from "@/components/poll";
 import { PostMenu } from "@/components/post-menu";
-import { Deadline, TimeAgo } from "@/components/time";
+import { Deadline, Edited, TimeAgo } from "@/components/time";
 import { ThreadLink } from "@/components/thread-link";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
@@ -149,6 +149,12 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
           >
             <Lock className="size-3.5" /> Campus
           </span>
+        )}
+        {post.editedAt && (
+          <Edited
+            date={post.editedAt}
+            className={cn("text-[12px] font-semibold capitalize", quiet)}
+          />
         )}
       </div>
       <div className="-mx-1.5 mt-1 flex items-center justify-end gap-1">

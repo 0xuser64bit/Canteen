@@ -6,6 +6,7 @@ import {
   Flag,
   Link2,
   MoreHorizontal,
+  PenLine,
   Reply,
   Share,
   Trash2,
@@ -260,6 +261,7 @@ export function ConfirmDelete({
 export function PostMenu({
   post,
   onYellow,
+  onEdit,
 }: {
   post: {
     id: string;
@@ -269,6 +271,8 @@ export function PostMenu({
     following: boolean;
   };
   onYellow?: boolean;
+  /** Present while the author can still edit. */
+  onEdit?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -383,6 +387,11 @@ export function PostMenu({
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
+          {onEdit && (
+            <DropdownMenuItem onSelect={onEdit}>
+              <PenLine /> Edit post
+            </DropdownMenuItem>
+          )}
           {post.isMine ? (
             <DropdownMenuItem destructive onSelect={() => setDialog("delete")}>
               <Trash2 /> Delete post
@@ -414,10 +423,13 @@ export function CommentMenu({
   id,
   isMine,
   onReply,
+  onEdit,
 }: {
   id: string;
   isMine: boolean;
   onReply?: () => void;
+  /** Present while the author can still edit. */
+  onEdit?: () => void;
 }) {
   const [dialog, setDialog] = useState<"report" | "delete" | null>(null);
   const answering = useRef(false);
@@ -459,6 +471,11 @@ export function CommentMenu({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
+          )}
+          {onEdit && (
+            <DropdownMenuItem onSelect={onEdit}>
+              <PenLine /> Edit reply
+            </DropdownMenuItem>
           )}
           {isMine ? (
             <DropdownMenuItem destructive onSelect={() => setDialog("delete")}>

@@ -25,6 +25,34 @@ function subscribeClock(onChange: () => void) {
 }
 const minuteSnapshot = () => Math.floor(Date.now() / 60_000);
 
+/** The shared minute clock as a timestamp, for actions that close after a while. */
+export function useMinuteClock() {
+  return (
+    useSyncExternalStore(subscribeClock, minuteSnapshot, minuteSnapshot) *
+    60_000
+  );
+}
+
+/** Marks text its author changed after publishing, with the time in the title. */
+export function Edited({
+  date,
+  className,
+}: {
+  date: Date;
+  className?: string;
+}) {
+  const { clock } = usePreferences();
+  return (
+    <span
+      title={`Edited ${formatDateTime(date, clock)}`}
+      className={className}
+      suppressHydrationWarning
+    >
+      edited
+    </span>
+  );
+}
+
 /** One shared clock keeps all visible relative times fresh. */
 export function TimeAgo({
   date,

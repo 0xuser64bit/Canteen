@@ -33,15 +33,28 @@ import { reducedMotion } from "@/components/preferences";
 import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
-import { DateTime, Deadline, TimeAgo } from "@/components/time";
+import { EditDialog } from "@/components/edit-dialog";
+import {
+  DateTime,
+  Deadline,
+  Edited,
+  TimeAgo,
+  useMinuteClock,
+} from "@/components/time";
 import { ThreadLink } from "@/components/thread-link";
 import { Button } from "@/components/ui/button";
 import { Counter } from "@/components/ui/field";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
-import { LIMITS } from "@/lib/validation";
+import { EDIT_WINDOW_MS, LIMITS } from "@/lib/validation";
 import { threadHref, threadReturnTo } from "@/lib/return-to";
-import { addComment, recordView, markHelpful } from "@/server/actions";
+import {
+  addComment,
+  editComment,
+  editPost,
+  markHelpful,
+  recordView,
+} from "@/server/actions";
 import type { QuotedReply, Thread, ThreadComment } from "@/server/queries";
 
 type Reply = ThreadComment & { sending?: boolean };
@@ -158,12 +171,14 @@ function ReplyBubble({
   grouped,
   lastInGroup,
   onReply,
+  onEdit,
 }: {
   postId: string;
   reply: Reply;
   grouped: boolean;
   lastInGroup: boolean;
   onReply: (reply: Reply) => void;
+  onEdit?: () => void;
 }) {
   const mine = reply.isMine;
   const ref = useRef<HTMLDivElement>(null);
@@ -261,7 +276,19 @@ function ReplyBubble({
               mine ? "text-you-surface-muted" : "text-muted",
             )}
           >
-            {reply.sending ? "Sending…" : <TimeAgo date={reply.createdAt} />}
+            {reply.sending ? (
+              "Sending…"
+            ) : (
+              <>
+                <TimeAgo date={reply.createdAt} />
+                {reply.editedAt && (
+                  <>
+                    {" · "}
+                    <Edited date={reply.editedAt} />
+                  </>
+                )}
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -270,6 +297,7 @@ function ReplyBubble({
           id={reply.id}
           isMine={mine}
           onReply={() => onReply(reply)}
+          onEdit={onEdit}
         />
       )}
     </div>
@@ -532,6 +560,16 @@ export function ThreadView({ thread }: { thread: Thread }) {
   const search = useSearchParams();
   const unconfirmedReplies = useRef(new Map<string, string>());
   const [replyingTo, setReplyingTo] = useState<Reply | null>(null);
+  // `reply: null` is the post itself; refreshed props never change what's open.
+  const [editing, setEditing] = useState<{ reply: Reply | null } | null>(null);
+  const now = useMinuteClock();
+  // The server has the final say; this only decides whether to offer Edit.
+  const editable = (item: Thread | Reply) =>
+    item.isMine &&
+    !item.hidden &&
+    !("sending" in item && item.sending) &&
+    !("poll" in item && item.poll && item.poll.total > 0) &&
+    now - item.createdAt.getTime() < EDIT_WINDOW_MS;
   const [replies, addReply] = useOptimistic<Reply[], Reply>(
     thread.comments,
     (current, reply) =>
@@ -663,7 +701,12 @@ export function ThreadView({ thread }: { thread: Thread }) {
             )}
           </p>
         </div>
-        <PostMenu post={thread} />
+        <PostMenu
+          post={thread}
+          onEdit={
+            editable(thread) ? () => setEditing({ reply: null }) : undefined
+          }
+        />
       </header>
 
       <div className="wallpaper flex-1 px-4 pt-6 pb-10 lg:px-6">
@@ -781,6 +824,15 @@ export function ThreadView({ thread }: { thread: Thread }) {
                 >
                   {topicLabel(thread.topic)}
                 </span>
+                {thread.editedAt && (
+                  <Edited
+                    date={thread.editedAt}
+                    className={cn(
+                      "text-[12px] font-semibold capitalize",
+                      mine ? "text-you-surface-muted" : "text-muted",
+                    )}
+                  />
+                )}
                 <span className="flex-1" />
                 <LikeButton
                   key={`${thread.liked}:${thread.likeCount}`}
@@ -892,6 +944,9 @@ export function ThreadView({ thread }: { thread: Thread }) {
                   grouped={sameAsPrevious}
                   lastInGroup={!sameAsNext}
                   onReply={setReplyingTo}
+                  onEdit={
+                    editable(reply) ? () => setEditing({ reply }) : undefined
+                  }
                 />
                 <HelpfulReply thread={thread} reply={reply} />
               </div>
@@ -906,6 +961,25 @@ export function ThreadView({ thread }: { thread: Thread }) {
         onReplyToChange={setReplyingTo}
         onSend={send}
         unseen={unseen}
+      />
+      <EditDialog
+        key={editing?.reply?.id ?? "post"}
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
+        what={editing?.reply ? "reply" : "post"}
+        initial={
+          editing?.reply
+            ? { body: editing.reply.body }
+            : { title: thread.title, body: thread.body }
+        }
+        bodyOptional={!editing?.reply && thread.poll !== null}
+        onSave={async ({ title = "", body }) => {
+          const result = editing?.reply
+            ? await editComment(editing.reply.id, body)
+            : await editPost(thread.id, { title, body });
+          if (!result.ok) return result.error;
+          toast.success("Edit saved");
+        }}
       />
     </div>
   );

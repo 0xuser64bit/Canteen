@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => {
     vote: request(),
     like: request(),
     reply: request(),
+    editPost: request(),
+    editReply: request(),
     helpful: request(),
     hint: request(),
     sendCode: request(),
@@ -54,6 +56,8 @@ vi.mock("@/server/actions", () => ({
   votePoll: mocks.vote,
   setLike: mocks.like,
   addComment: mocks.reply,
+  editPost: mocks.editPost,
+  editComment: mocks.editReply,
   recordView: vi.fn(),
   markHelpful: mocks.helpful,
   lookupUniversity: mocks.hint,
@@ -66,13 +70,33 @@ vi.mock("@/lib/auth-client", () => ({
     signOut: mocks.signOut,
   },
 }));
-vi.mock("sonner", () => ({ toast: { error: mocks.toast } }));
+vi.mock("sonner", () => ({
+  toast: { error: mocks.toast, success: vi.fn() },
+}));
 vi.mock("@/components/post-menu", () => ({
-  PostMenu: () => null,
-  CommentMenu: ({ onReply }: { onReply?: () => void }) => (
-    <button type="button" onClick={onReply}>
-      Reply to this
-    </button>
+  PostMenu: ({ onEdit }: { onEdit?: () => void }) =>
+    onEdit ? (
+      <button type="button" onClick={onEdit}>
+        Edit post
+      </button>
+    ) : null,
+  CommentMenu: ({
+    onReply,
+    onEdit,
+  }: {
+    onReply?: () => void;
+    onEdit?: () => void;
+  }) => (
+    <>
+      <button type="button" onClick={onReply}>
+        Reply to this
+      </button>
+      {onEdit && (
+        <button type="button" onClick={onEdit}>
+          Edit reply
+        </button>
+      )}
+    </>
   ),
 }));
 vi.mock("@/components/post", () => ({
@@ -86,6 +110,8 @@ vi.mock("@/components/time", () => ({
   TimeAgo: () => null,
   DateTime: () => null,
   Deadline: () => null,
+  Edited: () => <span>edited</span>,
+  useMinuteClock: () => Date.now(),
 }));
 vi.mock("@/components/preferences", () => ({ reducedMotion: () => true }));
 vi.mock("@/components/ui/datetime-field", () => ({
@@ -684,6 +710,86 @@ it("points to replies that arrive while reading further up", async () => {
   height.mockReturnValue(0);
   await act(async () => window.dispatchEvent(new Event("scroll")));
   expect(pill()).toBeUndefined();
+});
+
+it("edits your own reply in its window and keeps the text through a failed save", async () => {
+  mocks.editReply
+    .mockRejectedValueOnce(new Error("Offline"))
+    .mockResolvedValue({ ok: true, data: null });
+  const own = (id: string, minutesAgo: number) => ({
+    id,
+    body: "Try teh annex",
+    createdAt: new Date(Date.now() - minutesAgo * 60_000),
+    editedAt: null,
+    alias,
+    university: thread.university,
+    isMine: true,
+    isAuthor: false,
+    hidden: false,
+    replyTo: null,
+  });
+  await render(
+    <ThreadView
+      thread={{ ...thread, comments: [own("fresh", 2), own("old", 20)] }}
+    />,
+  );
+  const edits = () =>
+    [...container.querySelectorAll("button")].filter(
+      (button) => button.textContent === "Edit reply",
+    );
+  // Only the reply still inside its 15 minutes offers Edit.
+  expect(edits()).toHaveLength(1);
+  await act(async () => edits()[0]!.click());
+  expect(field("#edit-body").value).toBe("Try teh annex");
+  const save = () =>
+    [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === "Save",
+    )!;
+  expect(save().disabled).toBe(true);
+  await change("#edit-body", "Try the annex");
+  await act(async () => save().click());
+  expect(document.querySelector('[role="alert"]')!.textContent).toBe(
+    "Couldn't save your edit. Check your connection and try again.",
+  );
+  expect(field("#edit-body").value).toBe("Try the annex");
+  await act(async () => save().click());
+  expect(mocks.editReply).toHaveBeenLastCalledWith("fresh", "Try the annex");
+  expect(document.querySelector("#edit-body")).toBeNull();
+});
+
+it("edits the post's title and text, but not a poll with votes", async () => {
+  mocks.editPost.mockResolvedValue({ ok: true, data: null });
+  const mine = { ...thread, isMine: true, createdAt: new Date() };
+  await render(<ThreadView thread={mine} />);
+  const edit = () =>
+    [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Edit post",
+    );
+  await act(async () => edit()!.click());
+  expect(field("#edit-title").value).toBe(thread.title);
+  await change("#edit-title", "A clearer title");
+  await act(async () =>
+    [...document.querySelectorAll("button")]
+      .find((button) => button.textContent === "Save")!
+      .click(),
+  );
+  expect(mocks.editPost).toHaveBeenCalledWith("post", {
+    title: "A clearer title",
+    body: thread.body,
+  });
+  await render(
+    <ThreadView
+      thread={{
+        ...mine,
+        poll: {
+          options: [{ id: "a", label: "A", votes: 1 }],
+          total: 1,
+          choice: null,
+        },
+      }}
+    />,
+  );
+  expect(edit()).toBeUndefined();
 });
 
 it("returns from a thread to the original private collection", async () => {
