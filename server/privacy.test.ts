@@ -317,6 +317,43 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     expect(await queries.getUnreadCount(await viewer("alan"))).toBe(0);
   });
 
+  it("follows a thread for each student who replies, so follow-ups reach them", async () => {
+    const p = await post("ada", { kind: "QUESTION" });
+    as("alan");
+    await actions.addComment(p.id, "Try the library annex");
+    as("grace");
+    await actions.addComment(p.id, "Same question here");
+    as("ada");
+    await actions.addComment(p.id, "Thanks! Is it open on weekends?");
+    expect(
+      await db.follow.findMany({
+        select: { userId: true },
+        orderBy: { userId: "asc" },
+      }),
+    ).toEqual([{ userId: "alan" }, { userId: "grace" }]);
+    // One coalesced alert each; the author's own replies never follow or alert themselves.
+    expect(
+      await db.notification.findMany({
+        where: { readAt: null },
+        select: { userId: true, type: true },
+        orderBy: { userId: "asc" },
+      }),
+    ).toEqual([
+      { userId: "ada", type: "COMMENT" },
+      { userId: "alan", type: "COMMENT" },
+      { userId: "grace", type: "COMMENT" },
+    ]);
+    // Unfollowing sticks until the student replies again.
+    as("alan");
+    expect((await actions.setCollection(p.id, "following", false)).ok).toBe(
+      true,
+    );
+    await db.notification.deleteMany({ where: { userId: "alan" } });
+    as("grace");
+    await actions.addComment(p.id, "Weekends too, until six");
+    expect(await db.notification.count({ where: { userId: "alan" } })).toBe(0);
+  });
+
   it("saves simultaneous replies and alerts when two students reply to each other", async () => {
     const a = await post("ada");
     const b = await post("alan");

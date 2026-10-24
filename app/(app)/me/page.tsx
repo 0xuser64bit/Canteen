@@ -159,7 +159,7 @@ async function CollectionFeed({
                 ? "Your posts show up here. Only you can see that they're yours. Start with something you'd like to ask your campus."
                 : collection === "saved"
                   ? "Choose Save privately from a post's menu to keep it here. Only you can see your saved posts."
-                  : "Choose Follow replies from another student's post menu. Those threads appear here, and you'll get reply alerts when someone joins in."}
+                  : "Threads you reply to appear here, along with any you follow from a post's menu. You'll get an alert when someone replies."}
           </p>
           <Link
             href={

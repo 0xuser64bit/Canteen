@@ -512,6 +512,13 @@ export async function addComment(
         where: { id: postId },
         data: { revision: { increment: 1 } },
       });
+      // Replying keeps you in the conversation, so a follow-up question reaches
+      // the people who answered. The post menu turns it off.
+      if (post.authorId !== viewer.id)
+        await tx.follow.createMany({
+          data: [{ userId: viewer.id, postId }],
+          skipDuplicates: true,
+        });
       const recipients = await tx.user.findMany({
         where: {
           id: { not: viewer.id },
