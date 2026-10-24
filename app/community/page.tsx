@@ -55,6 +55,12 @@ export default function CommunityPage() {
           delete them within a day.
         </p>
         <p className="mt-2 text-muted">
+          Replying to a thread follows it, so follow-up replies and direct
+          answers to your messages reach you. Notifications say what happened,
+          never who did it, and Unfollow replies in the post menu turns thread
+          alerts off.
+        </p>
+        <p className="mt-2 text-muted">
           If you ask to be emailed when someone replies to your question,
           Canteen sends one email to your sign-in address with a link, never the
           question or the reply.
