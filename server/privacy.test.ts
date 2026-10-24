@@ -266,6 +266,55 @@ describe.skipIf(!TEST_DATABASE_URL)("privacy and authorization", () => {
     ).toHaveLength(1);
   });
 
+  it("tells a reply's author it helped, and takes back unseen thanks when the choice changes", async () => {
+    const p = await post("ada", { kind: "QUESTION" });
+    const [annex, weekends] = await Promise.all(
+      [
+        ["alan", "Try the library annex."],
+        ["grace", "It's open on weekends too."],
+      ].map(([authorId, body]) =>
+        db.comment.create({
+          data: { postId: p.id, authorId: authorId!, body: body! },
+        }),
+      ),
+    );
+    const thanks = () =>
+      db.notification.findMany({
+        select: { userId: true, type: true, replyId: true, readAt: true },
+        orderBy: { userId: "asc" },
+      });
+    as("ada");
+    expect((await actions.markHelpful(p.id, annex!.id)).ok).toBe(true);
+    // Choosing the same reply again is not a second thank-you.
+    expect((await actions.markHelpful(p.id, annex!.id)).ok).toBe(true);
+    expect(await thanks()).toEqual([
+      { userId: "alan", type: "HELPFUL", replyId: annex!.id, readAt: null },
+    ]);
+    expect(
+      (await queries.getNotifications(await viewer("alan")))[0],
+    ).toMatchObject({
+      type: "HELPFUL",
+      replyId: annex!.id,
+      post: { id: p.id, mine: false, question: true },
+    });
+    expect(await queries.getNotifications(await viewer("ada"))).toEqual([]);
+
+    expect((await actions.markHelpful(p.id, weekends!.id)).ok).toBe(true);
+    expect(await thanks()).toEqual([
+      { userId: "grace", type: "HELPFUL", replyId: weekends!.id, readAt: null },
+    ]);
+    // A thank-you the student already saw stays in their history.
+    as("grace");
+    await actions.markNotificationsRead(
+      (await queries.getNotifications(await viewer("grace"))).map(
+        ({ id, revision }) => ({ id, revision }),
+      ),
+    );
+    as("ada");
+    expect((await actions.markHelpful(p.id, null)).ok).toBe(true);
+    expect(await db.notification.count({ where: { userId: "grace" } })).toBe(1);
+  });
+
   it("keeps collections private and sends anonymous reply alerts to eligible followers", async () => {
     const p = await post("ada", { audience: "CAMPUS" });
     as("alan");

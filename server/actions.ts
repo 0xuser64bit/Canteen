@@ -995,6 +995,10 @@ export async function markHelpful(
       select: { id: true },
     });
     if (!post) return NOT_FOUND;
+    const previous = await tx.helpfulAnswer.findUnique({
+      where: { postId },
+      select: { commentId: true, comment: { select: { authorId: true } } },
+    });
     if (commentId === null) {
       await tx.helpfulAnswer.deleteMany({ where: { postId } });
     } else {
@@ -1005,7 +1009,7 @@ export async function markHelpful(
           hiddenAt: null,
           authorId: { not: viewer.id },
         },
-        select: { id: true },
+        select: { id: true, authorId: true },
       });
       if (!comment) return NOT_FOUND;
       await tx.helpfulAnswer.upsert({
@@ -1013,7 +1017,20 @@ export async function markHelpful(
         create: { postId, commentId },
         update: { commentId, createdAt: new Date() },
       });
+      if (previous?.commentId !== commentId)
+        await notify(tx, comment.authorId, postId, "HELPFUL", commentId);
     }
+    // An undone or moved choice takes back a thank-you that hasn't been seen yet.
+    if (previous && previous.commentId !== commentId)
+      await tx.notification.deleteMany({
+        where: {
+          userId: previous.comment.authorId,
+          postId,
+          type: "HELPFUL",
+          readAt: null,
+          replyId: previous.commentId,
+        },
+      });
     await tx.post.update({
       where: { id: postId },
       data: { revision: { increment: 1 } },

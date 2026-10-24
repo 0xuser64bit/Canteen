@@ -22,7 +22,7 @@ export default async function NotificationsPage({
     <>
       <PageHeader
         title="Notifications"
-        subtitle="Replies, likes, and threads you follow. Never who."
+        subtitle="Replies, likes and helpful answers. Never who."
       />
       {items.length === 0 ? (
         <EmptyState
@@ -33,8 +33,9 @@ export default async function NotificationsPage({
               "You've reached the end of this activity. Head back to the latest notifications."
             ) : (
               <>
-                Replies to your posts and followed threads, along with likes on
-                your posts, appear here. Notifications never name the person.
+                Replies to your posts and the threads you follow, likes on your
+                posts and replies marked helpful appear here. Notifications
+                never name the person.
                 <span className="mt-3 block">
                   <Link
                     href="/campus"

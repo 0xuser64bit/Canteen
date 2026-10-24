@@ -43,7 +43,12 @@ const item = (overrides: Partial<NotificationItem> = {}): NotificationItem => ({
   createdAt: new Date("2026-10-20T10:00:00Z"),
   revision: 0,
   replyId: "reply-one",
-  post: { id: "post-one", title: "Finding a quiet study spot" },
+  post: {
+    id: "post-one",
+    title: "Finding a quiet study spot",
+    mine: true,
+    question: false,
+  },
   ...overrides,
 });
 const render = async (items: NotificationItem[], key = "latest") =>
@@ -71,7 +76,12 @@ it("keeps arrival grouping after server read status refreshes and acknowledges e
     unread: false,
     type: "LIKE",
     replyId: null,
-    post: { id: "earlier-post", title: "A useful conversation" },
+    post: {
+      id: "earlier-post",
+      title: "A useful conversation",
+      mine: true,
+      question: false,
+    },
   });
   await render([fresh, earlier]);
   expect(mocks.acknowledge).toHaveBeenCalledExactlyOnceWith([
@@ -171,4 +181,30 @@ it("does not refresh another page when acknowledgement finishes after leaving", 
   mounted = false;
   await act(async () => request.resolve());
   expect(mocks.router.refresh).not.toHaveBeenCalled();
+});
+
+it("says what happened in each alert without naming anyone", async () => {
+  const thread = (mine: boolean, question: boolean) => ({
+    id: `post-${mine}-${question}`,
+    title: "A thread",
+    mine,
+    question,
+  });
+  await render([
+    item({ id: "asked", post: thread(true, true) }),
+    item({ id: "posted", post: thread(true, false) }),
+    item({ id: "joined", post: thread(false, true) }),
+    item({ id: "liked", type: "LIKE", replyId: null }),
+    item({ id: "helped", type: "HELPFUL", post: thread(false, true) }),
+  ]);
+  const labels = [...container.querySelectorAll("li")].map((li) =>
+    li.textContent!.replace(/^A thread|^Finding a quiet study spot/, ""),
+  );
+  expect(labels).toEqual([
+    "New replies to your question·just now",
+    "New replies to your post·just now",
+    "New replies in a thread you follow·just now",
+    "New likes on your post·just now",
+    "The author marked your reply helpful·just now",
+  ]);
 });

@@ -315,6 +315,8 @@ model Report {
 enum NotificationType {
   COMMENT
   LIKE
+  // The question's author marked the recipient's reply helpful.
+  HELPFUL
 }
 
 // Notifications never say who acted; that would break anonymity.

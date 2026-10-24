@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Heart, MessageCircle } from "lucide-react";
+import { Check, ChevronRight, Heart, MessageCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TimeAgo } from "@/components/time";
@@ -12,6 +12,33 @@ import type { NotificationItem } from "@/server/queries";
 
 type Delivered = Pick<NotificationItem, "id" | "revision">;
 const version = ({ id, revision }: Delivered) => `${id}:${revision}`;
+
+/** What happened, in words that never say who did it. */
+function describe({ type, post }: NotificationItem) {
+  if (type === "LIKE")
+    return {
+      icon: FilledHeart,
+      tone: "bg-danger-surface text-danger",
+      label: "New likes on your post",
+    };
+  if (type === "HELPFUL")
+    return {
+      icon: Check,
+      tone: "bg-ink text-background",
+      label: "The author marked your reply helpful",
+    };
+  return {
+    icon: MessageCircle,
+    tone: "bg-surface ring-1 ring-line",
+    label: post.mine
+      ? `New replies to your ${post.question ? "question" : "post"}`
+      : "New replies in a thread you follow",
+  };
+}
+
+function FilledHeart({ className }: { className?: string }) {
+  return <Heart aria-hidden className={cn("fill-current", className)} />;
+}
 
 export function NotificationList({ items }: { items: NotificationItem[] }) {
   const router = useRouter();
@@ -133,7 +160,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
             </h2>
             <ul className="flex flex-col gap-1">
               {group.map((item) => {
-                const comment = item.type === "COMMENT";
+                const { icon: Icon, tone, label } = describe(item);
                 return (
                   <li key={item.id}>
                     <ThreadLink
@@ -150,16 +177,10 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
                       <span
                         className={cn(
                           "grid size-10 shrink-0 place-items-center rounded-full",
-                          comment
-                            ? "bg-surface ring-1 ring-line"
-                            : "bg-danger-surface text-danger",
+                          tone,
                         )}
                       >
-                        {comment ? (
-                          <MessageCircle className="size-5" />
-                        ) : (
-                          <Heart className="size-5 fill-current" />
-                        )}
+                        <Icon aria-hidden className="size-5" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span
@@ -171,11 +192,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
                           {item.post.title}
                         </span>
                         <span className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted">
-                          <span>
-                            {comment
-                              ? "Replies to this thread"
-                              : "Likes on your post"}
-                          </span>
+                          <span>{label}</span>
                           <span aria-hidden>·</span>
                           <TimeAgo date={item.createdAt} />
                         </span>

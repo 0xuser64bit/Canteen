@@ -885,7 +885,8 @@ export type NotificationItem = {
   createdAt: Date;
   revision: number;
   replyId: string | null;
-  post: { id: string; title: string };
+  /** Whether the viewer wrote the post, and what kind it is, for the alert's wording. */
+  post: { id: string; title: string; mine: boolean; question: boolean };
 };
 
 export async function getNotifications(
@@ -907,7 +908,7 @@ export async function getNotifications(
       createdAt: true,
       revision: true,
       replyId: true,
-      post: { select: { id: true, title: true } },
+      post: { select: { id: true, title: true, authorId: true, kind: true } },
     },
   });
   return rows.map((row) => ({
@@ -917,7 +918,12 @@ export async function getNotifications(
     createdAt: row.createdAt,
     revision: row.revision,
     replyId: row.replyId,
-    post: row.post,
+    post: {
+      id: row.post.id,
+      title: row.post.title,
+      mine: row.post.authorId === viewer.id,
+      question: row.post.kind === "QUESTION",
+    },
   }));
 }
 
