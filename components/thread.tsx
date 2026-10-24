@@ -189,7 +189,12 @@ function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
   if (thread.kind !== "QUESTION" || reply.hidden || reply.sending) return null;
   if (!thread.isMine || reply.isMine || thread.hidden)
     return selected ? (
-      <p className="mt-1 text-[12px] font-semibold text-muted">
+      <p
+        className={cn(
+          "mt-1 px-1 text-[12px] font-semibold text-muted",
+          reply.isMine ? "text-right" : "ml-10",
+        )}
+      >
         <Check aria-hidden className="inline size-3.5" /> Marked helpful by the
         author
       </p>
@@ -199,7 +204,7 @@ function HelpfulReply({ thread, reply }: { thread: Thread; reply: Reply }) {
       type="button"
       disabled={pending}
       aria-pressed={selected}
-      className="mt-1 min-h-11 cursor-pointer rounded-full px-2 py-1 text-[12px] font-semibold text-muted hover:bg-surface-3 hover:text-ink disabled:opacity-50"
+      className="mt-1 ml-8 min-h-11 cursor-pointer rounded-full px-2 py-1 text-[12px] font-semibold text-muted hover:bg-surface-3 hover:text-ink disabled:opacity-50"
       onClick={() =>
         startTransition(async () => {
           try {
