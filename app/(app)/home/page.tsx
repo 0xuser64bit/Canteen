@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TrendingStrip } from "@/components/discover";
 import { EmptyState } from "@/components/empty";
 import { Feed } from "@/components/feed";
 import { InviteCard } from "@/components/invite";
@@ -88,6 +89,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
           sort={sort}
         />
       </PageHeader>
+      {!topic && !unanswered && !noReplies && <TrendingStrip />}
       {campusSize !== null && campusSize < MIN_MEMBERS_TO_NAME_UNIVERSITY && (
         <InviteCard
           compact

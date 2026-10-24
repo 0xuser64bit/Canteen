@@ -626,7 +626,8 @@ export async function getUniversityPage(viewer: Viewer, slug: string) {
 
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
-export async function getTrending(viewer: Viewer) {
+// Cached per request: the wide-screen sidebar and the phone strip share one read.
+export const getTrending = cache(async (viewer: Viewer) => {
   const rows = await db.post.findMany({
     where: {
       createdAt: { gte: new Date(Date.now() - WEEK_MS) },
@@ -660,7 +661,7 @@ export async function getTrending(viewer: Viewer) {
     likeCount: row._count.likes,
     commentCount: row._count.comments,
   }));
-}
+});
 
 export async function getActiveUniversities() {
   // Apply campus privacy eligibility before ranking, so small campuses cannot crowd out the list.

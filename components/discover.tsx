@@ -93,3 +93,37 @@ export async function Discover() {
     </div>
   );
 }
+
+/** Trending threads for screens without the discovery sidebar. */
+export async function TrendingStrip() {
+  const trending = await getTrending(await requireViewer());
+  if (trending.length === 0) return null;
+  return (
+    <section aria-labelledby="trending-strip" className="pt-5 xl:hidden">
+      <h2
+        id="trending-strip"
+        className="mb-2.5 flex items-center gap-2 px-4 text-[13px] font-semibold text-muted lg:px-6"
+      >
+        <Flame aria-hidden className="size-4" /> Trending this week
+      </h2>
+      <ol className="no-scrollbar flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 lg:scroll-px-6 lg:px-6">
+        {trending.map((post) => (
+          <li key={post.id} className="flex w-60 shrink-0 snap-start">
+            <ThreadLink
+              href={`/p/${post.id}`}
+              className="flex w-full flex-col justify-between gap-3 rounded-[22px] bg-surface p-4 shadow-soft ring-1 ring-line transition-shadow hover:shadow-pop"
+            >
+              <span className="line-clamp-3 text-[15px] leading-snug font-semibold tracking-tight">
+                {post.title}
+              </span>
+              <span className="text-[12px] text-muted tabular">
+                {plural(post.likeCount, "like")} ·{" "}
+                {plural(post.commentCount, "reply", "replies")}
+              </span>
+            </ThreadLink>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
