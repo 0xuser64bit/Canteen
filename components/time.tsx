@@ -39,18 +39,19 @@ export function TimeAgo({
     minuteSnapshot,
   );
   const full = formatDateTime(date, preferences.clock);
+  const exact = preferences.timestamps === "exact";
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
         <time
           dateTime={date.toISOString()}
           tabIndex={0}
+          // Narrow units ("5m ago") read ambiguously aloud; the label keeps the words.
+          aria-label={exact ? undefined : timeAgo(date, minute * 60_000)}
           className={cn("max-w-full cursor-help rounded-sm", className)}
           suppressHydrationWarning
         >
-          {preferences.timestamps === "exact"
-            ? full
-            : timeAgo(date, minute * 60_000)}
+          {exact ? full : timeAgo(date, minute * 60_000, "narrow")}
         </time>
       </Tooltip.Trigger>
       <Tooltip.Portal>

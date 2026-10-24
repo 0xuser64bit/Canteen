@@ -23,10 +23,15 @@ export function UniversityLabel({
   className?: string;
 }) {
   if (!university.slug)
-    return <span className={cn("truncate", className)}>{university.name}</span>;
+    return (
+      <span title={university.name} className={cn("truncate", className)}>
+        {university.name}
+      </span>
+    );
   return (
     <Link
       href={`/u/${university.slug}`}
+      title={university.name}
       className={cn("relative z-10 truncate hover:underline", className)}
     >
       {university.name}
@@ -228,15 +233,15 @@ export function PostCard({
           mine && "items-end",
         )}
       >
-        <div className="mb-1.5 flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 px-1 text-[13px] text-muted">
+        <div className="mb-1.5 flex max-w-full items-center gap-1.5 px-1 text-[13px] text-muted">
           {mine ? (
-            <span className="font-semibold text-ink">You</span>
+            <span className="shrink-0 font-semibold text-ink">You</span>
           ) : (
             <AliasName alias={post.alias} className="shrink-0" />
           )}
           <span aria-hidden>·</span>
           {post.staff && post.university.name !== "Canteen team" && (
-            <span className="font-semibold">Canteen team · </span>
+            <span className="shrink-0 font-semibold">Canteen team · </span>
           )}
           <UniversityLabel university={post.university} />
           <span aria-hidden>·</span>
