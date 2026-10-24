@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { AliasAvatar, AliasName } from "@/components/alias";
 import { PollView } from "@/components/poll";
 import { PostMenu } from "@/components/post-menu";
-import { TimeAgo } from "@/components/time";
+import { Deadline, TimeAgo } from "@/components/time";
 import { ThreadLink } from "@/components/thread-link";
 import { topicLabel } from "@/lib/topics";
 import { cn, compactNumber } from "@/lib/utils";
@@ -128,9 +128,11 @@ function Meta({ post, onYellow }: { post: PostSummary; onYellow: boolean }) {
           {topicLabel(post.topic)}
         </span>
         {post.deadline && (
-          <span className={cn("text-[12px] font-semibold", quiet)}>
-            {post.closed ? "Closed" : "Open"}
-          </span>
+          <Deadline
+            date={post.deadline}
+            className={cn("text-[12px] font-semibold", quiet)}
+            urgentClassName={onYellow ? "text-you-surface-ink" : "text-ink"}
+          />
         )}
         {post.kind === "QUESTION" && (
           <span className={cn("text-[12px] font-semibold", quiet)}>

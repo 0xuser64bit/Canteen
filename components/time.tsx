@@ -1,9 +1,10 @@
 "use client";
 
+import { Clock } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { useSyncExternalStore } from "react";
 import { usePreferences } from "@/components/preferences";
-import { formatDateTime } from "@/lib/datetime";
+import { deadlineLabel, formatDateTime } from "@/lib/datetime";
 import { cn, timeAgo } from "@/lib/utils";
 
 const listeners = new Set<() => void>();
@@ -65,6 +66,40 @@ export function TimeAgo({
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
+  );
+}
+
+/** An opportunity's countdown, refreshed by the shared minute clock. */
+export function Deadline({
+  date,
+  className,
+  urgentClassName,
+}: {
+  date: Date;
+  className?: string;
+  urgentClassName?: string;
+}) {
+  const { clock } = usePreferences();
+  const minute = useSyncExternalStore(
+    subscribeClock,
+    minuteSnapshot,
+    minuteSnapshot,
+  );
+  const { text, urgent } = deadlineLabel(date, minute * 60_000);
+  return (
+    <time
+      dateTime={date.toISOString()}
+      title={`${formatDateTime(date, clock)} · your local time`}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap",
+        className,
+        urgent && urgentClassName,
+      )}
+      suppressHydrationWarning
+    >
+      <Clock aria-hidden className="size-3.5" />
+      {text}
+    </time>
   );
 }
 

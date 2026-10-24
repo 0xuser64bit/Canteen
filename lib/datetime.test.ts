@@ -2,10 +2,49 @@ import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import {
   calendarDays,
+  deadlineLabel,
   formatDateTime,
   localDateTimeValue,
   parseLocalDateTime,
 } from "./datetime";
+
+describe("deadline labels", () => {
+  const now = new Date(2026, 9, 24, 12, 0).getTime();
+  const at = (minutes: number) => new Date(now + minutes * 60_000);
+
+  it("counts down without overstating the time left", () => {
+    expect(deadlineLabel(at(1), now)).toEqual({
+      text: "Closes in 1 minute",
+      urgent: true,
+      closed: false,
+    });
+    expect(deadlineLabel(at(119), now).text).toBe("Closes in 1 hour");
+    expect(deadlineLabel(at(47 * 60 + 59), now).text).toBe(
+      "Closes in 47 hours",
+    );
+    expect(deadlineLabel(at(48 * 60), now)).toEqual({
+      text: "Closes in 2 days",
+      urgent: false,
+      closed: false,
+    });
+    expect(deadlineLabel(at(7 * 24 * 60 - 1), now).text).toBe(
+      "Closes in 6 days",
+    );
+    // Further out, a calendar date reads better than a count of days.
+    expect(deadlineLabel(at(10 * 24 * 60), now).text).toMatch(
+      /^Closes (?!in )/,
+    );
+  });
+
+  it("reports a passed deadline as closed", () => {
+    expect(deadlineLabel(at(0), now)).toEqual({
+      text: "Closed",
+      urgent: false,
+      closed: true,
+    });
+    expect(deadlineLabel(at(-60), now).closed).toBe(true);
+  });
+});
 
 describe("local dates and clocks", () => {
   it("round-trips local wall-clock values without a UTC shift", () => {

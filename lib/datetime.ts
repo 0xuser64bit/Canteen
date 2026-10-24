@@ -8,6 +8,33 @@ export function formatDateTime(date: Date, clock: Preferences["clock"]) {
   }).format(date);
 }
 
+const HOUR = 60;
+const shortDate = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+});
+
+/**
+ * "Closes in 5 hours", "Closes in 3 days", "Closes Nov 14". Rounds down, so a
+ * deadline never looks further away than it is. Urgent inside 48 hours.
+ */
+export function deadlineLabel(deadline: Date, now = Date.now()) {
+  const minutes = Math.floor((deadline.getTime() - now) / 60_000);
+  const unit = (count: number, word: string) =>
+    `${count} ${word}${count === 1 ? "" : "s"}`;
+  if (minutes <= 0) return { text: "Closed", urgent: false, closed: true };
+  const urgent = minutes < 48 * HOUR;
+  const text =
+    minutes < HOUR
+      ? `Closes in ${unit(minutes, "minute")}`
+      : urgent
+        ? `Closes in ${unit(Math.floor(minutes / HOUR), "hour")}`
+        : minutes < 7 * 24 * HOUR
+          ? `Closes in ${unit(Math.floor(minutes / (24 * HOUR)), "day")}`
+          : `Closes ${shortDate.format(deadline)}`;
+  return { text, urgent, closed: false };
+}
+
 /** datetime-local is a wall-clock value, never an ISO string in UTC. */
 export function localDateTimeValue(date: Date) {
   const pad = (value: number) => String(value).padStart(2, "0");

@@ -29,7 +29,7 @@ import { reducedMotion } from "@/components/preferences";
 import { Linkified } from "@/components/linkified";
 import { LikeButton, PostImage, UniversityLabel } from "@/components/post";
 import { CommentMenu, PostMenu } from "@/components/post-menu";
-import { DateTime, TimeAgo } from "@/components/time";
+import { DateTime, Deadline, TimeAgo } from "@/components/time";
 import { ThreadLink } from "@/components/thread-link";
 import { Button } from "@/components/ui/button";
 import { Counter } from "@/components/ui/field";
@@ -535,6 +535,18 @@ export function ThreadView({ thread }: { thread: Thread }) {
                     {thread.closed ? "Applications closed" : "Apply before"} ·{" "}
                     <DateTime date={thread.deadline} /> · your local time
                   </p>
+                  {!thread.closed && (
+                    <Deadline
+                      date={thread.deadline}
+                      className={cn(
+                        "mt-1 text-[12px] font-semibold",
+                        mine ? "text-you-surface-muted" : "text-muted",
+                      )}
+                      urgentClassName={
+                        mine ? "text-you-surface-ink" : "text-ink"
+                      }
+                    />
+                  )}
                   <a
                     href={thread.applicationUrl}
                     target="_blank"
