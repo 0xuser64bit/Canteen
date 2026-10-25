@@ -139,8 +139,8 @@ polls, account deletion, and image metadata and cleanup failures. Email and Blob
 requests are mocked; tests never send mail or upload files.
 
 CI runs all of this, plus a production dependency audit and build, on pushes to
-`main` and pull requests. The remaining development dependency advisory is tracked
-in [SECURITY.md](SECURITY.md#dependency-review).
+`main` and pull requests. Dependency review notes, including the one version
+override, are in [SECURITY.md](SECURITY.md#dependency-review).
 
 ## Deploy
 

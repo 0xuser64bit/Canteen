@@ -37,13 +37,15 @@ well. Assess advisories against actual usage and fix them with compatible
 updates; do not suppress findings or force incompatible versions merely to
 produce a clean report. An old audit result is not a current security guarantee.
 
-The review on 23 October 2026 found no production dependency advisories across
-207 packages. The full `bun audit` still reports
-[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) in
-`braces@3.0.3`, through
-`eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch`. It
-affects deeply nested glob patterns during development and linting; Canteen does
-not send student input to that code. The advisory lists no patched release. Keep
-build and lint configuration trusted, and recheck the upstream fix when updating
-the linter. This finding is documented rather than suppressed or forced onto an
-incompatible dependency version.
+The review on 25 October 2026 found no advisories in the full dependency tree
+(705 packages, development included) or in the 207 production packages.
+`happy-dom`, which runs only in tests, is pinned to 21.0.4 for
+[GHSA-834v-8h66-3h79](https://github.com/advisories/GHSA-834v-8h66-3h79).
+
+`package.json` overrides `zod` to `^4.6.7` for
+[GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5):
+`@vercel/cli-config`, reached through `@vercel/blob` and `@vercel/oidc`, pins
+`zod@4.1.11` exactly, and no release of those packages changes that. The
+override stays within the same major version that every dependent accepts, and
+the package's configuration schemas were checked against it. Remove the
+override once an upstream release no longer pins a vulnerable version.
